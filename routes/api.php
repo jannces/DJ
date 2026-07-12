@@ -24,4 +24,4 @@ Route::prefix('v1')->name('api.')->group(function () {
 
 // Session-authenticated alert polling for the web UI bell (uses web guard).
 Route::middleware(['web', 'auth'])->get('/internal/security/alerts', [SecurityApiController::class, 'alerts'])
-    ->name('api.security.alerts');
+    ->name('web.security.alerts');

@@ -16,7 +16,7 @@
     <div class="ms-auto d-flex align-items-center gap-2">
         @can('security.dashboard')
             <a href="{{ route('security.dashboard') }}" id="alert-bell" class="btn btn-sm btn-outline-secondary position-relative"
-               data-url="{{ route('api.security.alerts') }}"
+               data-url="{{ route('web.security.alerts') }}"
                data-interval="{{ \App\Models\SystemSetting::get('general.alerts_poll_seconds', 15) }}"
                aria-label="Security alerts">
                 <i class="bi bi-bell"></i>
