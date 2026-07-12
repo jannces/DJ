@@ -3,37 +3,57 @@
 namespace App\Http\Controllers\Leave;
 
 use App\Http\Controllers\Controller;
+use App\Models\Position;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class PositionController extends Controller
 {
-
-    public function index()
+    public function index(): View
     {
-        abort(503, 'This module is being provisioned.');
+        $positions = Position::withCount('employees')->orderBy('title')->paginate(15);
+
+        return view('hr.positions', compact('positions'));
     }
 
-    public function create()
+    public function create(): RedirectResponse
     {
-        abort(503, 'This module is being provisioned.');
+        return redirect()->route('positions.index');
     }
 
-    public function store()
+    public function store(Request $request): RedirectResponse
     {
-        abort(503, 'This module is being provisioned.');
+        Position::create($request->validate([
+            'title' => ['required', 'string', 'max:150'],
+            'salary_grade' => ['nullable', 'string', 'max:10'],
+        ]));
+
+        return back()->with('status', 'Position created.');
     }
 
-    public function edit()
+    public function edit(Position $position): View
     {
-        abort(503, 'This module is being provisioned.');
+        return view('hr.positions', [
+            'positions' => Position::withCount('employees')->orderBy('title')->paginate(15),
+            'editing' => $position,
+        ]);
     }
 
-    public function update()
+    public function update(Request $request, Position $position): RedirectResponse
     {
-        abort(503, 'This module is being provisioned.');
+        $position->update($request->validate([
+            'title' => ['required', 'string', 'max:150'],
+            'salary_grade' => ['nullable', 'string', 'max:10'],
+        ]));
+
+        return redirect()->route('positions.index')->with('status', 'Position updated.');
     }
 
-    public function destroy()
+    public function destroy(Position $position): RedirectResponse
     {
-        abort(503, 'This module is being provisioned.');
+        $position->delete();
+
+        return back()->with('status', 'Position archived.');
     }
 }
