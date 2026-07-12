@@ -1,0 +1,94 @@
+openapi: 3.0.3
+info:
+  title: LGU Alicia — Leave Management System API
+  version: "1.0.0"
+  description: >
+    Versioned REST API for the Cybersecurity Integrated Digital Leave Management
+    System. Token authentication via Laravel Sanctum. Rate limited to 60 req/min
+    per user/IP. All endpoints enforce the same RBAC permissions as the web UI.
+servers:
+  - url: /api/v1
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    Error:
+      type: object
+      properties:
+        message: { type: string }
+        errors: { type: object }
+    LoginRequest:
+      type: object
+      required: [identifier, password]
+      properties:
+        identifier: { type: string, example: employee@alicia.gov.ph }
+        password: { type: string, format: password }
+    Token:
+      type: object
+      properties:
+        token: { type: string }
+security:
+  - bearerAuth: []
+paths:
+  /auth/login:
+    post:
+      summary: Authenticate and (if enabled) receive an OTP challenge
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: OTP challenge or token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  otp_required: { type: boolean }
+                  user_id: { type: integer }
+                  token: { type: string }
+        '401': { description: Invalid credentials, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /auth/otp/verify:
+    post:
+      summary: Verify an emailed OTP and receive an API token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, code]
+              properties:
+                user_id: { type: integer }
+                code: { type: string, example: "123456" }
+      responses:
+        '200': { description: Token issued, content: { application/json: { schema: { $ref: '#/components/schemas/Token' } } } }
+        '422': { description: Invalid or expired code }
+  /auth/me:
+    get:
+      summary: Current user with roles and permissions
+      responses:
+        '200': { description: Current user }
+        '401': { description: Unauthenticated }
+  /auth/logout:
+    post:
+      summary: Revoke the current token
+      responses: { '200': { description: Logged out } }
+  /security/alerts:
+    get:
+      summary: Unseen intrusion count and latest event (polled)
+      responses:
+        '200': { description: Alert summary }
+        '403': { description: Forbidden }
+  /security/stats:
+    get:
+      summary: Security chart datasets
+      responses:
+        '200': { description: Stats }
+        '403': { description: Forbidden }

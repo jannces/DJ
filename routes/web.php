@@ -41,3 +41,6 @@ Route::middleware(['auth', 'otp.verified', 'force.pwchange'])->group(function ()
     require __DIR__.'/leave.php';
     require __DIR__.'/admin.php';
 });
+
+// Swagger UI (offline, LAN) — public API contract viewer.
+Route::view('/api/documentation', 'api.docs')->name('api.docs');
