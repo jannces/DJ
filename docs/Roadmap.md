@@ -17,5 +17,11 @@ Build order is fixed; a phase starts only when the previous one is committed.
 | 11 Deployment | XAMPP/Apache/TLS guide, backup/restore, SQL dump, manuals | Fresh-machine install validated |
 
 ## Milestone log
-- ✅ Laravel 12 skeleton + offline vendor assets committed
-- (updated as phases complete — see git history for the authoritative trail)
+- ✅ Phase 1-2 — Laravel 12 skeleton, offline vendor assets, all `/docs` + 12 ADRs + diagrams
+- ✅ Phase 3 — 25-table schema, models, factories, seeders (CSC leave types, roles/permissions, demo data)
+- ✅ Phase 4-5 — auth (login/OTP/lockout/reset/session/device) + dynamic RBAC (16 tests)
+- ✅ Phase 6 — CSC Form 6, 15 leave types, credit computation, approval workflow, PDF (11 tests)
+- ✅ Phase 7-8 — security headers/audit/activity + IDS (signatures, auto-block, dashboard) (7 tests)
+- ✅ Phase 9 — 9 reports × PDF/XLSX/CSV, search, dashboards, REST API + Swagger (8 tests)
+- ✅ Phase 10 — full suite 47 tests/152 assertions passing; pentest + ISO 25010 + security reports; SQL dump
+- ⏳ Phase 11 — deployment scripts, backup/restore, beginner run guide
