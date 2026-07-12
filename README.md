@@ -1,59 +1,65 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Cybersecurity Integrated Digital Leave Management System
+### with Real-Time Intrusion Alerts — Local Government Unit of Alicia
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A production-quality, LAN-deployable leave management system for a Philippine LGU,
+built on **Laravel 12 / PHP 8.3+ / MySQL** with integrated cybersecurity controls,
+real-time intrusion detection, and full CSC Form No. 6 (Revised 2020) support.
 
-## About Laravel
+> **New here? Read [`RUN_ON_YOUR_PC.md`](RUN_ON_YOUR_PC.md)** for a complete,
+> beginner-friendly setup guide.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Highlights
+- **Authentication:** login, **email OTP** MFA, remember-me, forgot/reset, strong-password
+  policy, **3-strike / 24-hour account lockout**, session timeout, authorized-device allow-list.
+- **RBAC:** fully database-driven roles & permissions with **inheritance** and per-user
+  allow/deny overrides — no hardcoded checks; permission-driven menus; 403 logging.
+- **Leave management:** digital **CSC Form 6** + printable PDF, **15 CSC leave types**
+  (Vacation, Sick, Maternity, Paternity, Solo Parent, Study, VAWC, SLBW, Calamity,
+  Monetization, Terminal, Adoption, …) with JSON-configurable policies, automatic
+  working-day and **leave-credit computation (never negative, concurrency-safe)**, and a
+  Department Head → HR → Mayor **approval workflow** with digital signatures.
+- **Security:** middleware **IDS** (SQLi/XSS/traversal signatures, rate anomaly),
+  **automatic IP blocking**, security headers, **append-only audit + activity logs**,
+  **security dashboard** with charts and **real-time alerts**.
+- **Reports:** 9 reports (leave, department, monthly, annual, balances, intrusion, audit,
+  blocked-login, activity) each exportable to **PDF / Excel / CSV**; global search.
+- **API:** versioned **REST `/api/v1`** (Sanctum), rate-limited, documented with **OpenAPI 3
+  + offline Swagger UI** at `/api/documentation`.
+- **UI:** Bootstrap 5 government theme, responsive, **dark/light mode**, SweetAlert2 toasts,
+  skeleton loaders — all assets vendored for **fully offline LAN** operation.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Tech stack
+Laravel 12 · PHP 8.3+ · MySQL/MariaDB · Redis (optional) · Blade · Bootstrap 5 ·
+Chart.js · SweetAlert2 · Sanctum · dompdf · maatwebsite/excel · Apache/XAMPP.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Quick start (development)
+```bash
+composer install
+cp .env.example .env && php artisan key:generate
+php artisan migrate --seed                     # schema + roles/permissions/leave types/settings/super admin
+php artisan db:seed --class=DemoDataSeeder      # optional demo data
+php artisan storage:link
+php artisan serve                               # http://127.0.0.1:8000
+```
+Run the tests: `php artisan test` (**47 passing / 152 assertions**).
 
-## Learning Laravel
+## Documentation (`/docs`)
+Architecture · Requirements · Database · Security · API · Roadmap · Deployment · Testing ·
+ThreatModel (STRIDE) · AdminGuide · UserGuide · DecisionLog + **12 ADRs** · **Diagrams**
+(context/DFD/use-case/class/activity/sequence/deployment/network/flowcharts) ·
+PenetrationTestReport · ISO25010 · SecurityReport.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
-
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-## Laravel Sponsors
-
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
-
-### Premium Partners
-
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Project layout
+```
+app/
+  Http/{Controllers,Middleware}    # auth, admin, leave, api + security kernel
+  Services/{Auth,Rbac,Leave,Security,Reports}   # service layer (SOLID)
+  Models/  Notifications/  Exports/  Console/Commands/  Rules/
+database/{migrations,factories,seeders,sql}
+resources/views/{auth,dashboard,leave,hr,admin,reports,api,partials,layouts}
+routes/{web,api,leave,admin,console}.php
+deploy/    docs/    tests/{Unit,Feature}
+```
 
 ## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Developed as an academic capstone for the Local Government Unit of Alicia.
