@@ -1,0 +1,14 @@
+# systemd unit for the Laravel queue worker (Linux deployment).
+# sudo cp deploy/lms-queue.service /etc/systemd/system/ && sudo systemctl enable --now lms-queue
+[Unit]
+Description=LGU Alicia LMS queue worker
+After=network.target mysql.service
+
+[Service]
+User=www-data
+Restart=always
+WorkingDirectory=/var/www/lms
+ExecStart=/usr/bin/php /var/www/lms/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+
+[Install]
+WantedBy=multi-user.target
