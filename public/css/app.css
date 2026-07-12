@@ -1,0 +1,89 @@
+/* LGU Alicia LMS — professional government theme, light + dark */
+:root {
+  --lgu-primary: #14532d;        /* deep government green */
+  --lgu-primary-2: #166534;
+  --lgu-accent: #ca8a04;         /* gold */
+  --lgu-bg: #f4f6f9;
+  --lgu-surface: #ffffff;
+  --lgu-text: #1f2937;
+  --lgu-muted: #6b7280;
+  --lgu-border: #e5e7eb;
+  --lgu-sidebar: #0f3d22;
+  --lgu-sidebar-text: #d1e7dd;
+}
+[data-bs-theme="dark"] {
+  --lgu-bg: #111827;
+  --lgu-surface: #1f2937;
+  --lgu-text: #e5e7eb;
+  --lgu-muted: #9ca3af;
+  --lgu-border: #374151;
+  --lgu-sidebar: #0b2818;
+  --lgu-sidebar-text: #b5d4c3;
+}
+html, body { height: 100%; }
+body { background: var(--lgu-bg); color: var(--lgu-text); font-size: .925rem; }
+.card, .modal-content, .dropdown-menu { background: var(--lgu-surface); border-color: var(--lgu-border); }
+.card { box-shadow: 0 1px 3px rgb(0 0 0 / 8%); border-radius: .65rem; }
+.text-muted { color: var(--lgu-muted) !important; }
+
+/* Layout */
+.lms-wrapper { display: flex; min-height: 100vh; }
+.lms-sidebar {
+  width: 254px; min-height: 100vh; background: var(--lgu-sidebar);
+  color: var(--lgu-sidebar-text); flex-shrink: 0; transition: margin-left .25s ease;
+}
+.lms-sidebar.collapsed { margin-left: -254px; }
+.lms-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.lms-content { padding: 1.25rem 1.5rem; flex: 1; }
+@media (max-width: 991px) {
+  .lms-sidebar { position: fixed; z-index: 1045; margin-left: -254px; }
+  .lms-sidebar.show-mobile { margin-left: 0; }
+}
+
+/* Sidebar items */
+.lms-brand { padding: 1rem 1.1rem; border-bottom: 1px solid rgb(255 255 255 / 12%); display:flex; gap:.65rem; align-items:center; }
+.lms-brand .seal { width: 40px; height: 40px; border-radius: 50%; background: var(--lgu-accent); display:flex;align-items:center;justify-content:center; color:#fff; font-size:1.15rem; }
+.lms-nav { padding: .75rem .6rem; }
+.lms-nav .nav-heading { font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; opacity: .6; padding: .85rem .6rem .25rem; }
+.lms-nav .nav-link { color: var(--lgu-sidebar-text); border-radius: .45rem; padding: .5rem .65rem; margin-bottom: 2px; font-size: .875rem; display:flex; align-items:center; gap:.6rem; }
+.lms-nav .nav-link:hover { background: rgb(255 255 255 / 8%); color: #fff; }
+.lms-nav .nav-link.active { background: var(--lgu-accent); color: #fff; font-weight: 600; }
+
+/* Topbar */
+.lms-topbar { background: var(--lgu-surface); border-bottom: 1px solid var(--lgu-border); padding: .55rem 1.25rem; }
+
+/* Buttons/links use theme */
+.btn-lgu { background: var(--lgu-primary); border-color: var(--lgu-primary); color: #fff; }
+.btn-lgu:hover { background: var(--lgu-primary-2); border-color: var(--lgu-primary-2); color: #fff; }
+a { color: var(--lgu-primary-2); }
+[data-bs-theme="dark"] a { color: #6ee7a0; }
+
+/* Status badges */
+.badge-status { text-transform: capitalize; }
+
+/* Auth screens */
+.auth-page { min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(160deg, var(--lgu-primary) 0%, #0b2818 100%); padding: 1rem; }
+.auth-card { max-width: 430px; width: 100%; }
+
+/* Skeleton loading */
+.skeleton { position: relative; overflow: hidden; background: var(--lgu-border); border-radius: .4rem; min-height: 0.9rem; }
+.skeleton::after { content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 35%), transparent);
+  animation: shimmer 1.4s infinite; transform: translateX(-100%); }
+@keyframes shimmer { 100% { transform: translateX(100%); } }
+
+/* Loading overlay */
+#page-loader { position: fixed; inset: 0; background: rgb(0 0 0 / 35%); z-index: 2000;
+  display: none; align-items: center; justify-content: center; }
+#page-loader.active { display: flex; }
+
+/* Print (CSC Form 6) */
+@media print {
+  .lms-sidebar, .lms-topbar, .no-print { display: none !important; }
+  .lms-content { padding: 0; }
+  body { background: #fff; }
+}
+/* Accessibility */
+.form-label { font-weight: 600; }
+:focus-visible { outline: 3px solid var(--lgu-accent); outline-offset: 1px; }
