@@ -114,9 +114,30 @@ class IntrusionDetectionService
      * Auto-block once an IP produces >= threshold events within the window.
      * Returns true if a (new or existing) active block now applies.
      */
+    /**
+     * Loopback and explicitly whitelisted IPs are never auto-blocked, so the
+     * server/admin machine can never lock itself out. Configure extra trusted
+     * IPs via the `security.never_block_ips` setting (comma-separated).
+     */
+    public static function isTrustedIp(?string $ip): bool
+    {
+        if ($ip === null) {
+            return false;
+        }
+        $always = ['127.0.0.1', '::1'];
+        $configured = array_filter(array_map('trim', explode(',', (string) SystemSetting::get('security.never_block_ips', ''))));
+
+        return in_array($ip, array_merge($always, $configured), true);
+    }
+
     public function maybeAutoBlock(Request $request): bool
     {
         $ip = $request->ip();
+
+        if (self::isTrustedIp($ip)) {
+            return false;
+        }
+
         $threshold = (int) SystemSetting::get('security.auto_block_threshold', 5);
         $windowMin = (int) SystemSetting::get('security.auto_block_window_minutes', 10);
 
