@@ -21,6 +21,7 @@ class SystemSettingSeeder extends Seeder
             ['security', 'security.auto_block_threshold', '5', 'int', 'Intrusion events from one IP before auto-block'],
             ['security', 'security.auto_block_window_minutes', '10', 'int', 'Sliding window for the auto-block threshold'],
             ['security', 'security.ip_block_hours', '24', 'int', 'Hours an auto-blocked IP stays blocked'],
+            ['security', 'security.never_block_ips', '', 'string', 'Comma-separated IPs that are never blocked (loopback is always trusted)'],
             ['security', 'security.rate_limit_per_minute', '120', 'int', 'Requests/minute per IP before a rate anomaly is logged'],
             ['leave', 'leave.monthly_vl_accrual', '1.25', 'string', 'Vacation Leave credits earned per month'],
             ['leave', 'leave.monthly_sl_accrual', '1.25', 'string', 'Sick Leave credits earned per month'],

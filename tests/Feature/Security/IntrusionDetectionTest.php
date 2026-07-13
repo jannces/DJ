@@ -81,4 +81,27 @@ class IntrusionDetectionTest extends TestCase
         $this->assertNull($response);
         $this->assertSame(0, IntrusionLog::count());
     }
+
+    public function test_loopback_ip_is_never_auto_blocked(): void
+    {
+        \App\Models\SystemSetting::set('security.auto_block_threshold', '3');
+
+        // Loopback triggers many events but must never be blocked.
+        for ($i = 0; $i < 6; $i++) {
+            $request = \Illuminate\Http\Request::create('/x', 'GET', ['q' => "1' OR 1=1 --"]);
+            $request->server->set('REMOTE_ADDR', '127.0.0.1');
+            app(\App\Services\Security\IntrusionDetectionService::class)->inspect($request);
+        }
+
+        $this->assertFalse(\App\Models\BlockedIp::query()->where('ip', '127.0.0.1')->where('active', true)->exists());
+    }
+
+    public function test_blocked_ip_middleware_ignores_a_block_on_loopback(): void
+    {
+        // Even a manual block row on loopback is bypassed (fail-safe for the admin/server).
+        \App\Models\BlockedIp::create(['ip' => '127.0.0.1', 'reason' => 'test', 'source' => 'manual', 'active' => true]);
+
+        $response = $this->call('GET', '/login', [], [], [], ['REMOTE_ADDR' => '127.0.0.1']);
+        $response->assertOk();
+    }
 }

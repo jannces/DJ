@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\BlockedIp;
+use App\Services\Security\IntrusionDetectionService;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -14,6 +15,11 @@ class BlockedIpMiddleware
     public function handle(Request $request, Closure $next): Response
     {
         $ip = $request->ip();
+
+        // Loopback / whitelisted IPs are never blocked (server can't lock itself out).
+        if (IntrusionDetectionService::isTrustedIp($ip)) {
+            return $next($request);
+        }
 
         $blocked = Cache::remember("blocked-ip.{$ip}", 60, function () use ($ip) {
             return BlockedIp::currentlyActive()->where('ip', $ip)->exists();
