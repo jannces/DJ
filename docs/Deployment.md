@@ -102,3 +102,20 @@ Seeded Super Admin: `superadmin@alicia.gov.ph` (password printed by seeder / see
 - [ ] Device enforcement ON; default seeder passwords rotated
 - [ ] Backups verified restorable monthly
 - [ ] OS updates via WSUS/apt mirror per LGU policy
+
+
+## 8. Offline (no-internet) operation
+
+The system is designed to run with **zero internet access** at runtime:
+- All frontend libraries (Bootstrap 5, Bootstrap Icons + fonts, Chart.js, SweetAlert2,
+  Swagger UI) are vendored under `public/vendor/` and served locally — no CDN.
+- No page references any external host (verified); the app makes no outbound HTTP calls.
+- OTP and notification emails go to the **LAN mail server** (`MAIL_MAILER=smtp`) or to the
+  log (`MAIL_MAILER=log`) — neither needs the internet.
+- The unused Laravel welcome page (which pulled Google Fonts/CDN) has been removed.
+
+**One-time setup steps that DO need internet** (run once, on a machine that has it):
+`composer install` and (if you rebuild assets) `npm install`. After that, copy the whole
+`lms/` folder — including `vendor/` and `public/vendor/` — to the offline LAN server and it
+runs without any connection. To verify offline: disconnect the network and confirm the login
+page, dashboards, charts, icons and `/api/documentation` all render normally.
