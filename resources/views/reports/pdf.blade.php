@@ -6,7 +6,7 @@
   .meta { color: #555; font-size: 8px; margin-bottom: 8px; }
   table { width: 100%; border-collapse: collapse; }
   th, td { border: 1px solid #999; padding: 3px 4px; text-align: left; }
-  th { background: #14532d; color: #fff; }
+  th { background: #5b21b6; color: #fff; }
   tr:nth-child(even) { background: #f3f4f6; }
 </style></head>
 <body>

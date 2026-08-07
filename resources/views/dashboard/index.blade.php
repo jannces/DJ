@@ -15,7 +15,7 @@
 </div>
 
 @php
-    $tones = ['tone-green','tone-gold','tone-blue','tone-red','tone-grey'];
+    $tones = ['tone-violet','tone-yellow','tone-blue','tone-red','tone-grey'];
     $icons = [
         'employees'=>'bi-people','pending_leaves'=>'bi-hourglass-split','intrusions_today'=>'bi-shield-exclamation',
         'devices_online'=>'bi-pc-display','devices_offline'=>'bi-pc-display-horizontal','total_requests'=>'bi-collection',
@@ -101,14 +101,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const P = window.lmsChartPalette;
     @if (!empty($chartsLeavesMonth))
     (function(){ const d=@json($chartsLeavesMonth); const ctx=document.getElementById('chartLeavesMonth');
-      const g=ctx.getContext('2d').createLinearGradient(0,0,0,280); g.addColorStop(0,'rgba(22,101,52,.28)'); g.addColorStop(1,'rgba(22,101,52,0)');
+      const g=ctx.getContext('2d').createLinearGradient(0,0,0,280); g.addColorStop(0,'rgba(109,40,217,.30)'); g.addColorStop(1,'rgba(109,40,217,0)');
       new Chart(ctx,{type:'line',data:{labels:d.labels,datasets:[{label:'Requests',data:d.data,borderColor:P[0],backgroundColor:g,fill:true,tension:.4,borderWidth:2.5,pointRadius:4,pointBackgroundColor:P[0],pointBorderColor:'#fff',pointBorderWidth:2}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}},x:{grid:{display:false}}}}}); })();
     (function(){ const d=@json($chartsLeavesType ?? ['labels'=>[],'data'=>[]]);
       new Chart(document.getElementById('chartLeavesType'),{type:'doughnut',data:{labels:d.labels,datasets:[{data:d.data,backgroundColor:P,borderWidth:2,borderColor:'var(--surface)'}]},options:{cutout:'62%',plugins:{legend:{position:'right'}}}}); })();
     @endif
     @if (!empty($chartsIntrusions))
     (function(){ const d=@json($chartsIntrusions);
-      new Chart(document.getElementById('chartIntrusions'),{type:'bar',data:{labels:d.labels,datasets:[{label:'Events',data:d.data,backgroundColor:'#b42318',borderRadius:6,maxBarThickness:34}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}},x:{grid:{display:false}}}}}); })();
+      new Chart(document.getElementById('chartIntrusions'),{type:'bar',data:{labels:d.labels,datasets:[{label:'Events',data:d.data,backgroundColor:'#be123c',borderRadius:6,maxBarThickness:34}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}},x:{grid:{display:false}}}}}); })();
     @endif
 });
 </script>

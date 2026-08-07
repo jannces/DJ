@@ -40,7 +40,7 @@
     Chart.defaults.maintainAspectRatio = false;
   }
   applyChartDefaults();
-  window.lmsChartPalette = ['#166534', '#ca8a04', '#1462b3', '#7c3aed', '#b42318', '#0e9f6e', '#d97706', '#2563eb'];
+  window.lmsChartPalette = ['#6d28d9', '#f5c518', '#9d5cf0', '#a16207', '#be123c', '#7c3aed', '#15803d', '#c4b5fd'];
 
   // ---- CSRF-aware fetch helper -------------------------------------------
   window.lmsFetch = function (url, options) {
@@ -66,7 +66,7 @@
   window.lmsConfirm = function (opts) {
     return Swal.fire(Object.assign({
       title: 'Are you sure?', icon: 'warning', showCancelButton: true,
-      confirmButtonColor: '#166534', cancelButtonColor: '#6b7280',
+      confirmButtonColor: '#6d28d9', cancelButtonColor: '#6b7280',
       confirmButtonText: 'Yes, proceed', reverseButtons: true
     }, opts || {}));
   };
