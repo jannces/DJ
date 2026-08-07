@@ -11,23 +11,18 @@
     <link rel="stylesheet" href="{{ asset('vendor/sweetalert2/sweetalert2.min.css') }}">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <script>
-        // Apply saved theme before first paint (prevents flashing).
         document.documentElement.setAttribute('data-bs-theme',
             localStorage.getItem('lms-theme') ||
             (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
     </script>
 </head>
 <body>
-<div id="page-loader" aria-hidden="true">
-    <div class="spinner-border text-light" role="status" style="width:3rem;height:3rem"></div>
-</div>
+<div id="page-loader" aria-hidden="true"><div class="spinner-ring" role="status" aria-label="Loading"></div></div>
 
 <div class="lms-wrapper">
     @include('partials.sidebar')
-
     <div class="lms-main">
         @include('partials.topbar')
-
         <main class="lms-content">
             @if (session('warning'))
                 <div class="alert alert-warning alert-dismissible fade show" role="alert">
@@ -37,8 +32,7 @@
             @endif
             @yield('content')
         </main>
-
-        <footer class="text-center text-muted small py-3 no-print">
+        <footer class="app-foot no-print">
             {{ \App\Models\SystemSetting::get('general.lgu_name', 'Local Government Unit of Alicia') }}
             &middot; Cybersecurity Integrated Digital Leave Management System
         </footer>
