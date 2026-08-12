@@ -59,13 +59,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const trend = @json($trend);
     new Chart(document.getElementById('trend'), {
         type: 'line',
-        data: { labels: trend.labels, datasets: [{ label: 'Events', data: trend.data, borderColor: '#b91c1c', backgroundColor: 'rgba(185,28,28,.12)', fill: true, tension: .3 }] },
+        data: { labels: trend.labels, datasets: [{ label: 'Events', data: trend.data, borderColor: '#be123c', backgroundColor: 'rgba(185,28,28,.12)', fill: true, tension: .3 }] },
         options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
     });
     const cats = @json($byCategory);
     new Chart(document.getElementById('cats'), {
         type: 'doughnut',
-        data: { labels: Object.keys(cats), datasets: [{ data: Object.values(cats), backgroundColor: ['#b91c1c','#ca8a04','#166534','#0ea5e9','#7c3aed','#dc2626','#059669','#475569','#d97706'] }] },
+        data: { labels: Object.keys(cats), datasets: [{ data: Object.values(cats), backgroundColor: ['#be123c','#f5c518','#6d28d9','#0ea5e9','#7c3aed','#dc2626','#059669','#475569','#d97706'] }] },
         options: { plugins: { legend: { position: 'bottom' } } }
     });
 });
