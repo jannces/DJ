@@ -29,8 +29,8 @@
             Authorized personnel and registered devices only. All activity is monitored and logged.
         </div>
     </aside>
-    <main class="auth-main">
-        <div class="auth-card">
+    <main class="auth-main stage-gradient">
+        <div class="auth-card mirror-card p-4 p-sm-5">
             @if (session('status'))
                 <div class="alert alert-success py-2 small mb-3"><i class="bi bi-check-circle me-1"></i>{{ session('status') }}</div>
             @endif
