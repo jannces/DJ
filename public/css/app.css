@@ -877,19 +877,6 @@ body{ background:var(--bg); color:var(--text); }
 .lms-brand .brand-name{ color:var(--side-text-hi); font-size:.875rem; font-weight:600; }
 .lms-brand .brand-sub{ color:var(--muted); font-size:.68rem; letter-spacing:.04em; }
 
-/* Workspace row, as in the reference */
-.side-ws{
-  display:flex; align-items:center; gap:.55rem; margin:.7rem .7rem .3rem;
-  padding:.5rem .6rem; border:1px solid var(--side-hair); border-radius:.5rem;
-  font-size:.82rem; color:var(--side-text-hi); font-weight:500;
-}
-.side-ws .ws-dot{
-  width:.9rem; height:.9rem; border-radius:50%; flex:none;
-  background:linear-gradient(135deg,var(--primary),#22c55e);
-}
-.side-ws .ws-name{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.side-ws i{ font-size:.7rem; color:var(--muted); }
-
 .lms-nav{ padding:.5rem .7rem; }
 .lms-nav .nav-heading{
   color:var(--muted); font-size:.7rem; font-weight:500; letter-spacing:.01em;
@@ -1029,3 +1016,122 @@ body{ background:var(--bg); color:var(--text); }
 .lms-topbar .lms-search{ flex:0 1 240px; max-width:240px; }
 .lms-topbar .lms-search .bi-search{ left:.6rem; font-size:.85rem; }
 .lms-topbar .lms-search input{ height:2rem; padding:0 3.6rem 0 1.9rem; border-radius:.5rem; }
+
+/* ============================================================================
+   SIDEBAR — correct behaviour under browser zoom and short viewports
+   ----------------------------------------------------------------------------
+   The menu used to be CLIPPED rather than scrolled when the viewport got short
+   (which is what browser zoom does — zooming in reduces the effective viewport).
+   Cause: `.lms-nav` is a flex child with `flex:1; overflow-y:auto`, but a flex
+   item defaults to `min-height:auto`, so it refuses to shrink below its content
+   and the parent's `overflow:hidden` cuts the rest off. `min-height:0` is what
+   actually lets it scroll.
+
+   The width also moves from a fixed 266px to rem, so it tracks the root font
+   size instead of drifting out of proportion as everything else scales.
+   ========================================================================== */
+:root{ --sidebar-w:16.5rem; }
+
+.lms-sidebar{
+  height:100dvh;            /* dvh so mobile browser chrome cannot crop it */
+  max-height:100dvh;
+  min-height:0;
+  position:sticky; top:0;
+  display:flex; flex-direction:column;
+  overflow:hidden;          /* the NAV scrolls, not the whole rail */
+}
+/* Header and footer keep their size; only the nav gives way. */
+.lms-brand{ flex:none; }
+.lms-nav{
+  flex:1 1 auto;
+  min-height:0;             /* the fix: allows the flex item to shrink and scroll */
+  overflow-y:auto;
+  overscroll-behavior:contain;
+}
+
+/* At high zoom the effective viewport narrows, so the rail becomes the drawer
+   at the same breakpoint a small screen would — driven by width, so zoom and a
+   genuinely small device are handled by one rule. */
+@media (max-width:1100px){
+  .lms-sidebar{ position:fixed; top:0; left:0; height:100dvh; z-index:1040; }
+}
+/* Very short viewports (heavy zoom, or a landscape phone): the brand block
+   compresses instead of eating the whole rail. */
+@media (max-height:520px){
+  .lms-brand{ padding:.55rem .8rem; }
+  .lms-brand .seal{ width:24px; height:24px; font-size:.8rem; }
+  .lms-brand .brand-sub{ display:none; }
+  .lms-nav .nav-heading{ padding:.55rem .6rem .2rem; }
+  .lms-nav .nav-link{ padding:.38rem .6rem; }
+}
+
+/* The content column must be allowed to shrink too, or a wide table pushes the
+   layout sideways and drags the rail out of alignment with it. */
+.lms-main{ min-width:0; }
+.lms-content{ min-width:0; }
+
+/* ============================================================================
+   CSC FORM 6 — alignment and ruling corrections
+   ----------------------------------------------------------------------------
+   • The header was absolutely positioned over a padded row, so the form number
+     and ANNEX A overlapped the seals and title at narrower widths. It is now a
+     three-column grid, which cannot overlap at any width.
+   • The official sheet rules a line to the RIGHT of each 6.B option and after
+     each labelled field. `.csc-fill` is that line: it takes the leftover space
+     on the row instead of wrapping onto its own line.
+   ========================================================================== */
+
+/* ---- Header: grid, not absolute ---- */
+.csc-topgrid{
+  display:grid; grid-template-columns:1fr auto 1fr; align-items:start;
+  gap:.5rem; margin-bottom:.35rem;
+}
+.csc-topgrid .csc-formno,
+.csc-topgrid .csc-annex{ position:static; }
+.csc-topgrid .csc-annex{ text-align:right; align-self:start; }
+.csc-head{ padding:0; gap:14px; }
+.csc-head-text{ min-width:0; }
+
+/* ---- Ruled rows ---- */
+.csc-rowline{ display:flex; align-items:baseline; gap:.4rem; margin:2px 0 3px; }
+.csc-rowline > .csc-check-text{ flex:none; }
+.csc-fill{
+  flex:1 1 auto; min-width:2rem; align-self:flex-end;
+  border-bottom:1px solid #000; height:.95em;
+}
+/* An input can be the rule itself. */
+.csc-fill-input{
+  flex:1 1 auto; min-width:2rem; border:0; border-bottom:1px solid #000;
+  background:transparent; font:inherit; font-size:11px; padding:0 2px; color:#000;
+  border-radius:0;
+}
+.csc-fill-input:focus{ outline:2px solid #6d28d9; outline-offset:1px; }
+
+/* Checkbox rows sit on one line with their rule. */
+.csc-check{ align-items:baseline; }
+.csc-check .csc-box{ align-self:flex-start; margin-top:2px; }
+
+/* ---- 6.C / 7.C ---- */
+.csc-daysline{ display:flex; align-items:baseline; gap:.4rem; margin-bottom:.5rem; }
+.csc-approved{ display:flex; align-items:baseline; gap:.4rem; margin:4px 0; }
+.csc-approved .csc-box{ align-self:flex-start; margin-top:2px; }
+.csc-blank-short{
+  display:inline-block; min-width:3.2rem; border-bottom:1px solid #000;
+  height:.95em; flex:none;
+}
+
+/* ---- Section 7 read-only ruling ---- */
+.csc-ruleline{ border-bottom:1px solid #000; height:1.05em; margin:.35rem 0; }
+.csc-credits td,.csc-credits th{ height:1.5em; }
+.csc-signatory{ margin-top:1.4rem; }
+.csc-rule{ width:88%; }
+
+/* Nothing in the sheet may overflow its cell. */
+.csc-table td{ overflow-wrap:anywhere; }
+.csc-value{ overflow-wrap:anywhere; }
+
+@media (max-width:767.98px){
+  /* Keep the official two-column structure; scroll rather than reflow it. */
+  .csc-topgrid{ grid-template-columns:1fr; }
+  .csc-topgrid .csc-annex{ text-align:left; }
+}

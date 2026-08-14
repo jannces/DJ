@@ -6,13 +6,6 @@
             <div class="brand-sub">Leave Management</div>
         </div>
     </div>
-    {{-- Workspace row: which office this installation serves. --}}
-    <div class="side-ws">
-        <span class="ws-dot" aria-hidden="true"></span>
-        <span class="ws-name">{{ \App\Models\SystemSetting::get('general.lgu_short_name', 'LGU Alicia') }}</span>
-        <i class="bi bi-chevron-expand" aria-hidden="true"></i>
-    </div>
-
     <div class="lms-nav nav flex-column">
         @foreach (config('menu') as $item)
             @if (isset($item['heading']))

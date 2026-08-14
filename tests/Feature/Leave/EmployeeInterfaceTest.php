@@ -169,16 +169,35 @@ class EmployeeInterfaceTest extends TestCase
             // Types come from the database, not a hardcoded list.
             ->assertSee('Vacation Leave')
             ->assertSee('Special Leave Benefits for Women')
-            // Section 7 is acknowledged but summarised: the applicant cannot fill
-            // it, so the four empty sub-blocks are not drawn on the entry form.
+            // Section 7 is drawn in full to follow the official sheet.
             ->assertSee('7. DETAILS OF ACTION ON APPLICATION')
-            ->assertSee('For official use.')
-            ->assertDontSee('7.A CERTIFICATION OF LEAVE CREDITS')
-            ->assertDontSee('7.C APPROVED FOR');
+            ->assertSee('7.A CERTIFICATION OF LEAVE CREDITS')
+            ->assertSee('7.B RECOMMENDATION')
+            ->assertSee('7.C APPROVED FOR:')
+            ->assertSee('7.D DISAPPROVED DUE TO:');
     }
 
-    /** ...but the full section 7 does appear on the submitted form preview. */
-    public function test_form_preview_still_draws_section_seven_in_full(): void
+    /**
+     * Section 7 belongs to the approving officer. It is rendered for fidelity
+     * with the paper form but must contain no control the applicant could use.
+     */
+    public function test_section_seven_on_the_entry_form_has_no_inputs(): void
+    {
+        $html = $this->asEmployee()->get('/leave/apply')->assertOk()->getContent();
+
+        $section = substr(
+            $html,
+            $start = strpos($html, '7. DETAILS OF ACTION ON APPLICATION'),
+            strpos($html, 'SUPPORTING DOCUMENTS') - $start,
+        );
+
+        $this->assertStringNotContainsString('<input', $section);
+        $this->assertStringNotContainsString('<select', $section);
+        $this->assertStringNotContainsString('<textarea', $section);
+    }
+
+    /** The submitted-form preview draws section 7 filled in. */
+    public function test_form_preview_draws_section_seven_in_full(): void
     {
         $vl = LeaveType::where('code', 'VL')->first();
         LeaveBalance::create([
