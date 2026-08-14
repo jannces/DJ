@@ -79,7 +79,7 @@ class EmployeeInterfaceTest extends TestCase
 
     public function test_employee_cannot_export_a_report_as_csv(): void
     {
-        $this->asEmployee()->get('/reports/leave?format=csv')->assertForbidden();
+        $this->asEmployee()->get('/reports/employee-leave?format=csv')->assertForbidden();
     }
 
     public function test_employee_cannot_reach_the_reports_index(): void
@@ -89,7 +89,7 @@ class EmployeeInterfaceTest extends TestCase
 
     public function test_denied_csv_attempt_is_recorded_as_a_privilege_probe(): void
     {
-        $this->asEmployee()->get('/reports/leave?format=csv')->assertForbidden();
+        $this->asEmployee()->get('/reports/employee-leave?format=csv')->assertForbidden();
 
         $this->assertDatabaseHas('intrusion_logs', [
             'category' => 'privilege',
@@ -103,7 +103,7 @@ class EmployeeInterfaceTest extends TestCase
         $this->actingAs($hr);
         session(['otp_verified' => true]);
 
-        $this->get('/reports/leave?format=csv')
+        $this->get('/reports/employee-leave?format=csv')
             ->assertOk()
             ->assertHeader('content-disposition');
     }
@@ -263,18 +263,23 @@ class EmployeeInterfaceTest extends TestCase
             ->assertSee('Monetization of leave credits');
     }
 
-    public function test_dashboard_has_no_duplicate_apply_button(): void
+    /**
+     * "Apply for Leave" must appear exactly once per page — the sidebar link.
+     * A second occurrence means a duplicate shortcut has crept back into the
+     * page body, which is precisely what was removed.
+     */
+    public function test_dashboard_offers_apply_for_leave_only_once(): void
     {
-        $this->asEmployee()->get('/dashboard')
-            ->assertOk()
-            ->assertDontSee('>Apply for Leave<', false);
+        $html = $this->asEmployee()->get('/dashboard')->assertOk()->getContent();
+
+        $this->assertSame(1, substr_count($html, 'Apply for Leave'));
     }
 
-    public function test_my_leave_requests_has_no_duplicate_apply_button(): void
+    public function test_my_leave_requests_offers_apply_for_leave_only_once(): void
     {
-        $this->asEmployee()->get('/leave')
-            ->assertOk()
-            ->assertDontSee('btn btn-lgu btn-sm', false);
+        $html = $this->asEmployee()->get('/leave')->assertOk()->getContent();
+
+        $this->assertSame(1, substr_count($html, 'Apply for Leave'));
     }
 
     public function test_an_employee_cannot_file_leave_in_another_employees_name(): void

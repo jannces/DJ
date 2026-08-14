@@ -248,9 +248,13 @@ class ApprovalAuthorityTest extends TestCase
             ->assertSee('APPLICATION FOR LEAVE')
             ->assertSee($request->reference_no)
             ->assertSee('Download Form')
-            // A read-only copy carries no editable controls.
-            ->assertDontSee('<input', false)
-            ->assertDontSee('<form', false);
+            // A read-only copy carries none of the application form's editable
+            // controls. (The page layout always has a CSRF field for the
+            // sign-out form, so this checks the sheet's own inputs.)
+            ->assertDontSee('name="leave_type_id[]"', false)
+            ->assertDontSee('name="details[', false)
+            ->assertDontSee('class="csc-input"', false)
+            ->assertDontSee('Submit application');
     }
 
     public function test_the_timeline_names_the_officer_who_decided(): void
