@@ -1249,10 +1249,14 @@ body{ background:var(--bg); color:var(--text); }
   width:1.6rem; height:1.6rem; border-radius:.5rem; flex:none;
   background:var(--primary-soft); color:var(--primary); font-size:.85rem;
 }
-.kpi-card:nth-child(1) .kpi-label i{ background:var(--warning-soft); color:var(--warning); }
-.kpi-card:nth-child(2) .kpi-label i{ background:var(--success-soft); color:var(--success); }
-.kpi-card:nth-child(3) .kpi-label i{ background:var(--danger-soft);  color:var(--danger); }
-.kpi-card:nth-child(4) .kpi-label i{ background:var(--info-soft);    color:var(--info); }
+/* Keyed off the icon, not the card's position: the administrator strip lists a
+   different set of counters in a different order, and a positional rule would
+   paint its "Approved" card red. */
+.kpi-label i.bi-hourglass-split{ background:var(--warning-soft); color:var(--warning); }
+.kpi-label i.bi-check2-circle{   background:var(--success-soft); color:var(--success); }
+.kpi-label i.bi-x-circle{        background:var(--danger-soft);  color:var(--danger); }
+.kpi-label i.bi-people,
+.kpi-label i.bi-diagram-3{       background:var(--info-soft);    color:var(--info); }
 .kpi-label{ gap:.55rem; font-weight:600; color:var(--text-2); }
 
 /* Panel titles pick up the brand, so headers are not a wall of grey. */
