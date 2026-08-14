@@ -1190,3 +1190,190 @@ body{ background:var(--bg); color:var(--text); }
   padding-bottom:1px; min-height:1.15em; overflow-wrap:anywhere;
 }
 .csc-name-grid .csc-sublabel{ text-align:center; padding-top:1px; }
+
+/* ============================================================================
+   COLOUR & CONTROLS — livelier palette, dimensional buttons
+   ----------------------------------------------------------------------------
+   The neutral theme read as flat and grey. This layer warms the surfaces with
+   the LGU violet, gives each status its own tone, and rebuilds the buttons with
+   a gradient, an inner highlight and a press state so they feel physical
+   without tipping into skeuomorphism.
+   ========================================================================== */
+
+/* ---- 1. Palette ---------------------------------------------------------- */
+:root{
+  /* Violet-tinted neutrals: cleaner than grey, warmer than pure white. */
+  --bg:#f4f3fa; --bg-soft:#edebf6;
+  --surface:#ffffff; --surface-2:#f8f7fc; --surface-hover:#f1eff9;
+  --text:#16121f; --text-2:#3d3552; --muted:#6b6480; --muted-2:#9b93ae;
+  --border:#e6e2f1; --border-strong:#d5cfe6;
+
+  --primary:#5b48d4; --primary-hover:#4a39bb; --primary-soft:#efecfd;
+  --success:#0f9d58; --success-soft:#e3f6ec;
+  --warning:#c77700; --warning-soft:#fdf1de;
+  --danger:#d92d20;  --danger-soft:#fdecea;
+  --info:#0b7cc4;    --info-soft:#e5f2fb;
+  /* The older sheet names these `-bg`; keep both spellings on one value so a
+     rule written against either token gets the same tone. */
+  --success-bg:var(--success-soft); --warning-bg:var(--warning-soft);
+  --danger-bg:var(--danger-soft);   --info-bg:var(--info-soft);
+}
+:root[data-bs-theme="dark"], [data-bs-theme="dark"]{
+  /* Indigo-black rather than flat black — the tint keeps it from going dead. */
+  --bg:#0b0a12; --bg-soft:#100e1a;
+  --surface:#15121f; --surface-2:#1b1729; --surface-hover:#221d33;
+  --text:#f0edf8; --text-2:#c9c2dc; --muted:#948caa; --muted-2:#655d7d;
+  --border:#272134; --border-strong:#352d47;
+
+  --primary:#9d8bff; --primary-hover:#b3a4ff; --primary-soft:#241d3d;
+  --success:#34d399; --success-soft:#10281f;
+  --warning:#fbbf24; --warning-soft:#2e2410;
+  --danger:#fb7185;  --danger-soft:#2f1620;
+  --info:#5ab0ea;    --info-soft:#0f2233;
+  --success-bg:var(--success-soft); --warning-bg:var(--warning-soft);
+  --danger-bg:var(--danger-soft);   --info-bg:var(--info-soft);
+}
+
+/* ---- 2. Status tones ----------------------------------------------------- */
+.st-ok{   color:var(--success); background:var(--success-soft); }
+.st-wait{ color:var(--warning); background:var(--warning-soft); }
+.st-bad{  color:var(--danger);  background:var(--danger-soft); }
+.st-off{  color:var(--muted);   background:var(--surface-2); }
+.kpi-up{   color:var(--success); background:var(--success-soft); }
+.kpi-down{ color:var(--danger);  background:var(--danger-soft); }
+.kpi-flat{ color:var(--muted);   background:var(--surface-2); }
+
+/* Each counter gets a tinted icon chip instead of a bare glyph. */
+.kpi-label i{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:1.6rem; height:1.6rem; border-radius:.5rem; flex:none;
+  background:var(--primary-soft); color:var(--primary); font-size:.85rem;
+}
+.kpi-card:nth-child(1) .kpi-label i{ background:var(--warning-soft); color:var(--warning); }
+.kpi-card:nth-child(2) .kpi-label i{ background:var(--success-soft); color:var(--success); }
+.kpi-card:nth-child(3) .kpi-label i{ background:var(--danger-soft);  color:var(--danger); }
+.kpi-card:nth-child(4) .kpi-label i{ background:var(--info-soft);    color:var(--info); }
+.kpi-label{ gap:.55rem; font-weight:600; color:var(--text-2); }
+
+/* Panel titles pick up the brand, so headers are not a wall of grey. */
+.dash-title i{ color:var(--primary); }
+.card-header{ color:var(--text); }
+
+/* Cards lift very slightly off the tinted page. */
+.dash-frame,.kpi-card,.card,.stat-card{
+  box-shadow:0 1px 2px rgba(22,18,31,.05);
+}
+:root[data-bs-theme="dark"] .dash-frame,
+:root[data-bs-theme="dark"] .kpi-card,
+:root[data-bs-theme="dark"] .card{ box-shadow:0 1px 2px rgba(0,0,0,.5); }
+
+/* Split bar reads as brand vs muted rather than black vs grey. */
+.split-a{ background:var(--muted-2); }
+.split-b{ background:var(--primary); }
+.splitbar{ background:var(--surface-2); }
+
+/* ---- 3. Buttons: gradient, inner highlight, press state ------------------ */
+/* No `border` shorthand here: Bootstrap's variants (btn-danger,
+   btn-outline-success, …) set their own border colour and a blanket grey would
+   flatten them all. Only the sheen, the depth and the motion are shared. */
+.btn{
+  border-radius:.55rem; font-weight:500; font-size:.83rem;
+  background-image:linear-gradient(180deg, rgba(255,255,255,.55), rgba(0,0,0,.03));
+  box-shadow:0 1px 2px rgba(22,18,31,.10), inset 0 1px 0 rgba(255,255,255,.7);
+  transition:transform .12s var(--ease), box-shadow .12s var(--ease),
+             background-color .12s var(--ease);
+}
+.btn:hover{
+  transform:translateY(-1px);
+  box-shadow:0 4px 10px rgba(22,18,31,.14), inset 0 1px 0 rgba(255,255,255,.8);
+}
+.btn:active{
+  transform:translateY(0);
+  box-shadow:inset 0 2px 4px rgba(22,18,31,.16);
+}
+/* Focus keeps the sheet's single gold ring — one focus treatment everywhere. */
+
+.btn-lgu,.btn-primary{
+  color:#fff; border-color:var(--primary-hover);
+  background-image:linear-gradient(180deg, color-mix(in srgb,var(--primary) 88%,#fff), var(--primary));
+  box-shadow:0 1px 2px color-mix(in srgb,var(--primary) 40%,transparent),
+             inset 0 1px 0 rgba(255,255,255,.28);
+}
+.btn-lgu:hover,.btn-primary:hover{
+  color:#fff; border-color:var(--primary-hover);
+  background-image:linear-gradient(180deg, var(--primary), var(--primary-hover));
+  box-shadow:0 6px 16px color-mix(in srgb,var(--primary) 38%,transparent),
+             inset 0 1px 0 rgba(255,255,255,.3);
+}
+.btn-lgu:active,.btn-primary:active{ box-shadow:inset 0 2px 5px rgba(0,0,0,.28); }
+
+.btn-outline-secondary{
+  color:var(--text-2); background-color:var(--surface); border-color:var(--border-strong);
+}
+.btn-outline-secondary:hover{
+  color:var(--text); background-color:var(--surface-hover); border-color:var(--primary);
+}
+
+/* A link-button is text. It opts out of the whole raised treatment. */
+.btn-link{
+  border-color:transparent; background-image:none; box-shadow:none;
+  color:var(--primary); text-decoration:none;
+}
+.btn-link:hover{
+  transform:none; box-shadow:none; color:var(--primary-hover); text-decoration:underline;
+}
+.btn-link:active{ transform:none; box-shadow:none; }
+
+/* Segmented groups must stay welded: one button lifting out of the row reads as
+   a rendering fault, so the group trades the lift for a raised z-index. */
+.btn-group > .btn:hover,
+.btn-group > .btn:active{ transform:none; }
+.btn-group > .btn:hover{ z-index:2; }
+
+:root[data-bs-theme="dark"] .btn{
+  background-image:linear-gradient(180deg, rgba(255,255,255,.07), rgba(0,0,0,.18));
+  box-shadow:0 1px 2px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06);
+}
+:root[data-bs-theme="dark"] .btn:hover{
+  box-shadow:0 6px 14px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.09);
+}
+
+/* ---- 4. Table and panel actions ------------------------------------------
+   "View form", "View all" and the back links were bare text. They are now real
+   buttons, sized for a table row. */
+.dash-link{
+  display:inline-flex; align-items:center; gap:.3rem;
+  padding:.3rem .65rem; border-radius:.5rem;
+  border:1px solid var(--border-strong); background-color:var(--surface);
+  background-image:linear-gradient(180deg, rgba(255,255,255,.55), rgba(0,0,0,.03));
+  box-shadow:0 1px 2px rgba(22,18,31,.09), inset 0 1px 0 rgba(255,255,255,.7);
+  color:var(--text-2); font-size:.78rem; font-weight:500; text-decoration:none;
+  transition:transform .12s var(--ease), box-shadow .12s var(--ease), color .12s var(--ease);
+}
+.dash-link:hover{
+  color:var(--primary); border-color:var(--primary);
+  transform:translateY(-1px);
+  box-shadow:0 4px 10px rgba(22,18,31,.13), inset 0 1px 0 rgba(255,255,255,.8);
+}
+.dash-link:active{ transform:translateY(0); box-shadow:inset 0 2px 4px rgba(22,18,31,.15); }
+/* A plain caption in a panel header (e.g. "Last 6 months") is not an action. */
+span.dash-link{
+  background:none; border:0; box-shadow:none; padding:0; color:var(--muted);
+}
+span.dash-link:hover{ transform:none; box-shadow:none; color:var(--muted); }
+
+:root[data-bs-theme="dark"] .dash-link{
+  background-image:linear-gradient(180deg, rgba(255,255,255,.07), rgba(0,0,0,.18));
+  box-shadow:0 1px 2px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06);
+}
+
+/* Sidebar active item carries the brand rather than a flat grey fill. */
+.lms-nav .nav-link.active{
+  background:var(--primary-soft); color:var(--primary);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--primary) 22%,transparent);
+}
+.lms-nav .nav-link.active i{ color:var(--primary); }
+.lms-brand .seal{
+  background-image:linear-gradient(145deg, color-mix(in srgb,var(--primary) 82%,#fff), var(--primary));
+  box-shadow:0 2px 6px color-mix(in srgb,var(--primary) 40%,transparent);
+}

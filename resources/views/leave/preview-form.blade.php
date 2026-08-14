@@ -40,7 +40,7 @@
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 no-print">
     <div>
-        <a href="{{ route('leave.index') }}" class="btn btn-link px-0">
+        <a href="{{ route('leave.index') }}" class="btn btn-outline-secondary btn-sm mb-2">
             <i class="bi bi-arrow-left me-1"></i>Back to My Leave Requests
         </a>
         <h1 class="h4 mb-0">Form Preview — {{ $r->reference_no }}</h1>

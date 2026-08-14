@@ -248,7 +248,9 @@
                         <td class="num">{{ rtrim(rtrim(number_format($r->working_days, 1), '0'), '.') }}</td>
                         <td><span class="st {{ $st[0] }}"><i class="bi {{ $st[1] }}"></i>{{ $st[2] }}</span></td>
                         <td class="text-end">
-                            <a href="{{ route('leave.preview-form', $r) }}" class="dash-link">View form</a>
+                            <a href="{{ route('leave.preview-form', $r) }}" class="dash-link">
+                                <i class="bi bi-file-earmark-text"></i>View form
+                            </a>
                         </td>
                     </tr>
                 @empty
