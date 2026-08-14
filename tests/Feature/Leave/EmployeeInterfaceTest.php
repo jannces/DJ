@@ -165,9 +165,38 @@ class EmployeeInterfaceTest extends TestCase
             // Types come from the database, not a hardcoded list.
             ->assertSee('Vacation Leave')
             ->assertSee('Special Leave Benefits for Women')
-            // Section 7 is present but carries no employee-editable inputs.
+            // Section 7 is acknowledged but summarised: the applicant cannot fill
+            // it, so the four empty sub-blocks are not drawn on the entry form.
+            ->assertSee('7. DETAILS OF ACTION ON APPLICATION')
+            ->assertSee('For official use.')
+            ->assertDontSee('7.A CERTIFICATION OF LEAVE CREDITS')
+            ->assertDontSee('7.C APPROVED FOR');
+    }
+
+    /** ...but the full section 7 does appear on the submitted form preview. */
+    public function test_form_preview_still_draws_section_seven_in_full(): void
+    {
+        $vl = LeaveType::where('code', 'VL')->first();
+        LeaveBalance::create([
+            'user_id' => $this->employee->id, 'leave_type_id' => $vl->id,
+            'earned' => 15, 'used' => 0, 'balance' => 15,
+        ]);
+        $this->asEmployee()->post('/leave', [
+            'leave_type_id' => [$vl->id],
+            'date_filed' => now()->toDateString(),
+            'start_date' => now()->addWeek()->next('Monday')->toDateString(),
+            'end_date' => now()->addWeek()->next('Monday')->toDateString(),
+            'commutation' => '0',
+            'applicant_signature' => $this->employee->name,
+            'details' => ['location' => 'within_ph', 'location_specify' => 'Alicia'],
+        ])->assertRedirect();
+
+        $request = \App\Models\LeaveRequest::where('user_id', $this->employee->id)->firstOrFail();
+
+        $this->asEmployee()->get("/leave/{$request->id}/preview")
+            ->assertOk()
             ->assertSee('7.A CERTIFICATION OF LEAVE CREDITS')
-            ->assertSee('7.C APPROVED FOR');
+            ->assertSee('7.C APPROVED FOR:');
     }
 
     public function test_a_custom_leave_type_appears_on_the_form_without_a_code_change(): void
