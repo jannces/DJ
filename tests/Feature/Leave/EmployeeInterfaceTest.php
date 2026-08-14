@@ -300,12 +300,28 @@ class EmployeeInterfaceTest extends TestCase
     {
         $html = $this->asEmployee()->get('/dashboard')->assertOk()->getContent();
 
-        // Exactly Dashboard, Apply for Leave and My Leave Requests.
-        $this->assertSame(1, substr_count($html, 'Apply for Leave'));
-        $this->assertSame(1, substr_count($html, 'My Leave Requests'));
-        $this->assertStringNotContainsString('Change password</a>', $html);
+        // Assert against the SIDEBAR only. Change password and Notifications are
+        // deliberately still reachable from the top-bar profile menu, so testing
+        // the whole page would contradict the design.
+        $sidebar = substr(
+            $html,
+            $start = strpos($html, '<nav class="lms-sidebar'),
+            strpos($html, '</nav>', $start) - $start,
+        );
+
+        foreach (['Dashboard', 'Apply for Leave', 'My Leave Requests'] as $entry) {
+            $this->assertStringContainsString($entry, $sidebar);
+        }
+
         // Nothing from the retired Information section or the footer block.
-        $this->assertStringNotContainsString(route('leave.instructions'), $html);
+        $this->assertStringNotContainsString('Instructions and Requirements', $sidebar);
+        $this->assertStringNotContainsString('Change password', $sidebar);
+        $this->assertStringNotContainsString('Notifications', $sidebar);
+
+        // An employee gets no administrator sections either.
+        foreach (['Leave Approvals', 'Employees', 'Reports', 'System Settings'] as $adminEntry) {
+            $this->assertStringNotContainsString($adminEntry, $sidebar);
+        }
     }
 
     public function test_the_application_form_has_no_zoom_or_day_counter(): void
