@@ -178,6 +178,47 @@ class EmployeeInterfaceTest extends TestCase
     }
 
     /**
+     * The sheet is presented as three parts — employee information, details of
+     * application, action on application — but nothing from the official form
+     * may be lost in the division, and each landmark must land in its own part.
+     */
+    public function test_the_form_is_split_into_three_parts_without_losing_content(): void
+    {
+        $html = $this->asEmployee()->get('/leave/apply')->assertOk()->getContent();
+
+        foreach (['Part 1 of 3', 'Part 2 of 3', 'Part 3 of 3'] as $label) {
+            $this->assertStringContainsString($label, $html);
+        }
+
+        // Every field the official sheet carries.
+        foreach ([
+            '1. OFFICE/DEPARTMENT', '2. NAME:', '(Last)', '(First)', '(Middle)',
+            '3. DATE OF FILING', '4. POSITION', '5. SALARY',
+            '6.A TYPE OF LEAVE TO BE AVAILED OF', '6.B DETAILS OF LEAVE',
+            'Within the Philippines', 'Abroad (Specify)',
+            'In Hospital (Specify Illness)', 'Out Patient (Specify Illness)',
+            'Completion of Master&#039;s Degree', 'BAR/Board Examination Review',
+            'Monetization of Leave Credits', 'Terminal Leave',
+            '6.C NUMBER OF WORKING DAYS APPLIED FOR', 'INCLUSIVE DATES',
+            '6.D COMMUTATION', 'Not Requested', 'Requested', '(Signature of Applicant)',
+            '7.A CERTIFICATION OF LEAVE CREDITS', 'Total Earned', 'Less this application',
+            '7.B RECOMMENDATION', 'For approval', 'For disapproval due to', 'Authorized Officer',
+            '7.C APPROVED FOR:', 'days with pay', 'days without pay', 'others (Specify)',
+            '7.D DISAPPROVED DUE TO:',
+        ] as $field) {
+            $this->assertStringContainsString($field, $html, "Missing from the form: {$field}");
+        }
+
+        // Each landmark sits in the part it belongs to.
+        $p2 = strpos($html, 'Part 2 of 3');
+        $p3 = strpos($html, 'Part 3 of 3');
+        $this->assertLessThan($p2, strpos($html, '1. OFFICE/DEPARTMENT'));
+        $this->assertGreaterThan($p2, strpos($html, '6.A TYPE OF LEAVE TO BE AVAILED OF'));
+        $this->assertLessThan($p3, strpos($html, '6.D COMMUTATION'));
+        $this->assertGreaterThan($p3, strpos($html, '7.A CERTIFICATION OF LEAVE CREDITS'));
+    }
+
+    /**
      * Section 7 belongs to the approving officer. It is rendered for fidelity
      * with the paper form but must contain no control the applicant could use.
      */

@@ -71,7 +71,11 @@
     @csrf
 
     <div class="csc-viewport" data-csc-viewport>
-    <div class="csc-sheet csc-sheet-wide" data-csc-scale>
+    <div data-csc-scale>
+
+    {{-- ================= PART 1 — EMPLOYEE INFORMATION ================= --}}
+    <div class="csc-partlabel no-print">Part 1 of 3 &middot; Employee information</div>
+    <div class="csc-sheet csc-sheet-wide csc-part">
 
         {{-- ============ FORM HEADER ============ --}}
         {{-- Three-column grid. The form number and ANNEX A used to be absolutely
@@ -140,7 +144,11 @@
             </tr>
         </table>
 
-        {{-- ============ 6. DETAILS OF APPLICATION ============ --}}
+    </div>{{-- /part 1 sheet --}}
+
+    {{-- ================= PART 2 — DETAILS OF APPLICATION ================= --}}
+    <div class="csc-partlabel no-print">Part 2 of 3 &middot; Details of application</div>
+    <div class="csc-sheet csc-sheet-wide csc-part">
         <div class="csc-section">6. DETAILS OF APPLICATION</div>
 
         <table class="csc-table csc-split">
@@ -365,11 +373,44 @@
             </tr>
         </table>
 
+        {{-- Applicant input, so it belongs with Part 2 rather than the official-use
+             section. Hidden when printing: a paper form carries its attachments
+             physically. --}}
+        <table class="csc-table no-print">
+            <tr>
+                <td>
+                    <div class="csc-sub">SUPPORTING DOCUMENTS</div>
+                    <div class="csc-inline-note">
+                        Attach what your chosen leave type requires — see
+                        <a href="{{ route('leave.instructions') }}">Instructions and Requirements</a>.
+                    </div>
+                    <div class="csc-grid-2">
+                        <div>
+                            <label class="csc-sublabel" for="doc_primary">Primary supporting document</label>
+                            <input id="doc_primary" type="file" name="documents[supporting_document]"
+                                   class="csc-file" accept=".pdf,.jpg,.jpeg,.png">
+                        </div>
+                        <div>
+                            <label class="csc-sublabel" for="doc_medical">Medical certificate (if applicable)</label>
+                            <input id="doc_medical" type="file" name="documents[medical_certificate]"
+                                   class="csc-file" accept=".pdf,.jpg,.jpeg,.png">
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+    </div>{{-- /part 2 sheet --}}
+
+    {{-- ================= PART 3 — ACTION ON APPLICATION ================= --}}
+    <div class="csc-partlabel no-print">Part 3 of 3 &middot; Action on application &mdash; for official use</div>
+
         {{-- ============ 7. DETAILS OF ACTION ON APPLICATION ============ --}}
         {{-- Drawn in full to follow the official sheet, but READ-ONLY: it is
              completed by the approving officer. There is not a single input in
              this section, so an applicant cannot touch it. 7.A shows live
              balances from LeaveCreditService. --}}
+    <div class="csc-sheet csc-sheet-wide csc-part">
         <div class="csc-section">7. DETAILS OF ACTION ON APPLICATION</div>
 
         <table class="csc-table csc-split csc-readonly">
@@ -462,41 +503,19 @@
             Sick <strong>{{ number_format($slBalance, 2) }}</strong>.
         </p>
 
-        {{-- Supporting documents live INSIDE the sheet so the whole application is
-             one continuous form rather than a separate floating card. Hidden when
-             printing, since a paper form carries its attachments physically. --}}
-        <table class="csc-table no-print">
-            <tr>
-                <td>
-                    <div class="csc-sub">SUPPORTING DOCUMENTS</div>
-                    <div class="csc-inline-note">
-                        Attach what your chosen leave type requires — see
-                        <a href="{{ route('leave.instructions') }}">Instructions and Requirements</a>.
-                    </div>
-                    <div class="csc-grid-2">
-                        <div>
-                            <label class="csc-sublabel" for="doc_primary">Primary supporting document</label>
-                            <input id="doc_primary" type="file" name="documents[supporting_document]"
-                                   class="csc-file" accept=".pdf,.jpg,.jpeg,.png">
-                        </div>
-                        <div>
-                            <label class="csc-sublabel" for="doc_medical">Medical certificate (if applicable)</label>
-                            <input id="doc_medical" type="file" name="documents[medical_certificate]"
-                                   class="csc-file" accept=".pdf,.jpg,.jpeg,.png">
-                        </div>
-                    </div>
-                </td>
-            </tr>
-        </table>
+    </div>{{-- /part 3 sheet --}}
 
-        <div class="csc-submit no-print">
-            <span class="csc-inline-note mb-0">
-                Weekends and Philippine holidays are excluded from the working-day count.
-            </span>
-            <button class="btn btn-lgu" type="submit"><i class="bi bi-send me-1"></i>Submit application</button>
-        </div>
+    {{-- One submission for all three parts. --}}
+    <div class="csc-submit no-print">
+        <span class="csc-inline-note mb-0">
+            Parts 1 and 3 are filled in for you. Weekends and Philippine holidays
+            are excluded from the working-day count.
+        </span>
+        <button class="btn btn-lgu" type="submit"><i class="bi bi-send me-1"></i>Submit application</button>
     </div>
-    </div>
+
+    </div>{{-- /scale --}}
+    </div>{{-- /viewport --}}
 </form>
 
 @endsection

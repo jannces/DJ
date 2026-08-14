@@ -1135,3 +1135,24 @@ body{ background:var(--bg); color:var(--text); }
   .csc-topgrid{ grid-template-columns:1fr; }
   .csc-topgrid .csc-annex{ text-align:left; }
 }
+
+/* ---- CSC form split into three parts --------------------------------------
+   Part 1 (employee information), Part 2 (details of application) and Part 3
+   (action on application) are separate sheets stacked in ONE form, so the
+   submission is unchanged — only the presentation is divided. */
+.csc-partlabel{
+  font-size:.78rem; font-weight:600; color:var(--muted);
+  letter-spacing:.02em; margin:1.1rem 0 .35rem;
+}
+.csc-partlabel:first-child{ margin-top:0; }
+.csc-part{ margin:0 0 .25rem; }
+/* Part 1 carries the printed header, so it keeps its top padding; the other
+   two open directly on their section bar. */
+.csc-part > .csc-section:first-child{ border-top:0; }
+
+@media print{
+  /* On paper the three parts read as one continuous official form. */
+  .csc-partlabel{ display:none; }
+  .csc-part{ border-top:0; margin:0; }
+  .csc-part:first-of-type{ border-top:1px solid #000; }
+}
