@@ -197,7 +197,7 @@ class EmployeeInterfaceTest extends TestCase
             '6.A TYPE OF LEAVE TO BE AVAILED OF', '6.B DETAILS OF LEAVE',
             'Within the Philippines', 'Abroad (Specify)',
             'In Hospital (Specify Illness)', 'Out Patient (Specify Illness)',
-            'Completion of Master&#039;s Degree', 'BAR/Board Examination Review',
+            "Completion of Master's Degree", 'BAR/Board Examination Review',
             'Monetization of Leave Credits', 'Terminal Leave',
             '6.C NUMBER OF WORKING DAYS APPLIED FOR', 'INCLUSIVE DATES',
             '6.D COMMUTATION', 'Not Requested', 'Requested', '(Signature of Applicant)',
