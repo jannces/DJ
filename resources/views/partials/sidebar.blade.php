@@ -6,6 +6,13 @@
             <div class="brand-sub">Leave Management</div>
         </div>
     </div>
+    {{-- Workspace row: which office this installation serves. --}}
+    <div class="side-ws">
+        <span class="ws-dot" aria-hidden="true"></span>
+        <span class="ws-name">{{ \App\Models\SystemSetting::get('general.lgu_short_name', 'LGU Alicia') }}</span>
+        <i class="bi bi-chevron-expand" aria-hidden="true"></i>
+    </div>
+
     <div class="lms-nav nav flex-column">
         @foreach (config('menu') as $item)
             @if (isset($item['heading']))
@@ -25,5 +32,22 @@
                 </a>
             @endif
         @endforeach
+    </div>
+
+    {{-- Bottom utility block. Mirrors the reference layout, but every link goes
+         somewhere real in this system rather than being decoration. --}}
+    <div class="side-foot">
+        @can('leave.view-own')
+            <div class="side-foot-label">Reference</div>
+            <div class="side-note">
+                <div class="side-note-title">CSC Form No. 6</div>
+                <div class="side-note-sub">Documentary requirements for all 15 leave types.</div>
+                <a href="{{ route('leave.instructions') }}">Read the instructions &rarr;</a>
+            </div>
+        @endcan
+        <div class="side-links">
+            <a href="{{ route('notifications.index') }}"><i class="bi bi-bell"></i>Notifications</a>
+            <a href="{{ route('password.change') }}"><i class="bi bi-key"></i>Change password</a>
+        </div>
     </div>
 </nav>

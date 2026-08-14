@@ -6,17 +6,22 @@
         <i class="bi bi-layout-sidebar"></i>
     </button>
 
-    {{-- Back-office only. Employees never see the global search box, and the
-         /search route rejects them server-side via the same gate. --}}
-    @can('use-global-search')
-        <form class="lms-search d-none d-md-block" action="{{ route('search') }}" method="GET" data-no-loader role="search">
-            <i class="bi bi-search"></i>
-            <input type="search" name="q" value="{{ request('q') }}"
-                   placeholder="Search employees, requests, departments…" aria-label="Global search">
-        </form>
-    @endcan
+    <span class="top-sep d-none d-sm-block" aria-hidden="true"></span>
+    <div class="top-title">
+        <i class="bi bi-grid-1x2"></i><span>@yield('title', 'Dashboard')</span>
+    </div>
 
-    <div class="ms-auto d-flex align-items-center gap-2">
+    <div class="ms-auto d-flex align-items-center gap-1">
+        {{-- Back-office only. Employees never see the global search box, and the
+             /search route rejects them server-side via the same gate. --}}
+        @can('use-global-search')
+            <form class="lms-search d-none d-md-block me-1" action="{{ route('search') }}" method="GET" data-no-loader role="search">
+                <i class="bi bi-search"></i>
+                <input type="search" name="q" value="{{ request('q') }}"
+                       placeholder="Search…" aria-label="Search employees, requests, departments">
+                <span class="kbd" aria-hidden="true"><b>Ctrl</b><b>K</b></span>
+            </form>
+        @endcan
         @can('security.dashboard')
             <a href="{{ route('security.dashboard') }}" id="alert-bell" class="icon-btn"
                data-url="{{ route('web.security.alerts') }}"

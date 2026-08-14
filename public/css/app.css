@@ -825,3 +825,233 @@ footer.app-foot{ text-align:center; color:var(--muted-2); font-size:.76rem; padd
 .st-off{ color:var(--muted); background:color-mix(in srgb,var(--muted) 14%,transparent); }
 
 .dash-empty{ text-align:center; color:var(--muted); padding:2.5rem 1rem; font-size:.85rem; }
+
+/* ============================================================================
+   SYSTEM THEME — reference block language, applied application-wide
+   ----------------------------------------------------------------------------
+   Appended as an override layer so every existing view inherits the new look
+   without editing ~30 Blade templates. Near-neutral surfaces, 1px hairlines
+   instead of shadows, a single tight radius, and colour reserved for status.
+
+   Deliberately NOT touched: `.csc-sheet` (the CSC Form 6 facsimile must stay
+   black on white paper in both themes) and the print rules.
+   ========================================================================== */
+
+/* ---- 1. Tokens ----------------------------------------------------------- */
+:root{
+  --bg:#f7f7f8; --bg-soft:#f2f2f3;
+  --surface:#ffffff; --surface-2:#fafafa; --surface-hover:#f4f4f5;
+  --text:#171717; --text-2:#3f3f46; --muted:#71717a; --muted-2:#a1a1aa;
+  --border:#e6e6e8; --border-strong:#d9d9dd;
+
+  --primary:#4f3fd0; --primary-hover:#4133b3;
+  --success:#16a34a; --warning:#d97706; --danger:#dc2626;
+
+  --r-sm:.375rem; --r:.5rem; --r-lg:.75rem; --r-xl:.75rem;
+  --shadow-xs:none; --shadow-sm:none; --shadow:0 1px 2px rgba(0,0,0,.05);
+  --shadow-lg:0 8px 24px rgba(0,0,0,.10); --shadow-brand:none;
+
+  --side-bg:#ffffff; --side-text:#3f3f46; --side-text-hi:#171717;
+  --side-hover:#f4f4f5; --side-active:#f0effb; --side-hair:#e6e6e8;
+}
+:root[data-bs-theme="dark"], [data-bs-theme="dark"]{
+  --bg:#000000; --bg-soft:#0a0a0a;
+  --surface:#0e0e0e; --surface-2:#141414; --surface-hover:#1a1a1a;
+  --text:#ededed; --text-2:#c4c4c6; --muted:#8a8a8f; --muted-2:#5f5f66;
+  --border:#232323; --border-strong:#2e2e2e;
+
+  --primary:#8b7bf0; --primary-hover:#a294f5;
+  --success:#22c55e; --warning:#f59e0b; --danger:#ef4444;
+
+  --shadow:0 1px 2px rgba(0,0,0,.5); --shadow-lg:0 10px 30px rgba(0,0,0,.6);
+
+  --side-bg:#0a0a0a; --side-text:#a1a1aa; --side-text-hi:#fafafa;
+  --side-hover:#1a1a1a; --side-active:#1f1f1f; --side-hair:#1f1f1f;
+}
+body{ background:var(--bg); color:var(--text); }
+
+/* ---- 2. Sidebar ---------------------------------------------------------- */
+.lms-sidebar{
+  background:var(--side-bg); color:var(--side-text);
+  border-right:1px solid var(--side-hair); box-shadow:none;
+}
+.lms-sidebar::before{ display:none; }
+.lms-brand{ border-bottom:1px solid var(--side-hair); padding:.9rem 1rem; }
+.lms-brand .seal{
+  width:30px; height:30px; border-radius:.5rem; font-size:.95rem;
+  background:var(--primary); color:#fff; box-shadow:none;
+}
+.lms-brand .brand-name{ color:var(--side-text-hi); font-size:.875rem; font-weight:600; }
+.lms-brand .brand-sub{ color:var(--muted); font-size:.68rem; letter-spacing:.04em; }
+
+/* Workspace row, as in the reference */
+.side-ws{
+  display:flex; align-items:center; gap:.55rem; margin:.7rem .7rem .3rem;
+  padding:.5rem .6rem; border:1px solid var(--side-hair); border-radius:.5rem;
+  font-size:.82rem; color:var(--side-text-hi); font-weight:500;
+}
+.side-ws .ws-dot{
+  width:.9rem; height:.9rem; border-radius:50%; flex:none;
+  background:linear-gradient(135deg,var(--primary),#22c55e);
+}
+.side-ws .ws-name{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.side-ws i{ font-size:.7rem; color:var(--muted); }
+
+.lms-nav{ padding:.5rem .7rem; }
+.lms-nav .nav-heading{
+  color:var(--muted); font-size:.7rem; font-weight:500; letter-spacing:.01em;
+  text-transform:none; padding:.9rem .6rem .3rem;
+}
+.lms-nav .nav-link{
+  color:var(--side-text); border-radius:.5rem; padding:.5rem .6rem;
+  font-size:.845rem; font-weight:450; gap:.6rem; margin-bottom:1px;
+}
+.lms-nav .nav-link:hover{ background:var(--side-hover); color:var(--side-text-hi); transform:none; }
+.lms-nav .nav-link.active{
+  background:var(--side-active); color:var(--side-text-hi); font-weight:500;
+}
+.lms-nav .nav-link.active i{ color:var(--side-text-hi); }
+.lms-nav .nav-link.active::before{ display:none; }
+.lms-nav .nav-link i{ font-size:1rem; opacity:.9; }
+
+/* Bottom utility block */
+.side-foot{ margin-top:auto; padding:.7rem; border-top:1px solid var(--side-hair); }
+.side-foot-label{
+  font-size:.66rem; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--muted); padding:0 .6rem .35rem;
+}
+.side-note{
+  border:1px solid var(--side-hair); border-radius:.5rem; padding:.6rem .7rem; margin-bottom:.5rem;
+}
+.side-note-title{ font-size:.8rem; font-weight:600; color:var(--side-text-hi); }
+.side-note-sub{ font-size:.72rem; color:var(--muted); margin:.1rem 0 .3rem; }
+.side-note a{ font-size:.75rem; color:var(--primary); text-decoration:none; }
+.side-links a{
+  display:flex; align-items:center; gap:.55rem; padding:.4rem .6rem;
+  font-size:.8rem; color:var(--side-text); text-decoration:none; border-radius:.5rem;
+}
+.side-links a:hover{ background:var(--side-hover); color:var(--side-text-hi); }
+.side-links i{ font-size:.9rem; opacity:.85; }
+
+/* ---- 3. Topbar ----------------------------------------------------------- */
+.lms-topbar{
+  background:var(--bg); border-bottom:1px solid var(--border);
+  box-shadow:none; height:52px; padding:0 1rem; gap:.6rem;
+}
+.top-sep{ width:1px; height:18px; background:var(--border); flex:none; }
+.top-title{
+  display:flex; align-items:center; gap:.45rem;
+  font-size:.85rem; font-weight:500; color:var(--text); min-width:0;
+}
+.top-title i{ font-size:.9rem; color:var(--muted); }
+.top-title span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+.icon-btn{
+  border-radius:.5rem; color:var(--muted); background:transparent;
+  border:1px solid transparent; width:2rem; height:2rem;
+}
+.icon-btn:hover{ background:var(--surface-hover); color:var(--text); }
+
+.lms-search{ max-width:260px; }
+.lms-search input{
+  background:var(--surface); border:1px solid var(--border); border-radius:.5rem;
+  font-size:.82rem; height:2rem; color:var(--text);
+}
+.lms-search .kbd{
+  position:absolute; right:.4rem; top:50%; transform:translateY(-50%);
+  display:inline-flex; gap:.12rem; pointer-events:none;
+}
+.kbd b{
+  font:inherit; font-size:.68rem; font-weight:500; color:var(--muted);
+  border:1px solid var(--border); border-radius:.25rem; padding:0 .28rem; background:var(--surface-2);
+}
+.profile-btn{
+  border:1px solid var(--border); border-radius:.5rem; background:var(--surface);
+  padding:.15rem .35rem .15rem .15rem;
+}
+.profile-btn .avatar{ width:1.6rem; height:1.6rem; border-radius:.4rem; font-size:.75rem; }
+.dot-badge{ background:var(--danger); }
+
+/* ---- 4. Surfaces, tables, controls --------------------------------------- */
+.card{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:.75rem; box-shadow:none;
+}
+.card-header{
+  background:transparent; border-bottom:1px solid var(--border);
+  font-size:.85rem; font-weight:600; padding:.85rem 1.15rem;
+}
+.card-footer{ background:transparent; border-top:1px solid var(--border); }
+
+.stat-card{
+  border:1px solid var(--border); border-radius:.75rem; box-shadow:none;
+  background:var(--surface); padding:1rem 1.15rem;
+}
+.stat-card::before{ display:none; }
+.stat-card:hover{ transform:none; box-shadow:none; }
+.stat-card .stat-icon{ width:2rem; height:2rem; border-radius:.5rem; font-size:.9rem; }
+.stat-card .stat-value{ font-size:1.5rem; font-weight:600; font-variant-numeric:tabular-nums; }
+.stat-card .stat-label{ font-size:.75rem; text-transform:none; letter-spacing:0; color:var(--muted); }
+
+.table > thead > tr > th{
+  background:transparent; border-bottom:1px solid var(--border);
+  font-size:.75rem; font-weight:500; color:var(--muted); text-transform:none; letter-spacing:0;
+  padding:.7rem 1rem;
+}
+.table > tbody > tr > td{
+  border-bottom:1px solid var(--border); padding:.75rem 1rem; font-size:.85rem;
+}
+.table > tbody > tr:last-child > td{ border-bottom:0; }
+.table-hover > tbody > tr:hover > *{ background:color-mix(in srgb,var(--text) 3%,transparent); }
+
+.btn{ border-radius:.5rem; font-size:.83rem; font-weight:500; box-shadow:none; }
+.btn-lgu,.btn-primary{ background:var(--primary); border-color:var(--primary); box-shadow:none; }
+.btn-lgu:hover,.btn-primary:hover{ background:var(--primary-hover); border-color:var(--primary-hover); box-shadow:none; }
+.btn-outline-secondary{ border-color:var(--border); color:var(--text-2); background:var(--surface); }
+.btn-outline-secondary:hover{ background:var(--surface-hover); border-color:var(--border-strong); color:var(--text); }
+
+.form-control,.form-select{
+  border:1px solid var(--border); border-radius:.5rem; font-size:.85rem;
+  background:var(--surface); color:var(--text);
+}
+.form-control:focus,.form-select:focus{
+  border-color:var(--primary); box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 18%,transparent);
+}
+.form-label{ font-size:.8rem; font-weight:500; color:var(--text-2); }
+
+/* Badges become quiet status pills everywhere. */
+.badge{ border-radius:var(--r-full); font-size:.74rem; font-weight:500; padding:.2rem .55rem; }
+.badge.bg-success{ background:color-mix(in srgb,var(--success) 14%,transparent)!important; color:var(--success)!important; }
+.badge.bg-danger{ background:color-mix(in srgb,var(--danger) 14%,transparent)!important; color:var(--danger)!important; }
+.badge.bg-warning{ background:color-mix(in srgb,var(--warning) 16%,transparent)!important; color:var(--warning)!important; }
+.badge.bg-info,.badge.bg-primary{ background:color-mix(in srgb,var(--primary) 15%,transparent)!important; color:var(--primary)!important; }
+.badge.bg-secondary,.badge.bg-dark,.badge.bg-light{
+  background:color-mix(in srgb,var(--muted) 15%,transparent)!important; color:var(--muted)!important;
+}
+.chip{
+  border:1px solid var(--border); background:var(--surface); color:var(--muted);
+  border-radius:var(--r-full); font-size:.73rem; padding:.15rem .5rem;
+}
+
+.page-head{ margin-bottom:1.25rem; }
+.page-head h1{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
+.page-head .sub{ font-size:.83rem; color:var(--muted); }
+
+.modal-content{ border:1px solid var(--border); border-radius:.75rem; background:var(--surface); }
+.modal-header,.modal-footer{ border-color:var(--border); }
+.dropdown-menu{
+  border:1px solid var(--border); border-radius:.6rem; background:var(--surface);
+  box-shadow:var(--shadow-lg); font-size:.85rem;
+}
+.alert{ border-radius:.6rem; border:1px solid var(--border); font-size:.85rem; }
+.app-foot{ border-top:1px solid var(--border); color:var(--muted); font-size:.78rem; }
+
+/* The dashboard frames now share the global hairline. */
+.dash{ --hair:var(--border); --dash-surface:var(--surface); }
+:root[data-bs-theme="dark"] .dash{ --hair:var(--border); --dash-surface:var(--surface); }
+:root[data-bs-theme="dark"] .dash .dash-frame{ background:var(--surface); }
+
+/* Search sits with the right-hand controls, sized for the ⌘K hint. */
+.lms-topbar .lms-search{ flex:0 1 240px; max-width:240px; }
+.lms-topbar .lms-search .bi-search{ left:.6rem; font-size:.85rem; }
+.lms-topbar .lms-search input{ height:2rem; padding:0 3.6rem 0 1.9rem; border-radius:.5rem; }
