@@ -36,13 +36,16 @@ class DashboardService
             ];
         }
 
-        // Employee self-service cards
+        // Employee self-service cards. The dashboard is now the single place an
+        // employee sees leave credits, so it also carries the credit ledger that
+        // the retired "My Balances" page used to show — same queries, one home.
         if ($user->hasPermission('leave.view-own')) {
             $data['cards'] += [
                 'my_pending' => LeaveRequest::where('user_id', $user->id)->whereNotIn('status', ['approved', 'rejected', 'cancelled'])->count(),
                 'my_approved' => LeaveRequest::where('user_id', $user->id)->where('status', 'approved')->count(),
             ];
             $data['my_balances'] = LeaveBalance::with('leaveType')->where('user_id', $user->id)->get();
+            $data['my_credit_history'] = $user->leaveHistory()->with('leaveType')->latest()->limit(100)->get();
         }
 
         // Chart series (only computed for roles that render them).

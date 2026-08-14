@@ -38,10 +38,26 @@ class LeaveRequestController extends Controller
         return view('leave.index', compact('requests'));
     }
 
+    /**
+     * Printed CSC Form No. 6 lists the leave types in a fixed order. We keep
+     * that order for the on-screen form so it reads like the official sheet,
+     * but the list itself still comes from the database — an admin-added type
+     * simply appears after the CSC ones rather than being dropped.
+     */
+    private const CSC_FORM6_ORDER = [
+        'VL', 'FL', 'SL', 'ML', 'PL', 'SPL', 'SOLO', 'STL',
+        'VAWC', 'RL', 'SLBW', 'SEL', 'AL', 'MON', 'TL',
+    ];
+
     public function create(Request $request): View
     {
-        $types = LeaveType::active()->orderBy('name')->get();
-        $balances = $this->credits->balanceFor($request->user(), $types->firstWhere('code', 'VL'));
+        $types = LeaveType::active()->get()
+            ->sortBy(function (LeaveType $type) {
+                $position = array_search($type->code, self::CSC_FORM6_ORDER, true);
+
+                return $position === false ? count(self::CSC_FORM6_ORDER) : $position;
+            })
+            ->values();
 
         return view('leave.create', [
             'types' => $types,
@@ -97,6 +113,15 @@ class LeaveRequestController extends Controller
             'documents.*' => ['file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
         ]);
 
+        // The CSC Form 6 layout prints every "In case of…" block at once, so the
+        // browser posts a blank for each field the chosen leave type does not use.
+        // Drop the empties: only the fields actually filled in are stored, which
+        // keeps leave_requests.details identical in shape to before this form.
+        $data['details'] = array_filter(
+            $data['details'] ?? [],
+            static fn ($value) => $value !== null && $value !== '' && $value !== [],
+        );
+
         $type = LeaveType::findOrFail($data['leave_type_id']);
         $leaveRequest = $this->applications->submit($request->user(), $type, $data);
 
@@ -121,13 +146,9 @@ class LeaveRequestController extends Controller
         return view('leave.show', compact('leaveRequest'));
     }
 
-    public function balances(Request $request): View
-    {
-        $balances = $request->user()->leaveBalances()->with('leaveType')->get();
-        $history = $request->user()->leaveHistory()->with('leaveType')->latest()->limit(100)->get();
-
-        return view('leave.balances', compact('balances', 'history'));
-    }
+    // balances() was removed together with the `leave/balances` route and view.
+    // The employee dashboard now renders the same LeaveBalance and LeaveHistory
+    // records (see App\Services\DashboardService::forUser).
 
     public function cancel(Request $request, LeaveRequest $leaveRequest): RedirectResponse
     {

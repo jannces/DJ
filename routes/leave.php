@@ -11,7 +11,8 @@ Route::middleware('permission:leave.apply')->group(function () {
 });
 Route::middleware('permission:leave.view-own')->group(function () {
     Route::get('leave', [\App\Http\Controllers\Leave\LeaveRequestController::class, 'index'])->name('leave.index');
-    Route::get('leave/balances', [\App\Http\Controllers\Leave\LeaveRequestController::class, 'balances'])->name('leave.balances');
+    // `leave/balances` was retired — balances and credit history are rendered on
+    // the dashboard instead, from the same LeaveBalance/LeaveHistory queries.
     Route::get('leave/{leaveRequest}', [\App\Http\Controllers\Leave\LeaveRequestController::class, 'show'])->name('leave.show');
     Route::get('leave/{leaveRequest}/form6', [\App\Http\Controllers\Leave\LeaveRequestController::class, 'form6'])->name('leave.form6');
     Route::post('leave/{leaveRequest}/documents', [\App\Http\Controllers\Leave\LeaveRequestController::class, 'uploadDocument'])->name('leave.documents.store');

@@ -10,7 +10,8 @@ return [
     ['heading' => 'Leave'],
     ['label' => 'Apply for Leave', 'icon' => 'bi-calendar-plus', 'route' => 'leave.create', 'permission' => 'leave.apply'],
     ['label' => 'My Leave Requests', 'icon' => 'bi-card-checklist', 'route' => 'leave.index', 'permission' => 'leave.view-own'],
-    ['label' => 'My Balances', 'icon' => 'bi-wallet2', 'route' => 'leave.balances', 'permission' => 'leave.view-own'],
+    // "My Balances" was removed: leave credits and credit history now live on the
+    // employee dashboard (single location, one query path — see DashboardService).
     ['label' => 'Department Reviews', 'icon' => 'bi-people', 'route' => 'review.department.index', 'permission' => 'leave.review.department'],
     ['label' => 'HR Validation', 'icon' => 'bi-clipboard-check', 'route' => 'review.hr.index', 'permission' => 'leave.certify.hr'],
     ['label' => 'Final Approval', 'icon' => 'bi-award', 'route' => 'review.final.index', 'permission' => 'leave.approve.final'],

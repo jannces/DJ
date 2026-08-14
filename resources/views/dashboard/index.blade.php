@@ -67,33 +67,82 @@
         </div>
     @endif
 
-    @isset($my_balances)
-        <div class="col-xl-5">
-            <div class="card h-100">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>My Leave Balances</span>
-                    <a href="{{ route('leave.balances') }}" class="small">View all <i class="bi bi-arrow-right"></i></a>
-                </div>
-                <div class="card-body">
-                    @forelse ($my_balances as $b)
-                        <div class="d-flex align-items-center justify-content-between py-2 {{ !$loop->last ? 'border-bottom' : '' }}" style="border-color:var(--border)!important">
-                            <div>
-                                <div class="fw-semibold" style="font-size:.9rem">{{ $b->leaveType->name }}</div>
-                                <div class="text-muted" style="font-size:.75rem">Earned {{ number_format($b->earned,2) }} · Used {{ number_format($b->used,2) }}</div>
-                            </div>
-                            <div class="text-end">
-                                <span class="badge bg-success" style="font-size:.9rem">{{ number_format($b->balance,2) }}</span>
-                                <div class="text-muted" style="font-size:.68rem">days left</div>
-                            </div>
+</div>
+
+{{-- ---------------------------------------------------------------------
+     Employee leave credits. This block replaces the retired "My Balances"
+     page: same LeaveBalance / LeaveHistory records, now shown on the
+     dashboard. Values are always the signed-in user's own — DashboardService
+     scopes every query to the authenticated id, never a request parameter.
+     ------------------------------------------------------------------ --}}
+@isset($my_balances)
+    <h2 class="h5 mt-4 mb-3">My Leave Balances</h2>
+    <div class="row g-3 mb-4">
+        @php
+            // Vacation and Sick Leave lead, since those are the credit sources;
+            // any other credited type the employee holds follows.
+            $ordered = $my_balances->sortBy(fn ($b) => array_search($b->leaveType->code, ['VL', 'SL']) === false ? 2 : array_search($b->leaveType->code, ['VL', 'SL']));
+        @endphp
+        @forelse ($ordered as $b)
+            <div class="col-sm-6 col-xl-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="text-muted small">{{ $b->leaveType->name }}</div>
+                            <span class="chip">{{ $b->leaveType->code }}</span>
                         </div>
-                    @empty
-                        <div class="text-center text-muted py-4"><i class="bi bi-inbox d-block mb-2" style="font-size:1.5rem"></i>No balances yet.</div>
-                    @endforelse
+                        <div class="h2 mb-0 mt-1">{{ number_format($b->balance, 2) }}</div>
+                        <div class="text-muted small">current balance</div>
+                        <hr class="my-2">
+                        <div class="d-flex justify-content-between small">
+                            <span class="text-muted">Earned</span><span class="fw-semibold">{{ number_format($b->earned, 2) }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between small">
+                            <span class="text-muted">Used</span><span class="fw-semibold">{{ number_format($b->used, 2) }}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
+        @empty
+            <div class="col-12">
+                <div class="card"><div class="card-body text-center text-muted py-4">
+                    <i class="bi bi-inbox d-block mb-2" style="font-size:1.5rem"></i>
+                    No leave credits recorded yet.
+                </div></div>
+            </div>
+        @endforelse
+    </div>
+@endisset
+
+@isset($my_credit_history)
+    <div class="card mb-3">
+        <div class="card-header fw-semibold">Credit History</div>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th>Date</th><th>Type</th><th>Entry</th>
+                        <th class="text-end">Days</th><th class="text-end">Balance</th><th>Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @forelse ($my_credit_history as $h)
+                    <tr>
+                        <td class="small">{{ $h->created_at->format('M d, Y') }}</td>
+                        <td>{{ $h->leaveType->code }}</td>
+                        <td><span class="badge bg-light text-dark">{{ $h->entry_type }}</span></td>
+                        <td class="text-end {{ $h->days < 0 ? 'text-danger' : 'text-success' }}">{{ number_format($h->days, 2) }}</td>
+                        <td class="text-end">{{ number_format($h->balance_after, 2) }}</td>
+                        <td class="small">{{ $h->remarks }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="6" class="text-center text-muted py-3">No credit history yet.</td></tr>
+                @endforelse
+                </tbody>
+            </table>
         </div>
-    @endisset
-</div>
+    </div>
+@endisset
 
 @push('scripts')
 <script>

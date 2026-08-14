@@ -16,8 +16,9 @@ Route::get('/notifications', [NotificationController::class, 'index'])->name('no
 Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
 Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
 
-// Global search
-Route::get('/search', [SearchController::class, 'index'])->name('search');
+// Global search — back-office only (see the `use-global-search` gate).
+// Employees are denied server-side, not merely hidden in the UI.
+Route::get('/search', [SearchController::class, 'index'])->middleware('can:use-global-search')->name('search');
 
 // Roles & permissions
 Route::middleware('permission:rbac.manage')->group(function () {

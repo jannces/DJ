@@ -6,7 +6,9 @@
         <i class="bi bi-layout-sidebar"></i>
     </button>
 
-    @can('dashboard.view')
+    {{-- Back-office only. Employees never see the global search box, and the
+         /search route rejects them server-side via the same gate. --}}
+    @can('use-global-search')
         <form class="lms-search d-none d-md-block" action="{{ route('search') }}" method="GET" data-no-loader role="search">
             <i class="bi bi-search"></i>
             <input type="search" name="q" value="{{ request('q') }}"
