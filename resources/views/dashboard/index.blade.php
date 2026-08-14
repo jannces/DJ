@@ -27,29 +27,20 @@
         return round((float) $balance->used / (float) $balance->earned * 100, 1);
     };
 
-    // KPI strip: four metrics, each with a label, a figure and a trend pill.
+    // Four KPIs. For an employee these are the states of their own
+    // applications; administrators keep their organisation-wide counters.
     $kpis = [];
     if ($isEmployee) {
-        foreach ([[$vl, 'Vacation Leave', 'bi-sun'], [$sl, 'Sick Leave', 'bi-heart-pulse']] as [$b, $label, $icon]) {
-            $used = $pct($b);
-            $kpis[] = [
-                'icon' => $icon,
-                'label' => $label,
-                'value' => $b ? number_format($b->balance, 2) : '0.00',
-                'pill' => $used === null ? null : $used.'%',
-                'tone' => $used === null ? 'flat' : ($used > 75 ? 'down' : 'up'),
-                'dir' => $used !== null && $used > 75 ? 'bi-arrow-down' : 'bi-arrow-up',
-                'hint' => 'credits used',
-            ];
-        }
-        $kpis[] = [
-            'icon' => 'bi-hourglass-split', 'label' => 'Pending',
-            'value' => $cards['my_pending'] ?? 0, 'pill' => null, 'tone' => 'flat', 'hint' => '',
-        ];
-        $kpis[] = [
-            'icon' => 'bi-check2-circle', 'label' => 'Days taken',
-            'value' => rtrim(rtrim(number_format($my_days_taken ?? 0, 1), '0'), '.'),
-            'pill' => null, 'tone' => 'flat', 'hint' => '',
+        $kpis = [
+            ['icon' => 'bi-hourglass-split', 'label' => 'Pending',    'value' => $cards['my_pending'] ?? 0,
+             'hint' => 'awaiting an approver'],
+            ['icon' => 'bi-check2-circle',   'label' => 'Approved',   'value' => $cards['my_approved'] ?? 0,
+             'hint' => 'applications granted'],
+            ['icon' => 'bi-x-circle',        'label' => 'Rejected',   'value' => $cards['my_rejected'] ?? 0,
+             'hint' => 'applications disapproved'],
+            ['icon' => 'bi-calendar-check',  'label' => 'Days taken',
+             'value' => rtrim(rtrim(number_format($my_days_taken ?? 0, 1), '0'), '.'),
+             'hint' => 'approved leave days on record'],
         ];
     } else {
         $map = [
@@ -63,36 +54,30 @@
             if (! isset($cards[$key]) || count($kpis) >= 4) {
                 continue;
             }
-            $kpis[] = ['icon' => $icon, 'label' => $label, 'value' => $cards[$key],
-                       'pill' => null, 'tone' => 'flat', 'hint' => ''];
+            $kpis[] = ['icon' => $icon, 'label' => $label, 'value' => $cards[$key], 'hint' => ''];
         }
     }
 
-    $series = $isEmployee ? ($my_days_series ?? null) : ($chartsLeavesMonth ?? null);
-    $mix = $isEmployee ? ($my_type_mix ?? null) : ($chartsLeavesType ?? null);
+    // Charts are an administrator view. The employee dashboard shows counters,
+    // the credit summary and their own records — no graphs.
+    $series = $isEmployee ? null : ($chartsLeavesMonth ?? null);
+    $mix = $isEmployee ? null : ($chartsLeavesType ?? null);
 @endphp
 
-{{-- ---------- KPI strip ---------- --}}
+{{-- ---------- KPI cards ---------- --}}
+{{-- Separate framed cards with a gap between them, rather than one connected
+     strip divided by hairlines. --}}
 @if ($kpis)
-    <div class="dash-frame">
-        <div class="kpi-strip">
-            @foreach ($kpis as $k)
-                <div class="kpi">
-                    <div class="kpi-label"><i class="bi {{ $k['icon'] }}"></i>{{ $k['label'] }}</div>
-                    <div class="kpi-row">
-                        <div class="kpi-value">{{ $k['value'] }}</div>
-                        @if (!empty($k['pill']))
-                            <span class="kpi-pill kpi-{{ $k['tone'] }}">
-                                <i class="bi {{ $k['dir'] ?? 'bi-dash' }}"></i>{{ $k['pill'] }}
-                            </span>
-                        @endif
-                    </div>
-                    @if (!empty($k['hint']))
-                        <div class="big-sub">{{ $k['hint'] }}</div>
-                    @endif
-                </div>
-            @endforeach
-        </div>
+    <div class="kpi-grid">
+        @foreach ($kpis as $k)
+            <div class="kpi-card">
+                <div class="kpi-label"><i class="bi {{ $k['icon'] }}"></i>{{ $k['label'] }}</div>
+                <div class="kpi-value">{{ $k['value'] }}</div>
+                @if (!empty($k['hint']))
+                    <div class="kpi-hint">{{ $k['hint'] }}</div>
+                @endif
+            </div>
+        @endforeach
     </div>
 @endif
 
@@ -109,8 +94,12 @@
     </div>
 @endif
 
-{{-- ---------- Three-panel row ---------- --}}
-<div class="dash-row3">
+{{-- ---------- Panel row ---------- --}}
+{{-- Employees get the credit summary only: the leave-type breakdown and the
+     days-taken graph were noise on a personal dashboard. Administrators keep
+     all three. --}}
+<div class="dash-row3 {{ $isEmployee ? 'dash-row1' : '' }}">
+    @unless ($isEmployee)
     {{-- 1. Breakdown by leave type --}}
     <div class="dash-frame">
         <div class="dash-head">
@@ -169,6 +158,7 @@
             @endif
         </div>
     </div>
+    @endunless
 
     {{-- 3. Credit summary --}}
     <div class="dash-frame">

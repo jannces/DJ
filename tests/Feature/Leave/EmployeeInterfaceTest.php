@@ -130,13 +130,58 @@ class EmployeeInterfaceTest extends TestCase
 
         $this->asEmployee()->get('/dashboard')
             ->assertOk()
-            // Balance leads the KPI strip.
-            ->assertSee('Vacation Leave')
-            ->assertSee('13.00')
-            // Credit summary panel and the history table below it.
+            // Balances now surface through the credit summary and the ledger,
+            // not as leave-type KPI cards.
             ->assertSee('Credit summary')
+            ->assertSee('13.00')
             ->assertSee('Credit history')
             ->assertSee('Approved Vacation Leave (LV-TEST-1)');
+    }
+
+    public function test_employee_dashboard_shows_application_state_counters(): void
+    {
+        $vl = LeaveType::where('code', 'VL')->first();
+        foreach (['pending', 'approved', 'rejected'] as $status) {
+            \App\Models\LeaveRequest::factory()->create([
+                'user_id' => $this->employee->id,
+                'leave_type_id' => $vl->id,
+                'status' => $status,
+            ]);
+        }
+
+        $this->asEmployee()->get('/dashboard')
+            ->assertOk()
+            // Counters describe the employee's own applications...
+            ->assertSee('Pending')
+            ->assertSee('Approved')
+            ->assertSee('Rejected')
+            ->assertSee('Days taken')
+            // ...not their leave-type balances.
+            ->assertDontSee('credits used');
+    }
+
+    public function test_employee_dashboard_draws_no_charts(): void
+    {
+        $html = $this->asEmployee()->get('/dashboard')->assertOk()->getContent();
+
+        // The trend chart, the leave-type donut and the days-taken sparkline are
+        // an administrator view; a personal dashboard shows records, not graphs.
+        foreach (['chartMain', 'chartMix', 'chartSpark', 'Leave type breakdown'] as $absent) {
+            $this->assertStringNotContainsString($absent, $html);
+        }
+
+        // The credit summary stays.
+        $this->assertStringContainsString('Credit summary', $html);
+    }
+
+    public function test_notifications_appear_once_in_the_top_bar(): void
+    {
+        $html = $this->asEmployee()->get('/dashboard')->assertOk()->getContent();
+
+        // The bell icon remains the single entry point...
+        $this->assertStringContainsString('aria-label="Notifications"', $html);
+        // ...and the profile-menu duplicate is gone.
+        $this->assertStringNotContainsString('me-2"></i>Notifications', $html);
     }
 
     public function test_dashboard_never_shows_another_employees_credit_history(): void
@@ -360,8 +405,8 @@ class EmployeeInterfaceTest extends TestCase
     {
         $html = $this->asEmployee()->get('/dashboard')->assertOk()->getContent();
 
-        // Assert against the SIDEBAR only. Change password and Notifications are
-        // deliberately still reachable from the top-bar profile menu, so testing
+        // Assert against the SIDEBAR only. Change password stays in the top-bar
+        // profile menu and Notifications has its own bell icon there, so testing
         // the whole page would contradict the design.
         $sidebar = substr(
             $html,
