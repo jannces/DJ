@@ -91,8 +91,9 @@ Seeded Super Admin: `superadmin@alicia.gov.ph` (password printed by seeder / see
 - `php artisan lms:backup` → timestamped `storage/app/backups/lms_YYYYmmdd_HHMMSS.zip`
   (DB dump via mysqldump if available, else PHP fallback dump + uploaded documents).
 - Scheduled daily at 01:00. Copy backups off-host.
-- Restore: `php artisan lms:restore <zip>` (interactive confirmation) or manual: import SQL
-  dump, unzip `storage/app/private` files back.
+- Restore is manual — there is no `lms:restore` command. Unzip the archive, import the
+  `db_*.sql` dump (phpMyAdmin → *Import*, or `mysql -u root lms_alicia < db_*.sql`), then
+  copy the `documents/` folder back to `storage/app/private/leave-documents`.
 
 ## 7. Hardening checklist
 - [ ] `APP_DEBUG=false`, unique `APP_KEY`

@@ -188,14 +188,73 @@ php artisan db:seed --class=DemoDataSeeder
 
 ### Useful commands
 ```
-php artisan test            # run the automated tests (should say "47 passed")
+php artisan test            # run the automated tests (49 tests)
 php artisan lms:backup      # make a backup zip in storage/app/backups
 php artisan leave:accrue    # add this month's 1.25 VL + 1.25 SL credits to everyone
 ```
 
 ---
 
-## Part H — Running it for the whole office (real LAN deployment)
+## Part H — Getting the latest updates onto your PC
+
+When someone changes the code on GitHub, your PC does **not** update by itself. You pull
+the changes down when you want them.
+
+### The easy way — double-click `update.bat`
+
+`update.bat` sits in the project folder next to `artisan`. Double-click it and it will:
+
+| Step | What it does | Why |
+|------|--------------|-----|
+| 1 | Backs up your database | So you can go back if an update goes wrong |
+| 2 | Downloads the newest code (`git pull`) | Brings in the changes |
+| 3 | Installs new PHP libraries (`composer install`) | In case an update needs a new library |
+| 4 | Applies database changes (`php artisan migrate`) | Adds new tables or columns |
+| 5 | Checks the storage link | Keeps uploaded documents reachable |
+| 6 | Clears the caches | So the new code and pages actually show |
+
+It stops safely at the first sign of trouble and tells you what happened. At the end it
+prints the list of changes you just received.
+
+To update from a branch other than `main`:
+```
+update.bat name-of-branch
+```
+
+### Things worth knowing
+
+- **Your settings are safe.** `.env` holds your database password and configuration. Git
+  never touches it, so an update cannot overwrite it.
+- **Your data is safe.** Updates change *code*, not your leave records. Migrations only
+  add or alter table structure, and you get a backup first.
+- **If you edited files yourself**, the script refuses to run rather than overwrite your
+  work. Commit your changes, or undo them with `git checkout .`, then run it again.
+- **No `npm` needed.** The stylesheet and JavaScript are committed to the repository, so
+  `git pull` brings the design along with the code.
+- **Only run it when nobody is using the system**, because step 4 changes the database.
+
+### The manual way
+
+If you prefer typing commands, `update.bat` is just this sequence:
+```
+php artisan lms:backup
+git pull origin main
+composer install
+php artisan migrate --force
+php artisan optimize:clear
+```
+
+### If an update breaks something
+```
+git log --oneline -5          # see what you just received
+git checkout <older-commit>   # temporarily go back to an earlier version
+```
+Your backup zip is in `storage\app\backups`. To restore it: unzip it, open phpMyAdmin,
+select the `lms_alicia` database, go to **Import**, and choose the `.sql` file inside.
+
+---
+
+## Part I — Running it for the whole office (real LAN deployment)
 
 When you're ready to let other office computers use it over the network with proper
 HTTPS and Apache (not `php artisan serve`), follow **`docs/Deployment.md`** — it has the
