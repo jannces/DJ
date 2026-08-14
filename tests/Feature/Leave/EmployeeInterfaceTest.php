@@ -130,9 +130,13 @@ class EmployeeInterfaceTest extends TestCase
 
         $this->asEmployee()->get('/dashboard')
             ->assertOk()
-            ->assertSee('My Leave Balances')
-            ->assertSee('Credit History')
+            // Balance leads as a section card, with its earned/used context.
+            ->assertSee('Vacation Leave balance')
             ->assertSee('13.00')
+            ->assertSee('Earned 15.00')
+            ->assertSee('Used 2.00')
+            // Credit history panel below.
+            ->assertSee('Credit history')
             ->assertSee('Approved Vacation Leave (LV-TEST-1)');
     }
 

@@ -610,3 +610,85 @@ footer.app-foot{ text-align:center; color:var(--muted-2); font-size:.76rem; padd
   border-left:3px solid var(--danger); background:var(--danger-bg);
   padding:5px 8px; margin:0 0 7px; font-size:11px; color:var(--danger);
 }
+
+/* ============================================================================
+   DASHBOARD — section cards
+   Rebuilt to match the shadcn "dashboard" block language in plain Blade + CSS:
+   neutral surfaces, 1px borders instead of shadows, a small outline badge for
+   the trend, a large tabular-numeral figure, and a two-line footer that gives
+   the number context. No React, no new dependencies, works offline.
+   ========================================================================== */
+.sec-grid{
+  display:grid; gap:1rem; margin-bottom:1.5rem;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+}
+@media (max-width:1200px){ .sec-grid{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:640px){ .sec-grid{ grid-template-columns:minmax(0,1fr); } }
+
+.sec-card{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:.75rem; padding:1.15rem 1.25rem;
+  display:flex; flex-direction:column; gap:.4rem; min-width:0;
+}
+.sec-card-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:.5rem; }
+.sec-label{
+  font-size:.8125rem; color:var(--muted); font-weight:500; letter-spacing:.01em;
+}
+.sec-value{
+  font-size:1.875rem; font-weight:600; line-height:1.15; letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums; color:var(--text);
+}
+@media (min-width:1400px){ .sec-value{ font-size:2.125rem; } }
+
+/* Small outline badge, top-right — the block's trend chip. */
+.sec-badge{
+  display:inline-flex; align-items:center; gap:.25rem; flex:none;
+  border:1px solid var(--border); border-radius:var(--r-full);
+  padding:.15rem .5rem; font-size:.72rem; font-weight:500; color:var(--text-2);
+  background:var(--surface);
+}
+.sec-badge i{ font-size:.7rem; }
+.sec-badge.is-up{ color:var(--success); border-color:color-mix(in srgb,var(--success) 35%,var(--border)); }
+.sec-badge.is-down{ color:var(--danger); border-color:color-mix(in srgb,var(--danger) 35%,var(--border)); }
+
+.sec-foot{ margin-top:.35rem; display:flex; flex-direction:column; gap:.15rem; }
+.sec-foot-main{
+  font-size:.8125rem; font-weight:500; color:var(--text);
+  display:flex; align-items:center; gap:.35rem;
+}
+.sec-foot-sub{ font-size:.78rem; color:var(--muted); }
+
+/* Panels below the cards share the same restrained frame. */
+.panel{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:.75rem; overflow:hidden; margin-bottom:1.5rem;
+}
+.panel-head{
+  padding:1.05rem 1.25rem; border-bottom:1px solid var(--border);
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.5rem;
+}
+.panel-title{ font-size:.95rem; font-weight:600; margin:0; }
+.panel-sub{ font-size:.8rem; color:var(--muted); margin:.1rem 0 0; }
+.panel-body{ padding:1.25rem; }
+
+/* Table treatment: rules only, muted header, tabular figures. */
+.panel .table{ margin:0; }
+.panel .table > thead > tr > th{
+  background:transparent; border-bottom:1px solid var(--border);
+  font-size:.75rem; font-weight:500; color:var(--muted);
+  text-transform:none; letter-spacing:.01em; padding:.7rem 1.25rem;
+}
+.panel .table > tbody > tr > td{
+  border-bottom:1px solid var(--border); padding:.75rem 1.25rem;
+  font-size:.85rem; vertical-align:middle;
+}
+.panel .table > tbody > tr:last-child > td{ border-bottom:0; }
+.panel .table .num{ font-variant-numeric:tabular-nums; }
+
+/* Quiet status pill, matching the card badges. */
+.pill{
+  display:inline-flex; align-items:center; gap:.3rem;
+  border:1px solid var(--border); border-radius:var(--r-full);
+  padding:.1rem .5rem; font-size:.73rem; font-weight:500; color:var(--text-2);
+}
+.pill-dot{ width:.4rem; height:.4rem; border-radius:50%; background:currentColor; }
