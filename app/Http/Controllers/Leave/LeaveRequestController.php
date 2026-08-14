@@ -100,8 +100,12 @@ class LeaveRequestController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        // 6.A is a checkbox list on the official form, so it posts an array. The
+        // employee can tick and untick freely; the rule that exactly one type may
+        // be claimed is enforced here rather than by making a control unclearable.
         $data = $request->validate([
-            'leave_type_id' => ['required', 'exists:leave_types,id'],
+            'leave_type_id' => ['required', 'array', 'size:1'],
+            'leave_type_id.*' => ['required', 'integer', 'exists:leave_types,id'],
             'date_filed' => ['required', 'date'],
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
@@ -111,7 +115,12 @@ class LeaveRequestController extends Controller
             'applicant_signature' => ['required', 'string', 'max:150'],
             'details' => ['array'],
             'documents.*' => ['file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+        ], [
+            'leave_type_id.required' => 'Tick the type of leave you are applying for in section 6.A.',
+            'leave_type_id.size' => 'Tick exactly one type of leave in section 6.A.',
         ]);
+
+        $data['leave_type_id'] = (int) $data['leave_type_id'][0];
 
         // The CSC Form 6 layout prints every "In case of…" block at once, so the
         // browser posts a blank for each field the chosen leave type does not use.
@@ -149,6 +158,38 @@ class LeaveRequestController extends Controller
     // balances() was removed together with the `leave/balances` route and view.
     // The employee dashboard now renders the same LeaveBalance and LeaveHistory
     // records (see App\Services\DashboardService::forUser).
+
+    /**
+     * Read-only preview of the completed CSC Form 6 before downloading it.
+     * Employee-facing: an applicant sees their own submitted form exactly as it
+     * will be printed, then chooses to download.
+     */
+    public function previewForm(Request $request, LeaveRequest $leaveRequest): View
+    {
+        $this->authorizeView($request, $leaveRequest);
+        $leaveRequest->load('leaveType', 'user.employeeProfile.department', 'user.employeeProfile.position', 'approvals.approver');
+
+        return view('leave.preview-form', [
+            'r' => $leaveRequest,
+            'types' => LeaveType::active()->get(),
+            'vl' => $this->balanceForUser($leaveRequest, 'VL'),
+            'sl' => $this->balanceForUser($leaveRequest, 'SL'),
+        ]);
+    }
+
+    /**
+     * Employee-facing approval timeline: submitted → pending → decided.
+     * This is a tracking view for the applicant, not an approver tool — the
+     * approval queue deliberately has no timeline. Ownership is enforced by
+     * authorizeView(), never taken from the URL.
+     */
+    public function timeline(Request $request, LeaveRequest $leaveRequest): View
+    {
+        $this->authorizeView($request, $leaveRequest);
+        $leaveRequest->load('leaveType', 'approvals.approver.roles');
+
+        return view('leave.timeline', ['r' => $leaveRequest]);
+    }
 
     public function cancel(Request $request, LeaveRequest $leaveRequest): RedirectResponse
     {

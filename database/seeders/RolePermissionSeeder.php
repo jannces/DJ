@@ -82,6 +82,11 @@ class RolePermissionSeeder extends Seeder
             'description' => 'Final approving authority for leave applications.',
         ]);
 
+        $viceMayor = Role::updateOrCreate(['slug' => 'vice-mayor'], [
+            'name' => 'Municipal Vice Mayor', 'is_system' => true, 'parent_id' => $employee->id,
+            'description' => 'Authorized approving officer for leave applications.',
+        ]);
+
         $sysAdmin = Role::updateOrCreate(['slug' => 'system-admin'], [
             'name' => 'System Administrator', 'is_system' => true,
             'description' => 'Operates users, devices, security monitoring and settings.',
@@ -100,14 +105,20 @@ class RolePermissionSeeder extends Seeder
         $grant($employee, [
             'dashboard.view', 'leave.apply', 'leave.view-own', 'leave.cancel',
         ]);
-        $grant($deptHead, ['leave.review.department']); // + inherited employee perms
+        // Department Head is no longer part of the leave approval workflow.
+        // The role is kept for organisational structure; it simply holds the
+        // inherited Employee permissions and no approval authority.
+        $grant($deptHead, []);
         $grant($hr, [
             'employees.view', 'employees.manage', 'employees.view-salary',
             'departments.manage', 'positions.manage', 'holidays.manage',
             'leave.requests.view-all', 'leave.balances.manage', 'leave-types.manage',
-            'leave.certify.hr', 'reports.generate',
+            'leave.certify.hr', 'leave.approve.final', 'reports.generate',
         ]);
+        // Mayor, Vice Mayor and HR are the three authorized approvers. Any ONE
+        // of them can decide an application — see ApprovalWorkflowService.
         $grant($mayor, ['leave.approve.final', 'leave.requests.view-all']);
+        $grant($viceMayor, ['leave.approve.final', 'leave.requests.view-all']);
         $grant($sysAdmin, [
             'dashboard.view', 'users.manage', 'users.block', 'users.reset-password',
             'users.assign-roles', 'users.history', 'rbac.manage', 'settings.manage',

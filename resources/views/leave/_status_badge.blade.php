@@ -1,10 +1,10 @@
 @php
 $map = [
-  'pending'=>'secondary','dept_review'=>'info','hr_review'=>'primary','final_review'=>'warning',
+  'pending'=>'info','dept_review'=>'info','hr_review'=>'info','final_review'=>'info',
   'approved'=>'success','rejected'=>'danger','returned'=>'warning','cancelled'=>'dark',
 ];
 $labels = [
-  'pending'=>'Pending','dept_review'=>'Dept. Review','hr_review'=>'HR Review','final_review'=>'Final Review',
+  'pending'=>'Pending Approval','dept_review'=>'Pending Approval','hr_review'=>'Pending Approval','final_review'=>'Pending Approval',
   'approved'=>'Approved','rejected'=>'Disapproved','returned'=>'Returned','cancelled'=>'Cancelled',
 ];
 @endphp

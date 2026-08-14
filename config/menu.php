@@ -12,10 +12,13 @@ return [
     ['label' => 'My Leave Requests', 'icon' => 'bi-card-checklist', 'route' => 'leave.index', 'permission' => 'leave.view-own'],
     // "My Balances" was removed: leave credits and credit history now live on the
     // employee dashboard (single location, one query path — see DashboardService).
-    ['label' => 'Department Reviews', 'icon' => 'bi-people', 'route' => 'review.department.index', 'permission' => 'leave.review.department'],
-    ['label' => 'HR Validation', 'icon' => 'bi-clipboard-check', 'route' => 'review.hr.index', 'permission' => 'leave.certify.hr'],
-    ['label' => 'Final Approval', 'icon' => 'bi-award', 'route' => 'review.final.index', 'permission' => 'leave.approve.final'],
+    // One approval queue shared by Mayor, Vice Mayor and HR. Department Head is
+    // no longer an approver, so it has no review entry.
+    ['label' => 'Leave Approvals', 'icon' => 'bi-clipboard-check', 'route' => 'review.index', 'permission' => 'leave.approve.final'],
     ['label' => 'All Leave Requests', 'icon' => 'bi-collection', 'route' => 'leave.all', 'permission' => 'leave.requests.view-all'],
+
+    ['heading' => 'Information'],
+    ['label' => 'Instructions and Requirements', 'icon' => 'bi-info-circle', 'route' => 'leave.instructions', 'permission' => 'leave.view-own'],
 
     ['heading' => 'HR Management'],
     ['label' => 'Employees', 'icon' => 'bi-person-badge', 'route' => 'employees.index', 'permission' => 'employees.view'],

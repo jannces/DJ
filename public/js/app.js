@@ -138,3 +138,49 @@
     }
   });
 })();
+
+/* ---------------------------------------------------------------------------
+   CSC form zoom — the one place this project needs JavaScript for the leave
+   form. It is display-only: it applies a CSS transform to the sheet and sizes
+   the scroll area so the page layout cannot be pushed out of shape. No form
+   value is read or written, and printing ignores it entirely (print CSS resets
+   the transform). Isolated, no dependencies, ~30 lines.
+   ------------------------------------------------------------------------ */
+(function () {
+  'use strict';
+  const STEPS = [50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 175, 200];
+  const DEFAULT = STEPS.indexOf(100);
+
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[data-csc-zoom]').forEach(function (controls) {
+      const viewport = document.querySelector('[data-csc-viewport]');
+      const sheet = viewport && viewport.querySelector('[data-csc-scale]');
+      if (!sheet) return;
+
+      let index = DEFAULT;
+
+      function apply() {
+        const scale = STEPS[index] / 100;
+        sheet.style.transform = 'scale(' + scale + ')';
+        // Reserve the scaled footprint so the viewport scrolls instead of
+        // letting the sheet overflow the page.
+        sheet.style.width = (100 / scale) + '%';
+        viewport.style.height = scale > 1 ? '75vh' : '';
+        const label = controls.querySelector('[data-zoom-level]');
+        if (label) label.textContent = STEPS[index] + '%';
+      }
+
+      controls.addEventListener('click', function (event) {
+        const button = event.target.closest('[data-zoom]');
+        if (!button) return;
+        const action = button.dataset.zoom;
+        if (action === 'in') index = Math.min(index + 1, STEPS.length - 1);
+        else if (action === 'out') index = Math.max(index - 1, 0);
+        else if (action === 'reset') index = DEFAULT;
+        apply();
+      });
+
+      apply();
+    });
+  });
+})();

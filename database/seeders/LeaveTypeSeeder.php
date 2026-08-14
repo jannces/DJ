@@ -14,8 +14,10 @@ class LeaveTypeSeeder extends Seeder
 {
     public function run(): void
     {
-        $standardFlow = ['department_head', 'hr', 'mayor'];
-        $hrMayorFlow = ['hr', 'mayor'];
+        // Single-step approval: any ONE of Mayor / Vice Mayor / HR decides.
+        // Both names are kept so the per-type entries below stay readable.
+        $standardFlow = ['authorized'];
+        $hrMayorFlow = ['authorized'];
 
         $types = [
             [

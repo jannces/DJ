@@ -12,25 +12,27 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Drives the CSC Form 6 approval chain:
- * Department Head → HR (certify) → Mayor (final) → auto balance deduction.
- * Each step maps to a role slug and a permission; actions are recorded as
- * immutable Approval rows with a digital signature snapshot.
+ * Single-step leave approval.
+ *
+ *     Employee → Pending → ANY ONE of Mayor / Vice Mayor / HR → Approved|Rejected
+ *
+ * There is no Department Head step and no sequential chain: whichever authorized
+ * officer acts first decides the application, and the decision is final. The step
+ * is stored as the role-neutral slug "authorized" and gated by a single
+ * permission, so adding another approving role is an RBAC grant rather than a
+ * code change.
+ *
+ * Every action is recorded as an immutable Approval row carrying the approver,
+ * the timestamp and a signature snapshot, which is what the employee-facing
+ * approval timeline reads.
  */
 class ApprovalWorkflowService
 {
-    /** Role slug ⇒ permission that authorizes acting on that step. */
-    private const STEP_PERMISSION = [
-        'department_head' => 'leave.review.department',
-        'hr' => 'leave.certify.hr',
-        'mayor' => 'leave.approve.final',
-    ];
+    /** The only step in the workflow. */
+    public const STEP = 'authorized';
 
-    private const STEP_STATUS = [
-        'department_head' => LeaveRequest::STATUS_DEPT_REVIEW,
-        'hr' => LeaveRequest::STATUS_HR_REVIEW,
-        'mayor' => LeaveRequest::STATUS_FINAL_REVIEW,
-    ];
+    /** Permission that authorizes deciding an application. */
+    public const STEP_PERMISSION = 'leave.approve.final';
 
     public function __construct(
         private readonly LeaveCreditService $credits,
@@ -38,23 +40,19 @@ class ApprovalWorkflowService
     ) {
     }
 
-    /** Create the pending approval rows and move the request to the first step. */
+    /** Create the single pending decision and put the request in the queue. */
     public function initialize(LeaveRequest $request, LeaveType $type): void
     {
-        $steps = $type->workflowSteps();
-        foreach ($steps as $index => $roleSlug) {
-            Approval::create([
-                'leave_request_id' => $request->id,
-                'step_no' => $index,
-                'role_slug' => $roleSlug,
-                'action' => Approval::ACTION_PENDING,
-            ]);
-        }
+        Approval::create([
+            'leave_request_id' => $request->id,
+            'step_no' => 0,
+            'role_slug' => self::STEP,
+            'action' => Approval::ACTION_PENDING,
+        ]);
 
-        $first = $steps[0] ?? 'hr';
         $request->update([
             'current_step' => 0,
-            'status' => self::STEP_STATUS[$first] ?? LeaveRequest::STATUS_PENDING,
+            'status' => LeaveRequest::STATUS_PENDING,
         ]);
 
         $request->user->notify(new LeaveStatusNotification($request, 'submitted'));
@@ -62,7 +60,7 @@ class ApprovalWorkflowService
 
     public function permissionForStep(string $roleSlug): ?string
     {
-        return self::STEP_PERMISSION[$roleSlug] ?? null;
+        return self::STEP_PERMISSION;
     }
 
     public function currentApproval(LeaveRequest $request): ?Approval
@@ -70,37 +68,55 @@ class ApprovalWorkflowService
         return $request->approvals()->where('step_no', $request->current_step)->first();
     }
 
+    /** Any of Mayor, Vice Mayor or HR may decide — whoever holds the permission. */
+    public function canDecide(User $user): bool
+    {
+        return $user->hasPermission(self::STEP_PERMISSION);
+    }
+
     /**
-     * Apply a decision at the current step.
+     * Record a decision. The first authorized officer to act settles the
+     * application; later attempts are refused so two approvers cannot disagree.
      *
      * @param  string  $action  approved|rejected|returned
      * @param  array   $extra   comments, days_with_pay/without_pay, certified_balances, signature
      */
     public function act(LeaveRequest $request, User $actor, string $action, array $extra = []): LeaveRequest
     {
+        // Already approved, rejected or cancelled? Nothing may change it.
+        if ($request->isFinal()) {
+            throw ValidationException::withMessages([
+                'status' => 'This application has already been decided and can no longer be changed.',
+            ]);
+        }
+
         $approval = $this->currentApproval($request);
         if (! $approval || $approval->action !== Approval::ACTION_PENDING) {
-            throw ValidationException::withMessages(['status' => 'There is no pending step to act on.']);
+            throw ValidationException::withMessages(['status' => 'There is no pending decision to act on.']);
         }
 
-        $permission = $this->permissionForStep($approval->role_slug);
-        if ($permission && ! $actor->hasPermission($permission)) {
-            throw ValidationException::withMessages(['status' => 'You are not authorized to act on this step.']);
+        if (! $this->canDecide($actor)) {
+            throw ValidationException::withMessages(['status' => 'You are not authorized to decide leave applications.']);
         }
 
-        // Department Heads may only act on their own department's requests.
-        if ($approval->role_slug === 'department_head'
-            && ! $actor->hasPermission('leave.requests.view-all')
-            && $request->user->employeeProfile?->department_id !== $actor->employeeProfile?->department_id) {
-            throw ValidationException::withMessages(['status' => 'This request is outside your department.']);
+        // An employee may never decide their own application, whatever else they hold.
+        if ($request->user_id === $actor->id) {
+            throw ValidationException::withMessages(['status' => 'You cannot decide your own leave application.']);
         }
 
         return DB::transaction(function () use ($request, $actor, $action, $extra, $approval) {
-            $isFinalStep = $approval->step_no === $request->approvals()->max('step_no');
+            // Re-read under the transaction so two officers acting at the same
+            // moment cannot both pass the pending check above.
+            $locked = Approval::whereKey($approval->id)->lockForUpdate()->first();
+            if (! $locked || $locked->action !== Approval::ACTION_PENDING) {
+                throw ValidationException::withMessages([
+                    'status' => 'Another authorized officer has just decided this application.',
+                ]);
+            }
 
-            $approval->update([
+            $locked->update([
                 'approver_id' => $actor->id,
-                'action' => $this->normalizeAction($action, $approval->role_slug),
+                'action' => $this->normalizeAction($action),
                 'comments' => $extra['comments'] ?? null,
                 'days_with_pay' => $extra['days_with_pay'] ?? null,
                 'days_without_pay' => $extra['days_without_pay'] ?? null,
@@ -108,6 +124,15 @@ class ApprovalWorkflowService
                 'signature' => $extra['signature'] ?? $actor->name,
                 'acted_at' => now(),
             ]);
+
+            if ($action === 'returned') {
+                // Sent back to the employee for revision; the step reopens.
+                $locked->update(['action' => Approval::ACTION_PENDING, 'acted_at' => null, 'approver_id' => null]);
+                $request->update(['status' => LeaveRequest::STATUS_RETURNED]);
+                $this->finish($request, $actor, 'returned');
+
+                return $request;
+            }
 
             if ($action === 'rejected') {
                 $request->update([
@@ -120,60 +145,32 @@ class ApprovalWorkflowService
                 return $request;
             }
 
-            if ($action === 'returned') {
-                $request->update(['status' => LeaveRequest::STATUS_RETURNED]);
-                // Reopen this step so the employee can revise and it re-enters here.
-                $approval->update(['action' => Approval::ACTION_PENDING, 'acted_at' => null, 'approver_id' => null]);
-                $request->update(['status' => LeaveRequest::STATUS_RETURNED]);
-                $this->finish($request, $actor, 'returned');
-
-                return $request;
-            }
-
-            // Approved / certified: advance to next step or finalize.
-            if ($isFinalStep) {
-                // Final approver sets pay split and grants approval.
-                $request->update([
-                    'status' => LeaveRequest::STATUS_APPROVED,
-                    'days_with_pay' => $extra['days_with_pay'] ?? $request->working_days,
-                    'days_without_pay' => $extra['days_without_pay'] ?? 0,
-                    'decided_at' => now(),
-                ]);
-                // Automatic balance deduction on final approval.
-                $this->credits->deductForApproval($request, $actor);
-                $this->finish($request, $actor, 'approved');
-            } else {
-                $nextStep = $request->current_step + 1;
-                $nextRole = $request->approvals()->where('step_no', $nextStep)->value('role_slug');
-                $request->update([
-                    'current_step' => $nextStep,
-                    'status' => self::STEP_STATUS[$nextRole] ?? LeaveRequest::STATUS_HR_REVIEW,
-                ]);
-                $this->audit->log('leave_step_'.$action, $request, [], ['step' => $approval->role_slug], $actor);
-                $request->user->notify(new LeaveStatusNotification($request, $action, $approval->role_slug));
-            }
+            // Approved — final, with the pay split and the automatic deduction.
+            $request->update([
+                'status' => LeaveRequest::STATUS_APPROVED,
+                'days_with_pay' => $extra['days_with_pay'] ?? $request->working_days,
+                'days_without_pay' => $extra['days_without_pay'] ?? 0,
+                'decided_at' => now(),
+            ]);
+            $this->credits->deductForApproval($request, $actor);
+            $this->finish($request, $actor, 'approved');
 
             return $request;
         });
     }
 
-    /** Re-submit a returned request back into the workflow at its current step. */
+    /** Re-submit a returned request. */
     public function resubmit(LeaveRequest $request, User $actor): void
     {
         if ($request->status !== LeaveRequest::STATUS_RETURNED) {
             throw ValidationException::withMessages(['status' => 'Only returned requests can be resubmitted.']);
         }
-        $role = $request->approvals()->where('step_no', $request->current_step)->value('role_slug');
-        $request->update(['status' => self::STEP_STATUS[$role] ?? LeaveRequest::STATUS_PENDING]);
+        $request->update(['status' => LeaveRequest::STATUS_PENDING]);
         $this->audit->log('leave_resubmitted', $request, [], [], $actor);
     }
 
-    private function normalizeAction(string $action, string $roleSlug): string
+    private function normalizeAction(string $action): string
     {
-        if ($action === 'approved' && $roleSlug === 'hr') {
-            return Approval::ACTION_CERTIFIED;
-        }
-
         return match ($action) {
             'approved' => Approval::ACTION_APPROVED,
             'rejected' => Approval::ACTION_REJECTED,

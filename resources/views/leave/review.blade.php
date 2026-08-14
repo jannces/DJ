@@ -1,7 +1,13 @@
 @extends('layouts.app')
 @section('title', $title)
 @section('content')
-<h1 class="h4 mb-3">{{ $title }}</h1>
+<div class="page-head">
+    <h1>{{ $title }}</h1>
+    <div class="sub">
+        Any one of the Municipal Mayor, the Vice Mayor or the HR Office may decide an
+        application. The first decision is final.
+    </div>
+</div>
 <div class="card">
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
@@ -43,19 +49,17 @@
                     <div class="mb-2">
                         <label class="form-label">Decision</label>
                         <select name="action" class="form-select" required>
-                            <option value="approved">{{ $queue==='department' ? 'Recommend approval' : ($queue==='hr' ? 'Certify & endorse' : 'Approve (final)') }}</option>
+                            <option value="approved">Approve</option>
                             <option value="returned">Return for revision</option>
-                            <option value="rejected">{{ $queue==='department' ? 'Recommend disapproval' : 'Disapprove' }}</option>
+                            <option value="rejected">Disapprove</option>
                         </select>
                     </div>
-                    @if ($queue === 'final')
                         <div class="row g-2 mb-2">
                             <div class="col"><label class="form-label small">Days with pay</label>
                                 <input type="number" step="0.5" name="days_with_pay" class="form-control" value="{{ $r->working_days }}"></div>
                             <div class="col"><label class="form-label small">Days without pay</label>
                                 <input type="number" step="0.5" name="days_without_pay" class="form-control" value="0"></div>
                         </div>
-                    @endif
                     <div class="mb-2"><label class="form-label">Comments / remarks</label>
                         <textarea name="comments" class="form-control" rows="2"></textarea></div>
                     <div class="mb-0"><label class="form-label">Signature (type your name)</label>

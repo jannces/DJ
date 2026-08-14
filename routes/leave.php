@@ -4,6 +4,11 @@ use Illuminate\Support\Facades\Route;
 
 // Phase 6 populates these controllers; routes are declared here so the
 // permission-driven menu and tests can resolve their names.
+// Reference page: the CSC Form 6 instructions, available to anyone who can file.
+Route::middleware('permission:leave.view-own')->group(function () {
+    Route::view('leave-instructions', 'leave.instructions')->name('leave.instructions');
+});
+
 Route::middleware('permission:leave.apply')->group(function () {
     Route::get('leave/apply', [\App\Http\Controllers\Leave\LeaveRequestController::class, 'create'])->name('leave.create');
     Route::post('leave', [\App\Http\Controllers\Leave\LeaveRequestController::class, 'store'])->name('leave.store');
@@ -15,6 +20,10 @@ Route::middleware('permission:leave.view-own')->group(function () {
     // the dashboard instead, from the same LeaveBalance/LeaveHistory queries.
     Route::get('leave/{leaveRequest}', [\App\Http\Controllers\Leave\LeaveRequestController::class, 'show'])->name('leave.show');
     Route::get('leave/{leaveRequest}/form6', [\App\Http\Controllers\Leave\LeaveRequestController::class, 'form6'])->name('leave.form6');
+    // Read-only filled form preview, then download. Ownership is checked in the
+    // controller — never trusted from the URL.
+    Route::get('leave/{leaveRequest}/preview', [\App\Http\Controllers\Leave\LeaveRequestController::class, 'previewForm'])->name('leave.preview-form');
+    Route::get('leave/{leaveRequest}/timeline', [\App\Http\Controllers\Leave\LeaveRequestController::class, 'timeline'])->name('leave.timeline');
     Route::post('leave/{leaveRequest}/documents', [\App\Http\Controllers\Leave\LeaveRequestController::class, 'uploadDocument'])->name('leave.documents.store');
     Route::get('leave/documents/{document}', [\App\Http\Controllers\Leave\LeaveRequestController::class, 'downloadDocument'])->name('leave.documents.download');
 });
@@ -25,17 +34,13 @@ Route::middleware('permission:leave.requests.view-all')->group(function () {
     Route::get('all-leave', [\App\Http\Controllers\Leave\LeaveRequestController::class, 'all'])->name('leave.all');
 });
 
-// Review queues
-Route::middleware('permission:leave.review.department')->group(function () {
-    Route::get('review/department', [\App\Http\Controllers\Leave\ApprovalController::class, 'departmentQueue'])->name('review.department.index');
-});
-Route::middleware('permission:leave.certify.hr')->group(function () {
-    Route::get('review/hr', [\App\Http\Controllers\Leave\ApprovalController::class, 'hrQueue'])->name('review.hr.index');
-});
+// Single approval queue — Mayor, Vice Mayor and HR share it, and whichever of
+// them acts first decides the application. Both the queue and the decision are
+// gated by the same permission, enforced server-side.
 Route::middleware('permission:leave.approve.final')->group(function () {
-    Route::get('review/final', [\App\Http\Controllers\Leave\ApprovalController::class, 'finalQueue'])->name('review.final.index');
+    Route::get('review', [\App\Http\Controllers\Leave\ApprovalController::class, 'queue'])->name('review.index');
+    Route::post('review/{leaveRequest}/act', [\App\Http\Controllers\Leave\ApprovalController::class, 'act'])->name('review.act');
 });
-Route::post('review/{leaveRequest}/act', [\App\Http\Controllers\Leave\ApprovalController::class, 'act'])->name('review.act');
 
 // HR management modules
 Route::middleware('permission:employees.view')->group(function () {

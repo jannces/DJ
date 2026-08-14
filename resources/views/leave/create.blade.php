@@ -10,16 +10,19 @@
   • 6.A renders one control per ACTIVE leave type from the database. Nothing is
     hardcoded — the value posted is the real leave_types.id, and an admin-added
     type appears automatically (after the CSC-ordered ones).
-  • 6.A uses radio inputs styled as squares. Only one leave type can be applied
-    for, and the backend accepts a single leave_type_id, so radios are the
-    correct control; the CSS gives them the printed form's box appearance.
+  • 6.A uses real checkboxes, as the printed form does, so every option can be
+    ticked AND unticked. Only one leave type may be claimed per application, and
+    that rule is enforced server-side (`size:1`) rather than by using a control
+    the employee cannot clear. Nothing is pre-ticked on a new application.
   • 6.B renders every "In case of…" block at once, exactly like the paper form.
     That is why this page needs no JavaScript to inject fields per type. The
     policy engine validates only the SELECTED type's required fields, so the
     unrelated blanks are simply ignored.
-  • Section 7 is read-only here. It is filled by the Department Head, HR and the
-    Mayor through the approval workflow; the employee only sees what it will
-    contain. 7.A shows live credit balances from LeaveCreditService.
+  • Section 7 is read-only here. It is filled by whichever authorized officer
+    decides the application — Mayor, Vice Mayor or HR — and the employee only
+    sees what it will contain. 7.A shows live balances from LeaveCreditService.
+  • Zoom is display-only (see js/app.js): it scales the sheet with a CSS
+    transform and never changes a submitted value.
 --}}
 
 @php
@@ -43,11 +46,24 @@
     ];
 @endphp
 
-<div class="d-flex justify-content-between align-items-center mb-3 no-print">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 no-print">
     <h1 class="h4 mb-0">Application for Leave</h1>
-    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
-        <i class="bi bi-printer me-1"></i>Print blank form
-    </button>
+    <div class="d-flex align-items-center gap-2">
+        {{-- Zoom is display-only: it scales the sheet visually and never touches
+             the values that get submitted. --}}
+        <div class="csc-zoom" data-csc-zoom role="group" aria-label="Form zoom">
+            <button type="button" class="icon-btn" data-zoom="out" aria-label="Zoom out"><i class="bi bi-dash-lg"></i></button>
+            <span class="csc-zoom-level" data-zoom-level aria-live="polite">100%</span>
+            <button type="button" class="icon-btn" data-zoom="in" aria-label="Zoom in"><i class="bi bi-plus-lg"></i></button>
+            <button type="button" class="btn btn-sm btn-link px-1" data-zoom="reset">Reset</button>
+        </div>
+        <a href="{{ route('leave.instructions') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-info-circle me-1"></i>Instructions
+        </a>
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+            <i class="bi bi-printer me-1"></i>Print
+        </button>
+    </div>
 </div>
 
 @error('policy')<div class="alert alert-danger no-print">{{ $message }}</div>@enderror
@@ -61,7 +77,8 @@
 <form method="POST" action="{{ route('leave.store') }}" enctype="multipart/form-data" data-no-loader>
     @csrf
 
-    <div class="csc-sheet">
+    <div class="csc-viewport" data-csc-viewport>
+    <div class="csc-sheet csc-sheet-wide" data-csc-scale>
 
         {{-- ============ FORM HEADER ============ --}}
         <div class="csc-formno">
@@ -137,8 +154,8 @@
                     <div class="csc-sub">6.A TYPE OF LEAVE TO BE AVAILED OF</div>
                     @foreach ($types as $t)
                         <label class="csc-check">
-                            <input type="radio" name="leave_type_id" value="{{ $t->id }}"
-                                   @checked((int) old('leave_type_id') === $t->id) required>
+                            <input type="checkbox" name="leave_type_id[]" value="{{ $t->id }}"
+                                   @checked(in_array((string) $t->id, (array) old('leave_type_id', []), true))>
                             <span class="csc-box" aria-hidden="true"></span>
                             <span class="csc-check-text">
                                 {{ $t->name }}
@@ -406,43 +423,46 @@
         </table>
 
         <p class="csc-foot">
-            Section 7 is completed by the Department Head, the HR Office and the Municipal
-            Mayor through the approval workflow. It is shown here for reference only and
-            cannot be filled in by the applicant.
+            Section 7 is completed by the approving officer — any one of the Municipal
+            Mayor, the Vice Mayor or the HR Office. It is shown here for reference only
+            and cannot be filled in by the applicant.
         </p>
-    </div>
 
-    {{-- ============ SUPPORTING DOCUMENTS + SUBMIT (screen only) ============ --}}
-    <div class="card mt-3 no-print">
-        <div class="card-header fw-semibold">Supporting documents</div>
-        <div class="card-body">
-            <p class="small text-muted">
-                Attach what the leave type you selected requires. The requirements for each
-                type are listed on the <strong>Instructions and Requirements</strong> page below.
-            </p>
-            <div class="row g-2">
-                <div class="col-md-6">
-                    <label class="form-label small" for="doc_primary">Primary supporting document</label>
-                    <input id="doc_primary" type="file" name="documents[supporting_document]"
-                           class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png">
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label small" for="doc_medical">Medical certificate (if applicable)</label>
-                    <input id="doc_medical" type="file" name="documents[medical_certificate]"
-                           class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png">
-                </div>
-            </div>
-        </div>
-        <div class="card-footer d-flex justify-content-between align-items-center">
-            <span class="small text-muted">
+        {{-- Supporting documents live INSIDE the sheet so the whole application is
+             one continuous form rather than a separate floating card. Hidden when
+             printing, since a paper form carries its attachments physically. --}}
+        <table class="csc-table no-print">
+            <tr>
+                <td>
+                    <div class="csc-sub">SUPPORTING DOCUMENTS</div>
+                    <div class="csc-inline-note">
+                        Attach what your chosen leave type requires — see
+                        <a href="{{ route('leave.instructions') }}">Instructions and Requirements</a>.
+                    </div>
+                    <div class="csc-grid-2">
+                        <div>
+                            <label class="csc-sublabel" for="doc_primary">Primary supporting document</label>
+                            <input id="doc_primary" type="file" name="documents[supporting_document]"
+                                   class="csc-file" accept=".pdf,.jpg,.jpeg,.png">
+                        </div>
+                        <div>
+                            <label class="csc-sublabel" for="doc_medical">Medical certificate (if applicable)</label>
+                            <input id="doc_medical" type="file" name="documents[medical_certificate]"
+                                   class="csc-file" accept=".pdf,.jpg,.jpeg,.png">
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <div class="csc-submit no-print">
+            <span class="csc-inline-note mb-0">
                 Your credits — Vacation {{ number_format($vlBalance, 2) }} &middot; Sick {{ number_format($slBalance, 2) }}
             </span>
             <button class="btn btn-lgu" type="submit"><i class="bi bi-send me-1"></i>Submit application</button>
         </div>
     </div>
+    </div>
 </form>
-
-{{-- ============ PAGE 2 — INSTRUCTIONS AND REQUIREMENTS ============ --}}
-@include('leave._instructions')
 
 @endsection

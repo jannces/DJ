@@ -15,34 +15,20 @@ class ApprovalController extends Controller
     {
     }
 
-    public function departmentQueue(Request $request): View
+    /**
+     * The single approval queue. Mayor, Vice Mayor and HR all see the same
+     * pending applications — whichever of them acts first decides it.
+     */
+    public function queue(Request $request): View
     {
-        $deptId = $request->user()->employeeProfile?->department_id;
-        $requests = LeaveRequest::with('leaveType', 'user.employeeProfile')
-            ->where('status', LeaveRequest::STATUS_DEPT_REVIEW)
-            ->when(! $request->user()->hasPermission('leave.requests.view-all'),
-                fn ($q) => $q->whereHas('user.employeeProfile', fn ($w) => $w->where('department_id', $deptId)))
+        $requests = LeaveRequest::with('leaveType', 'user.employeeProfile.department')
+            ->whereIn('status', [LeaveRequest::STATUS_PENDING, LeaveRequest::STATUS_RETURNED])
             ->latest()->paginate(15);
 
-        return view('leave.review', ['requests' => $requests, 'queue' => 'department', 'title' => 'Department Reviews']);
-    }
-
-    public function hrQueue(Request $request): View
-    {
-        $requests = LeaveRequest::with('leaveType', 'user.employeeProfile')
-            ->where('status', LeaveRequest::STATUS_HR_REVIEW)
-            ->latest()->paginate(15);
-
-        return view('leave.review', ['requests' => $requests, 'queue' => 'hr', 'title' => 'HR Validation']);
-    }
-
-    public function finalQueue(Request $request): View
-    {
-        $requests = LeaveRequest::with('leaveType', 'user.employeeProfile')
-            ->where('status', LeaveRequest::STATUS_FINAL_REVIEW)
-            ->latest()->paginate(15);
-
-        return view('leave.review', ['requests' => $requests, 'queue' => 'final', 'title' => 'Final Approval']);
+        return view('leave.review', [
+            'requests' => $requests,
+            'title' => 'Leave Approvals',
+        ]);
     }
 
     public function act(Request $request, LeaveRequest $leaveRequest): RedirectResponse
@@ -62,11 +48,9 @@ class ApprovalController extends Controller
             'signature' => $data['signature'] ?? $request->user()->name,
         ];
 
-        // HR certifies the credit snapshot automatically.
-        $approval = $this->workflow->currentApproval($leaveRequest);
-        if ($approval?->role_slug === 'hr') {
-            $extra['certified_balances'] = $this->certification($leaveRequest);
-        }
+        // The deciding officer certifies the credit snapshot at the moment of
+        // the decision, whichever of the three authorized roles they hold.
+        $extra['certified_balances'] = $this->certification($leaveRequest);
 
         $this->workflow->act($leaveRequest, $request->user(), $data['action'], $extra);
 

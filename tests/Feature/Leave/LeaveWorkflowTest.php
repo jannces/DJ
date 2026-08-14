@@ -20,9 +20,9 @@ class LeaveWorkflowTest extends TestCase
     use RefreshDatabase;
 
     private User $employee;
-    private User $head;
     private User $hr;
     private User $mayor;
+    private User $viceMayor;
     private LeaveType $vl;
 
     protected function setUp(): void
@@ -37,14 +37,14 @@ class LeaveWorkflowTest extends TestCase
         EmployeeProfile::factory()->create(['user_id' => $this->employee->id, 'department_id' => $dept->id]);
         LeaveBalance::create(['user_id' => $this->employee->id, 'leave_type_id' => $this->vl->id, 'earned' => 10, 'used' => 0, 'balance' => 10]);
 
-        $this->head = $this->makeUser('department-head');
-        EmployeeProfile::factory()->create(['user_id' => $this->head->id, 'department_id' => $dept->id]);
-
         $this->hr = $this->makeUser('hr');
         EmployeeProfile::factory()->create(['user_id' => $this->hr->id, 'department_id' => $dept->id]);
 
         $this->mayor = $this->makeUser('mayor');
         EmployeeProfile::factory()->create(['user_id' => $this->mayor->id, 'department_id' => $dept->id]);
+
+        $this->viceMayor = $this->makeUser('vice-mayor');
+        EmployeeProfile::factory()->create(['user_id' => $this->viceMayor->id, 'department_id' => $dept->id]);
     }
 
     private function fileRequest(float $expectDays = 3): LeaveRequest
@@ -59,20 +59,15 @@ class LeaveWorkflowTest extends TestCase
         ]);
     }
 
-    public function test_full_approval_chain_deducts_credits_and_notifies(): void
+    public function test_a_single_authorized_approval_deducts_credits_and_notifies(): void
     {
         $request = $this->fileRequest();
         $this->assertSame(3.0, (float) $request->working_days);
-        $this->assertSame(LeaveRequest::STATUS_DEPT_REVIEW, $request->status);
-        $this->assertDatabaseCount('approvals', 3);
+        // One pending decision, not a three-step chain.
+        $this->assertSame(LeaveRequest::STATUS_PENDING, $request->status);
+        $this->assertDatabaseCount('approvals', 1);
 
         $workflow = app(ApprovalWorkflowService::class);
-        $workflow->act($request->fresh(), $this->head, 'approved', ['comments' => 'Recommended']);
-        $this->assertSame(LeaveRequest::STATUS_HR_REVIEW, $request->fresh()->status);
-
-        $workflow->act($request->fresh(), $this->hr, 'approved', ['certified_balances' => ['vacation_balance' => 10]]);
-        $this->assertSame(LeaveRequest::STATUS_FINAL_REVIEW, $request->fresh()->status);
-
         $workflow->act($request->fresh(), $this->mayor, 'approved', ['days_with_pay' => 3, 'days_without_pay' => 0]);
         $approved = $request->fresh();
         $this->assertSame(LeaveRequest::STATUS_APPROVED, $approved->status);
@@ -83,10 +78,10 @@ class LeaveWorkflowTest extends TestCase
         $this->assertNotEmpty($this->employee->fresh()->notifications);
     }
 
-    public function test_department_head_rejection_stops_the_workflow(): void
+    public function test_a_rejection_ends_the_workflow(): void
     {
         $request = $this->fileRequest();
-        app(ApprovalWorkflowService::class)->act($request, $this->head, 'rejected', ['comments' => 'Insufficient staffing']);
+        app(ApprovalWorkflowService::class)->act($request, $this->hr, 'rejected', ['comments' => 'Insufficient staffing']);
 
         $rejected = $request->fresh();
         $this->assertSame(LeaveRequest::STATUS_REJECTED, $rejected->status);
@@ -124,12 +119,8 @@ class LeaveWorkflowTest extends TestCase
         ]);
 
         $wf = app(ApprovalWorkflowService::class);
-        foreach ([$r1, $r2] as $r) {
-            $wf->act($r->fresh(), $this->head, 'approved');
-            $wf->act($r->fresh(), $this->hr, 'approved');
-        }
 
-        // First final approval succeeds.
+        // First approval succeeds.
         $wf->act($r1->fresh(), $this->mayor, 'approved', ['days_with_pay' => 6]);
         $this->assertSame(LeaveRequest::STATUS_APPROVED, $r1->fresh()->status);
 

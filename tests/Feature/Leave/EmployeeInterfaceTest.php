@@ -160,7 +160,8 @@ class EmployeeInterfaceTest extends TestCase
             ->assertSee('APPLICATION FOR LEAVE')
             ->assertSee('6.A TYPE OF LEAVE TO BE AVAILED OF')
             ->assertSee('6.D COMMUTATION')
-            ->assertSee('INSTRUCTIONS AND REQUIREMENTS')
+            // Instructions moved to their own sidebar page.
+            ->assertDontSee('INSTRUCTIONS AND REQUIREMENTS')
             // Types come from the database, not a hardcoded list.
             ->assertSee('Vacation Leave')
             ->assertSee('Special Leave Benefits for Women')
@@ -190,7 +191,7 @@ class EmployeeInterfaceTest extends TestCase
         // The official layout posts every "In case of…" blank; only the filled
         // ones belong in leave_requests.details.
         $this->asEmployee()->post('/leave', [
-            'leave_type_id' => $vl->id,
+            'leave_type_id' => [$vl->id],
             'date_filed' => now()->toDateString(),
             'start_date' => now()->addWeek()->next('Monday')->toDateString(),
             'end_date' => now()->addWeek()->next('Monday')->toDateString(),
@@ -213,6 +214,69 @@ class EmployeeInterfaceTest extends TestCase
         );
     }
 
+    public function test_leave_types_are_uncheckable_checkboxes_not_locked_controls(): void
+    {
+        $response = $this->asEmployee()->get('/leave/apply');
+
+        $response->assertOk();
+        // Real checkboxes, so any option can be cleared again...
+        $response->assertSee('type="checkbox" name="leave_type_id[]"', false);
+        // ...and nothing is pre-ticked on a new application.
+        $response->assertDontSee('name="leave_type_id[]" value="'.LeaveType::where('code', 'VL')->value('id').'" checked', false);
+    }
+
+    public function test_selecting_two_leave_types_is_refused(): void
+    {
+        $vl = LeaveType::where('code', 'VL')->first();
+        $sl = LeaveType::where('code', 'SL')->first();
+
+        $this->asEmployee()->post('/leave', [
+            'leave_type_id' => [$vl->id, $sl->id],
+            'date_filed' => now()->toDateString(),
+            'start_date' => now()->addWeek()->next('Monday')->toDateString(),
+            'end_date' => now()->addWeek()->next('Monday')->toDateString(),
+            'commutation' => '0',
+            'applicant_signature' => $this->employee->name,
+        ])->assertSessionHasErrors('leave_type_id');
+
+        $this->assertDatabaseCount('leave_requests', 0);
+    }
+
+    public function test_submitting_with_no_leave_type_is_refused(): void
+    {
+        $this->asEmployee()->post('/leave', [
+            'date_filed' => now()->toDateString(),
+            'start_date' => now()->addWeek()->next('Monday')->toDateString(),
+            'end_date' => now()->addWeek()->next('Monday')->toDateString(),
+            'commutation' => '0',
+            'applicant_signature' => $this->employee->name,
+        ])->assertSessionHasErrors('leave_type_id');
+    }
+
+    public function test_instructions_page_is_reachable_from_its_own_route(): void
+    {
+        $this->asEmployee()->get('/leave-instructions')
+            ->assertOk()
+            ->assertSee('Instructions and Requirements')
+            ->assertSee('Vacation leave')
+            ->assertSee('Adoption Leave')
+            ->assertSee('Monetization of leave credits');
+    }
+
+    public function test_dashboard_has_no_duplicate_apply_button(): void
+    {
+        $this->asEmployee()->get('/dashboard')
+            ->assertOk()
+            ->assertDontSee('>Apply for Leave<', false);
+    }
+
+    public function test_my_leave_requests_has_no_duplicate_apply_button(): void
+    {
+        $this->asEmployee()->get('/leave')
+            ->assertOk()
+            ->assertDontSee('btn btn-lgu btn-sm', false);
+    }
+
     public function test_an_employee_cannot_file_leave_in_another_employees_name(): void
     {
         $victim = $this->makeUser('employee');
@@ -225,7 +289,7 @@ class EmployeeInterfaceTest extends TestCase
         // user_id is never read from the request — the session owns it.
         $this->asEmployee()->post('/leave', [
             'user_id' => $victim->id,
-            'leave_type_id' => $vl->id,
+            'leave_type_id' => [$vl->id],
             'date_filed' => now()->toDateString(),
             'start_date' => now()->addWeek()->next('Monday')->toDateString(),
             'end_date' => now()->addWeek()->next('Monday')->toDateString(),

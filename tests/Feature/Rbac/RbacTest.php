@@ -28,10 +28,12 @@ class RbacTest extends TestCase
 
     public function test_role_inheritance_grants_parent_permissions(): void
     {
-        // Department Head inherits Employee, so it can apply for leave too.
+        // Department Head inherits Employee, so it can apply for leave itself.
+        // It no longer holds any leave-approval authority (single-step workflow).
         $head = $this->makeUser('department-head');
-        $this->assertTrue($head->hasPermission('leave.review.department'));
         $this->assertTrue($head->hasPermission('leave.apply')); // inherited from Employee
+        $this->assertTrue($head->hasPermission('leave.view-own')); // inherited
+        $this->assertFalse($head->hasPermission('leave.approve.final'));
         $this->assertFalse($head->hasPermission('users.manage'));
     }
 

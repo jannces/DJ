@@ -1,13 +1,36 @@
-{{--
-  Page 2 of CSC Form No. 6 — INSTRUCTIONS AND REQUIREMENTS.
-  Transcribed from the official sheet. Rendered as a real second page: the
-  `csc-page-break` rule forces a page break when printing, so page 1 stays the
-  Application for Leave and page 2 is this notice.
---}}
-<div class="csc-sheet csc-page-break" id="instructions">
-    <div class="csc-instr-title">INSTRUCTIONS AND REQUIREMENTS</div>
+@extends('layouts.app')
+@section('title', 'Instructions and Requirements')
+@section('content')
 
-    <p class="csc-instr-lead">
+{{--
+  Employee reference page (sidebar → Information). This is the CSC Form 6
+  instructions sheet presented as a readable document — deliberately NOT a
+  second copy of the application form, which is why it uses the normal page
+  card styling rather than the .csc-sheet facsimile.
+--}}
+
+<div class="page-head no-print">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div>
+            <h1>Instructions and Requirements</h1>
+            <div class="sub">Civil Service Form No. 6 (Revised 2020) &middot; documentary requirements per leave type</div>
+        </div>
+        <div class="d-flex gap-2">
+            @can('leave.apply')
+                <a href="{{ route('leave.create') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-calendar-plus me-1"></i>Apply for Leave
+                </a>
+            @endcan
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+                <i class="bi bi-printer me-1"></i>Print
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body instr-page">
+<p class="csc-instr-lead">
         Application for any type of leave shall be made on this Form and to be accomplished
         at least in duplicate with documentary requirements, as follows:
     </p>
@@ -176,4 +199,7 @@
         application shall be accompanied by a clearance from money, property and work-related
         accountabilities (pursuant to CSC Memorandum Circular No. 2, s. 1985).
     </p>
+    </div>
 </div>
+
+@endsection

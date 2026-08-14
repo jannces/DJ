@@ -8,9 +8,7 @@
             <h1>Good day, {{ \Illuminate\Support\Str::before(auth()->user()->name, ' ') }} 👋</h1>
             <div class="sub text-capitalize">{{ str_replace('-', ' ', $role) }} workspace &middot; {{ now()->format('l, F j, Y') }}</div>
         </div>
-        @can('leave.apply')
-            <a href="{{ route('leave.create') }}" class="btn btn-lgu"><i class="bi bi-calendar-plus"></i>Apply for Leave</a>
-        @endcan
+        {{-- No "Apply for Leave" button: the sidebar already links to it. --}}
     </div>
 </div>
 
