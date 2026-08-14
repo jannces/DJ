@@ -46,6 +46,12 @@ class DashboardService
             ];
             $data['my_balances'] = LeaveBalance::with('leaveType')->where('user_id', $user->id)->get();
             $data['my_credit_history'] = $user->leaveHistory()->with('leaveType')->latest()->limit(100)->get();
+            $data['my_requests'] = LeaveRequest::with('leaveType')
+                ->where('user_id', $user->id)->latest()->limit(8)->get();
+            $data['my_days_series'] = $this->myDaysByMonth($user);
+            $data['my_type_mix'] = $this->myLeaveByType($user);
+            $data['my_days_taken'] = (float) LeaveRequest::where('user_id', $user->id)
+                ->where('status', 'approved')->sum('working_days');
         }
 
         // Chart series (only computed for roles that render them).
@@ -93,6 +99,49 @@ class DashboardService
         return [
             'labels' => $rows->map(fn ($r) => $r->leaveType?->code ?? '—')->all(),
             'data' => $rows->pluck('total')->all(),
+        ];
+    }
+
+    /** The signed-in employee's own approved leave days, last 6 months. */
+    public function myDaysByMonth(User $user): array
+    {
+        $rows = LeaveRequest::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->where('start_date', '>=', now()->subMonths(5)->startOfMonth())
+            ->get()
+            ->groupBy(fn ($r) => $r->start_date->format('Y-m'));
+
+        $labels = [];
+        $data = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $key = now()->subMonths($i)->format('Y-m');
+            $labels[] = now()->subMonths($i)->format('M');
+            $data[] = (float) ($rows->get($key)?->sum('working_days') ?? 0);
+        }
+
+        return ['labels' => $labels, 'data' => $data];
+    }
+
+    /** The signed-in employee's own approved leave, grouped by leave type. */
+    public function myLeaveByType(User $user): array
+    {
+        $rows = LeaveRequest::with('leaveType:id,code,name')
+            ->where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->get()
+            ->groupBy(fn ($r) => $r->leaveType?->code ?? '—');
+
+        $items = $rows->map(fn ($group, $code) => [
+            'code' => $code,
+            'name' => $group->first()->leaveType?->name ?? $code,
+            'days' => (float) $group->sum('working_days'),
+        ])->sortByDesc('days')->values()->all();
+
+        return [
+            'labels' => array_column($items, 'code'),
+            'data' => array_column($items, 'days'),
+            'items' => $items,
+            'total' => array_sum(array_column($items, 'days')),
         ];
     }
 

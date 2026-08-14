@@ -692,3 +692,136 @@ footer.app-foot{ text-align:center; color:var(--muted-2); font-size:.76rem; padd
   padding:.1rem .5rem; font-size:.73rem; font-weight:500; color:var(--text-2);
 }
 .pill-dot{ width:.4rem; height:.4rem; border-radius:50%; background:currentColor; }
+
+/* ============================================================================
+   DASHBOARD — dashboard-7 layout
+   Connected KPI strip, full-bleed chart, three-panel row and a data table.
+   Near-neutral surfaces with 1px hairlines; colour is reserved for status.
+   Scoped to .dash-* so the rest of the system is untouched.
+   ========================================================================== */
+.dash{ --hair:var(--border); --dash-surface:var(--surface); }
+:root[data-bs-theme="dark"] .dash{
+  --hair:#232323; --dash-surface:#0e0e0e;
+}
+:root[data-bs-theme="dark"] .dash .dash-frame{ background:#0a0a0a; }
+
+.dash-frame{
+  border:1px solid var(--hair); border-radius:.75rem;
+  background:var(--dash-surface); overflow:hidden; margin-bottom:1rem;
+}
+
+/* ---- KPI strip: one connected row divided by hairlines, not separate cards */
+.kpi-strip{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); }
+@media (max-width:1100px){ .kpi-strip{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:560px){ .kpi-strip{ grid-template-columns:minmax(0,1fr); } }
+.kpi{ padding:1rem 1.15rem 1.15rem; border-right:1px solid var(--hair); min-width:0; }
+.kpi:last-child{ border-right:0; }
+@media (max-width:1100px){
+  .kpi:nth-child(2n){ border-right:0; }
+  .kpi:nth-child(-n+2){ border-bottom:1px solid var(--hair); }
+}
+@media (max-width:560px){
+  .kpi{ border-right:0; border-bottom:1px solid var(--hair); }
+  .kpi:last-child{ border-bottom:0; }
+}
+.kpi-label{
+  display:flex; align-items:center; gap:.4rem;
+  font-size:.78rem; color:var(--muted); font-weight:500; margin-bottom:.5rem;
+}
+.kpi-label i{ font-size:.85rem; opacity:.85; }
+.kpi-row{ display:flex; align-items:center; justify-content:space-between; gap:.5rem; }
+.kpi-value{
+  font-size:1.65rem; font-weight:600; letter-spacing:-.02em; line-height:1.1;
+  font-variant-numeric:tabular-nums; color:var(--text);
+}
+.kpi-pill{
+  display:inline-flex; align-items:center; gap:.25rem; flex:none;
+  border-radius:var(--r-full); padding:.15rem .45rem;
+  font-size:.72rem; font-weight:600; font-variant-numeric:tabular-nums;
+}
+.kpi-pill i{ font-size:.7rem; }
+.kpi-up{ color:#16a34a; background:color-mix(in srgb,#16a34a 12%,transparent); }
+.kpi-down{ color:#dc2626; background:color-mix(in srgb,#dc2626 12%,transparent); }
+.kpi-flat{ color:var(--muted); background:color-mix(in srgb,var(--muted) 12%,transparent); }
+
+/* ---- Panels ------------------------------------------------------------- */
+.dash-head{
+  display:flex; align-items:center; justify-content:space-between; gap:.75rem;
+  padding:.85rem 1.15rem; border-bottom:1px solid var(--hair);
+}
+.dash-title{
+  display:flex; align-items:center; gap:.45rem;
+  font-size:.85rem; font-weight:600; margin:0; color:var(--text);
+}
+.dash-title i{ font-size:.9rem; color:var(--muted); }
+.dash-link{
+  font-size:.78rem; color:var(--muted); text-decoration:none; white-space:nowrap;
+}
+.dash-link:hover{ color:var(--text); }
+.dash-body{ padding:1.15rem; }
+
+.dash-row3{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; margin-bottom:1rem; }
+@media (max-width:1200px){ .dash-row3{ grid-template-columns:minmax(0,1fr); } }
+.dash-row3 .dash-frame{ margin-bottom:0; display:flex; flex-direction:column; }
+.dash-row3 .dash-body{ flex:1; }
+
+/* Donut + legend */
+.mix{ display:flex; align-items:center; gap:1.1rem; }
+.mix-chart{ position:relative; width:145px; height:145px; flex:none; }
+.mix-centre{
+  position:absolute; inset:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; text-align:center; pointer-events:none;
+}
+.mix-total{ font-size:1.25rem; font-weight:600; font-variant-numeric:tabular-nums; line-height:1.1; }
+.mix-total-label{ font-size:.68rem; color:var(--muted); }
+.mix-legend{ flex:1; min-width:0; display:flex; flex-direction:column; gap:.15rem; }
+.mix-item{
+  display:flex; align-items:center; justify-content:space-between; gap:.5rem;
+  padding:.3rem 0 .3rem .6rem; border-left:2px solid var(--hair); font-size:.8rem;
+}
+.mix-item .name{ color:var(--text-2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mix-item .val{ font-weight:600; font-variant-numeric:tabular-nums; }
+
+/* Big figure + sparkline */
+.big-figure{ font-size:1.9rem; font-weight:600; letter-spacing:-.02em; line-height:1.1;
+  font-variant-numeric:tabular-nums; }
+.big-sub{ font-size:.78rem; color:var(--muted); margin-top:.15rem; }
+
+/* Stat trio + split bar */
+.trio{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.75rem; }
+.trio-label{ font-size:.72rem; color:var(--muted); margin-bottom:.15rem; }
+.trio-value{ font-size:1.05rem; font-weight:600; font-variant-numeric:tabular-nums; }
+.splitbar{ display:flex; height:.5rem; border-radius:var(--r-full); overflow:hidden; background:var(--hair); margin:.35rem 0 .6rem; }
+.splitbar span{ display:block; height:100%; }
+.split-a{ background:var(--muted-2); }
+.split-b{ background:var(--text); }
+.split-key{ display:flex; gap:1.25rem; }
+.split-key .dot{ width:.5rem; height:.5rem; border-radius:50%; display:inline-block; margin-right:.35rem; }
+
+/* ---- Data table --------------------------------------------------------- */
+.dash-table{ width:100%; margin:0; border-collapse:separate; border-spacing:0; }
+.dash-table th{
+  font-size:.75rem; font-weight:500; color:var(--muted);
+  padding:.7rem 1.15rem; border-bottom:1px solid var(--hair); white-space:nowrap;
+}
+.dash-table td{
+  padding:.8rem 1.15rem; border-bottom:1px solid var(--hair);
+  font-size:.85rem; vertical-align:middle;
+}
+.dash-table tbody tr:last-child td{ border-bottom:0; }
+.dash-table tbody tr:hover{ background:color-mix(in srgb,var(--text) 3%,transparent); }
+.dash-table .num{ font-variant-numeric:tabular-nums; text-align:right; }
+.dash-table .ref{ font-weight:600; }
+
+/* Status pills — the only place colour is used in the table. */
+.st{
+  display:inline-flex; align-items:center; gap:.3rem; border-radius:var(--r-full);
+  padding:.15rem .5rem; font-size:.74rem; font-weight:500; white-space:nowrap;
+}
+.st i{ font-size:.72rem; }
+.st-ok{ color:#16a34a; background:color-mix(in srgb,#16a34a 12%,transparent); }
+.st-wait{ color:#d97706; background:color-mix(in srgb,#d97706 14%,transparent); }
+.st-bad{ color:#dc2626; background:color-mix(in srgb,#dc2626 12%,transparent); }
+.st-off{ color:var(--muted); background:color-mix(in srgb,var(--muted) 14%,transparent); }
+
+.dash-empty{ text-align:center; color:var(--muted); padding:2.5rem 1rem; font-size:.85rem; }
