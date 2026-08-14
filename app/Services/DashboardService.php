@@ -49,8 +49,6 @@ class DashboardService
             $data['my_credit_history'] = $user->leaveHistory()->with('leaveType')->latest()->limit(100)->get();
             $data['my_requests'] = LeaveRequest::with('leaveType')
                 ->where('user_id', $user->id)->latest()->limit(8)->get();
-            $data['my_days_taken'] = (float) LeaveRequest::where('user_id', $user->id)
-                ->where('status', 'approved')->sum('working_days');
         }
 
         // Chart series (only computed for roles that render them).

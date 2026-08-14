@@ -38,9 +38,6 @@
              'hint' => 'applications granted'],
             ['icon' => 'bi-x-circle',        'label' => 'Rejected',   'value' => $cards['my_rejected'] ?? 0,
              'hint' => 'applications disapproved'],
-            ['icon' => 'bi-calendar-check',  'label' => 'Days taken',
-             'value' => rtrim(rtrim(number_format($my_days_taken ?? 0, 1), '0'), '.'),
-             'hint' => 'approved leave days on record'],
         ];
     } else {
         $map = [
@@ -104,7 +101,7 @@
     <div class="dash-frame">
         <div class="dash-head">
             <p class="dash-title"><i class="bi bi-pie-chart"></i>Leave type breakdown</p>
-            @can('leave.view-own')<a href="{{ route('leave.index') }}" class="dash-link">More details &rarr;</a>@endcan
+            <a href="{{ route('leave.all') }}" class="dash-link">More details &rarr;</a>
         </div>
         <div class="dash-body">
             @if (!empty($mix['data']) && array_sum($mix['data']) > 0)
@@ -113,7 +110,7 @@
                         <canvas id="chartMix"></canvas>
                         <div class="mix-centre">
                             <div class="mix-total">{{ rtrim(rtrim(number_format(array_sum($mix['data']), 1), '0'), '.') }}</div>
-                            <div class="mix-total-label">{{ $isEmployee ? 'total days' : 'applications' }}</div>
+                            <div class="mix-total-label">applications</div>
                         </div>
                     </div>
                     <div class="mix-legend">
@@ -140,19 +137,16 @@
         </div>
     </div>
 
-    {{-- 2. Headline figure + sparkline --}}
+    {{-- 2. Headline figure + sparkline. Administrator-only, so no employee
+         branch is needed here. --}}
     <div class="dash-frame">
         <div class="dash-head">
-            <p class="dash-title"><i class="bi bi-calendar-check"></i>{{ $isEmployee ? 'Days taken' : 'Applications filed' }}</p>
-            @can('leave.view-own')<a href="{{ route('leave.index') }}" class="dash-link">View all &rarr;</a>@endcan
+            <p class="dash-title"><i class="bi bi-calendar-check"></i>Applications filed</p>
+            <a href="{{ route('leave.all') }}" class="dash-link">View all &rarr;</a>
         </div>
         <div class="dash-body">
-            <div class="big-figure">
-                {{ $isEmployee
-                    ? rtrim(rtrim(number_format($my_days_taken ?? 0, 1), '0'), '.')
-                    : ($cards['total_requests'] ?? 0) }}
-            </div>
-            <div class="big-sub">{{ $isEmployee ? 'approved leave days on record' : 'applications on record' }}</div>
+            <div class="big-figure">{{ $cards['total_requests'] ?? 0 }}</div>
+            <div class="big-sub">applications on record</div>
             @if (!empty($series))
                 <div style="height:110px;margin-top:.75rem"><canvas id="chartSpark"></canvas></div>
             @endif

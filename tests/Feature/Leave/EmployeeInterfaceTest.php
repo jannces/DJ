@@ -155,7 +155,8 @@ class EmployeeInterfaceTest extends TestCase
             ->assertSee('Pending')
             ->assertSee('Approved')
             ->assertSee('Rejected')
-            ->assertSee('Days taken')
+            // Three counters only — no days-taken card.
+            ->assertDontSee('Days taken')
             // ...not their leave-type balances.
             ->assertDontSee('credits used');
     }

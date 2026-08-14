@@ -1162,9 +1162,10 @@ body{ background:var(--bg); color:var(--text); }
    as four distinct figures rather than one divided band. */
 .kpi-grid{
   display:grid; gap:1rem; margin-bottom:1.25rem;
-  grid-template-columns:repeat(4,minmax(0,1fr));
+  /* auto-fit so three cards (employee) and four (administrator) both fill the
+     row evenly, without a separate rule for each count. */
+  grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));
 }
-@media (max-width:1100px){ .kpi-grid{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:560px){ .kpi-grid{ grid-template-columns:minmax(0,1fr); } }
 
 .kpi-card{
@@ -1177,3 +1178,15 @@ body{ background:var(--bg); color:var(--text); }
 
 /* A single remaining panel should fill the row, not sit in a third of it. */
 .dash-row1{ grid-template-columns:minmax(0,1fr) !important; }
+
+/* ---- NAME row alignment ---------------------------------------------------
+   The value was left-aligned while its (Last)/(First)/(Middle) caption was
+   centred, so the two never lined up. Both are centred over the same third of
+   the row now, and each name sits on its own rule as the printed form does. */
+.csc-name-grid{ grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; align-items:end; }
+.csc-name-grid > div{ min-width:0; }
+.csc-name-grid .csc-value{
+  text-align:center; border-bottom:1px solid #000;
+  padding-bottom:1px; min-height:1.15em; overflow-wrap:anywhere;
+}
+.csc-name-grid .csc-sublabel{ text-align:center; padding-top:1px; }
