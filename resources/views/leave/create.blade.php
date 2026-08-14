@@ -18,9 +18,9 @@
     That is why this page needs no JavaScript to inject fields per type. The
     policy engine validates only the SELECTED type's required fields, so the
     unrelated blanks are simply ignored.
-  • Section 7 is read-only here. It is filled by whichever authorized officer
-    decides the application — Mayor, Vice Mayor or HR — and the employee only
-    sees what it will contain. 7.A shows live balances from LeaveCreditService.
+  • Section 7 is summarised here, not drawn in full: it is completed by the
+    approving officer, so on the entry form it is a note plus the applicant's
+    current credits. The complete section appears on the preview and the PDF.
   • Zoom is display-only (see js/app.js): it scales the sheet with a CSS
     transform and never changes a submitted value.
 --}}
@@ -57,21 +57,19 @@
             <button type="button" class="icon-btn" data-zoom="in" aria-label="Zoom in"><i class="bi bi-plus-lg"></i></button>
             <button type="button" class="btn btn-sm btn-link px-1" data-zoom="reset">Reset</button>
         </div>
-        <a href="{{ route('leave.instructions') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-info-circle me-1"></i>Instructions
-        </a>
         <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
             <i class="bi bi-printer me-1"></i>Print
         </button>
     </div>
 </div>
 
-@error('policy')<div class="alert alert-danger no-print">{{ $message }}</div>@enderror
-@if ($errors->has('policy'))
-    <div class="alert alert-danger no-print"><ul class="mb-0">@foreach ($errors->get('policy') as $e)<li>{{ $e }}</li>@endforeach</ul></div>
-@endif
-@if ($errors->any() && ! $errors->has('policy'))
-    <div class="alert alert-danger no-print"><ul class="mb-0">@foreach ($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul></div>
+{{-- A short banner for orientation; the specific messages render beside the
+     section they belong to, so a long form does not hide where the problem is. --}}
+@if ($errors->any())
+    <div class="alert alert-danger no-print">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        Your application was not submitted. Check the highlighted sections below.
+    </div>
 @endif
 
 <form method="POST" action="{{ route('leave.store') }}" enctype="multipart/form-data" data-no-loader>
@@ -152,6 +150,9 @@
                 {{-- ---------- 6.A TYPE OF LEAVE ---------- --}}
                 <td style="width:50%">
                     <div class="csc-sub">6.A TYPE OF LEAVE TO BE AVAILED OF</div>
+                    @error('leave_type_id')
+                        <div class="csc-field-error no-print">{{ $message }}</div>
+                    @enderror
                     @foreach ($types as $t)
                         <label class="csc-check">
                             <input type="checkbox" name="leave_type_id[]" value="{{ $t->id }}"
@@ -175,6 +176,11 @@
                 {{-- ---------- 6.B DETAILS OF LEAVE ---------- --}}
                 <td style="width:50%">
                     <div class="csc-sub">6.B DETAILS OF LEAVE</div>
+                    @if ($errors->has('policy'))
+                        <div class="csc-field-error no-print">
+                            @foreach ($errors->get('policy') as $e)<div>{{ $e }}</div>@endforeach
+                        </div>
+                    @endif
 
                     <div class="csc-case"><em>In case of Vacation/Special Privilege Leave:</em></div>
                     <label class="csc-check">
@@ -259,49 +265,36 @@
                         <span class="csc-box" aria-hidden="true"></span>
                         <span class="csc-check-text">Terminal Leave — Resignation</span>
                     </label>
-                </td>
-            </tr>
-        </table>
 
-        {{-- ---------- Additional details required by specific leave types ---------- --}}
-        <table class="csc-table">
-            <tr>
-                <td>
-                    <div class="csc-sub">SUPPLEMENTARY DETAILS <span class="csc-cite">(complete only what your chosen leave type requires)</span></div>
-                    <div class="csc-grid-2">
-                        <div>
-                            <label class="csc-sublabel" for="d_expected">Maternity — expected/actual date of delivery</label>
-                            <input id="d_expected" type="date" name="details[expected_delivery]" class="csc-line"
-                                   value="{{ old('details.expected_delivery') }}">
-                        </div>
-                        <div>
-                            <label class="csc-check mt-3">
-                                <input type="checkbox" name="details[extension]" value="1" @checked(old('details.extension'))>
-                                <span class="csc-box" aria-hidden="true"></span>
-                                <span class="csc-check-text">Maternity — availing additional extension (R.A. 11210)</span>
-                            </label>
-                        </div>
-                        <div>
-                            <label class="csc-sublabel" for="d_accident">Rehabilitation — details of work-related accident</label>
-                            <input id="d_accident" type="text" name="details[accident_details]" class="csc-line"
-                                   value="{{ old('details.accident_details') }}">
-                        </div>
-                        <div>
-                            <label class="csc-sublabel" for="d_calamity">Calamity — declared calamity</label>
-                            <input id="d_calamity" type="text" name="details[calamity]" class="csc-line"
-                                   value="{{ old('details.calamity') }}">
-                        </div>
-                        <div>
-                            <label class="csc-sublabel" for="d_area">Calamity — affected area (must match residence)</label>
-                            <input id="d_area" type="text" name="details[calamity_area]" class="csc-line"
-                                   value="{{ old('details.calamity_area') }}">
-                        </div>
-                        <div>
-                            <label class="csc-sublabel" for="d_late">Sick Leave filed after returning — reason</label>
-                            <input id="d_late" type="text" name="late_filing_reason" class="csc-line"
-                                   value="{{ old('late_filing_reason') }}">
-                        </div>
-                    </div>
+                    <div class="csc-case"><em>In case of Maternity Leave:</em></div>
+                    <input type="date" name="details[expected_delivery]" class="csc-line"
+                           value="{{ old('details.expected_delivery') }}"
+                           aria-label="Expected or actual date of delivery">
+                    <label class="csc-check">
+                        <input type="checkbox" name="details[extension]" value="1" @checked(old('details.extension'))>
+                        <span class="csc-box" aria-hidden="true"></span>
+                        <span class="csc-check-text">Availing additional extension (R.A. 11210)</span>
+                    </label>
+
+                    <div class="csc-case"><em>In case of Rehabilitation Privilege:</em></div>
+                    <input type="text" name="details[accident_details]" class="csc-line"
+                           value="{{ old('details.accident_details') }}"
+                           placeholder="Details of work-related accident"
+                           aria-label="Details of work-related accident">
+
+                    <div class="csc-case"><em>In case of Special Emergency (Calamity) Leave:</em></div>
+                    <input type="text" name="details[calamity]" class="csc-line"
+                           value="{{ old('details.calamity') }}"
+                           placeholder="Declared calamity" aria-label="Declared calamity">
+                    <input type="text" name="details[calamity_area]" class="csc-line"
+                           value="{{ old('details.calamity_area') }}"
+                           placeholder="Affected area (must match residence)"
+                           aria-label="Affected area">
+
+                    <div class="csc-case"><em>If Sick Leave is filed after returning to work:</em></div>
+                    <input type="text" name="late_filing_reason" class="csc-line"
+                           value="{{ old('late_filing_reason') }}"
+                           placeholder="Reason for late filing" aria-label="Late filing reason">
                 </td>
             </tr>
         </table>
@@ -328,6 +321,35 @@
                                    value="{{ old('end_date') }}" required>
                         </div>
                     </div>
+
+                    {{-- The applicant can see the computed count before submitting.
+                         formaction re-points this one button at the check route, so
+                         no second form and no JavaScript are needed. --}}
+                    <button type="submit" formaction="{{ route('leave.check-dates') }}" formnovalidate
+                            class="btn btn-outline-secondary btn-sm mt-2 no-print">
+                        <i class="bi bi-calculator me-1"></i>Count working days
+                    </button>
+
+                    @isset($check)
+                        <div class="csc-check-result no-print">
+                            <div><strong>{{ rtrim(rtrim(number_format($check['working_days'], 1), '0'), '.') }}</strong>
+                                working day(s)</div>
+                            <div class="csc-inline-note mb-0">
+                                {{ $check['start'] }} &ndash; {{ $check['end'] }}, excluding weekends and holidays.
+                            </div>
+                            @if ($check['sufficient'] === false)
+                                <div class="csc-check-warn">
+                                    Not enough {{ $check['type'] }} credits for this many days.
+                                </div>
+                            @endif
+                            @if (!empty($check['documents']))
+                                <div class="csc-inline-note mb-0">
+                                    Required for {{ $check['type'] }}:
+                                    {{ implode(', ', array_column($check['documents'], 'label')) }}.
+                                </div>
+                            @endif
+                        </div>
+                    @endisset
                 </td>
                 <td style="width:50%">
                     <div class="csc-sub">6.D COMMUTATION</div>
@@ -355,78 +377,31 @@
             </tr>
         </table>
 
-        {{-- ============ 7. DETAILS OF ACTION ON APPLICATION (read-only) ============ --}}
+        {{-- ============ 7. DETAILS OF ACTION ON APPLICATION ============ --}}
+        {{-- On the ENTRY form this section is summarised rather than drawn in
+             full. Reproducing all four empty sub-blocks took roughly 40% of the
+             page height with boxes the applicant cannot use, which is noise at
+             the moment of filling the form (Nielsen #8). The complete section,
+             filled in, is on the form preview and the printed PDF. --}}
         <div class="csc-section">7. DETAILS OF ACTION ON APPLICATION</div>
-
-        <table class="csc-table csc-split csc-readonly">
-            <tr>
-                <td style="width:50%">
-                    <div class="csc-sub">7.A CERTIFICATION OF LEAVE CREDITS</div>
-                    <div class="csc-sublabel">As of {{ now()->format('F d, Y') }}</div>
-                    <table class="csc-credits">
-                        <tr><th></th><th>Vacation Leave</th><th>Sick Leave</th></tr>
-                        <tr>
-                            <td>Total Earned</td>
-                            <td>{{ number_format($vlBalance, 2) }}</td>
-                            <td>{{ number_format($slBalance, 2) }}</td>
-                        </tr>
-                        <tr><td>Less this application</td><td></td><td></td></tr>
-                        <tr><td>Balance</td><td></td><td></td></tr>
-                    </table>
-                    <div class="csc-signatory">
-                        <div class="csc-signatory-name">
-                            {{ \App\Models\SystemSetting::get('general.hr_officer_name', 'ATTY. MARIAH LEAH D. VALEROZO-GARCIA') }}
-                        </div>
-                        <div class="csc-sublabel">
-                            {{ \App\Models\SystemSetting::get('general.hr_officer_title', 'Municipal General Services Officer / OIC-HRM OFFICE') }}
-                        </div>
-                    </div>
-                </td>
-                <td style="width:50%">
-                    <div class="csc-sub">7.B RECOMMENDATION</div>
-                    <div class="csc-check"><span class="csc-box" aria-hidden="true"></span><span class="csc-check-text">For approval</span></div>
-                    <div class="csc-check"><span class="csc-box" aria-hidden="true"></span><span class="csc-check-text">For disapproval due to</span></div>
-                    <div class="csc-line csc-blank"></div>
-                    <div class="csc-line csc-blank"></div>
-                    <div class="csc-signatory">
-                        <div class="csc-rule"></div>
-                        <div class="csc-sublabel">Authorized Officer</div>
-                    </div>
-                </td>
-            </tr>
+        <table class="csc-table">
             <tr>
                 <td>
-                    <div class="csc-sub">7.C APPROVED FOR:</div>
-                    <div class="csc-approved"><span class="csc-blank-short"></span> days with pay</div>
-                    <div class="csc-approved"><span class="csc-blank-short"></span> days without pay</div>
-                    <div class="csc-approved"><span class="csc-blank-short"></span> others (Specify)</div>
-                </td>
-                <td>
-                    <div class="csc-sub">7.D DISAPPROVED DUE TO:</div>
-                    <div class="csc-line csc-blank"></div>
-                    <div class="csc-line csc-blank"></div>
-                    <div class="csc-line csc-blank"></div>
-                </td>
-            </tr>
-            <tr>
-                <td colspan="2">
-                    <div class="csc-signatory csc-signatory-wide">
-                        <div class="csc-signatory-name">
-                            {{ \App\Models\SystemSetting::get('general.mayor_name', 'ATTY. JOEL AMOS P. ALEJANDRO, CPA') }}
-                        </div>
-                        <div class="csc-sublabel">
-                            {{ \App\Models\SystemSetting::get('general.mayor_title', 'Municipal Mayor') }}
+                    <div class="csc-official-note">
+                        <strong>For official use.</strong> Certification of leave credits (7.A),
+                        recommendation (7.B) and approval or disapproval (7.C / 7.D) are completed
+                        by the approving officer — any one of the Municipal Mayor, the Vice Mayor
+                        or the HR Office.
+                        <div class="csc-inline-note mb-0">
+                            Your credits as of {{ now()->format('F d, Y') }} —
+                            Vacation <strong>{{ number_format($vlBalance, 2) }}</strong> &middot;
+                            Sick <strong>{{ number_format($slBalance, 2) }}</strong>.
+                            The full section appears on your form once submitted.
                         </div>
                     </div>
                 </td>
             </tr>
         </table>
-
-        <p class="csc-foot">
-            Section 7 is completed by the approving officer — any one of the Municipal
-            Mayor, the Vice Mayor or the HR Office. It is shown here for reference only
-            and cannot be filled in by the applicant.
-        </p>
 
         {{-- Supporting documents live INSIDE the sheet so the whole application is
              one continuous form rather than a separate floating card. Hidden when
@@ -457,7 +432,7 @@
 
         <div class="csc-submit no-print">
             <span class="csc-inline-note mb-0">
-                Your credits — Vacation {{ number_format($vlBalance, 2) }} &middot; Sick {{ number_format($slBalance, 2) }}
+                Weekends and Philippine holidays are excluded from the working-day count.
             </span>
             <button class="btn btn-lgu" type="submit"><i class="bi bi-send me-1"></i>Submit application</button>
         </div>

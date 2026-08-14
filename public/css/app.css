@@ -571,3 +571,42 @@ footer.app-foot{ text-align:center; color:var(--muted-2); font-size:.76rem; padd
   .csc-viewport [data-csc-scale]{ transform:none !important; }
   .csc-zoom, .csc-submit{ display:none !important; }
 }
+
+/* ---- Visual discipline pass -----------------------------------------------
+   Borders carry structure instead of shadows; one radius pair instead of four;
+   gold reserved for focus and active state rather than decoration. The violet
+   identity is kept deliberately — this is a government system, not a dev tool. */
+:root{
+  --shadow-brand:none;
+  --shadow-lg:0 6px 20px rgba(22,17,41,.10);
+  --shadow:0 2px 6px rgba(22,17,41,.07);
+}
+.card{ box-shadow:var(--shadow-xs); border:1px solid var(--border); }
+.stat-card{ box-shadow:var(--shadow-xs); border:1px solid var(--border); }
+/* Flat sidebar: the gradient cost contrast at the bottom of the nav. */
+.lms-sidebar{ background:var(--brand-800); box-shadow:none; border-right:1px solid var(--brand-900); }
+.lms-sidebar::before{ display:none; }
+
+/* Legibility inside the official sheet — reduces the need to zoom at all. */
+.csc-sheet{ font-size:12.5px; }
+.csc-table td{ padding:7px 9px; }
+.csc-check-text{ font-size:11.5px; }
+/* Citations are reference material, not decision material: present but quiet. */
+.csc-cite{ font-size:8.5px; color:#555; display:block; }
+
+/* Section 7 summary on the entry form */
+.csc-official-note{ font-size:11px; }
+.csc-official-note strong{ letter-spacing:.02em; }
+
+/* Working-day check result */
+.csc-check-result{
+  margin-top:8px; padding:7px 9px; border:1px solid #000; background:#f7f7f7; font-size:11px;
+}
+.csc-check-result strong{ font-size:15px; }
+.csc-check-warn{ margin-top:3px; font-weight:700; }
+
+/* Validation messages sit with the section that caused them */
+.csc-field-error{
+  border-left:3px solid var(--danger); background:var(--danger-bg);
+  padding:5px 8px; margin:0 0 7px; font-size:11px; color:var(--danger);
+}

@@ -19,7 +19,12 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class IntrusionDetectionService
 {
-    /** @var array<string, array{pattern:string, severity:string, block:bool}> */
+    /**
+     * Signatures applied to the URI and query string, where an attack payload
+     * has no legitimate reason to look like prose.
+     *
+     * @var array<string, array{pattern:string, severity:string, block:bool}>
+     */
     private array $signatures = [
         'sqli' => [
             'pattern' => '/(\bUNION\b.*\bSELECT\b|\bSELECT\b.*\bFROM\b.*\bWHERE\b|\bOR\b\s+1\s*=\s*1|\bAND\b\s+1\s*=\s*1|;\s*DROP\s+TABLE|--\s|\/\*.*\*\/|\bSLEEP\s*\(|\bBENCHMARK\s*\(|INFORMATION_SCHEMA|\bWAITFOR\s+DELAY\b|\bxp_cmdshell\b)/i',
@@ -33,6 +38,50 @@ class IntrusionDetectionService
             'pattern' => '/(\.\.\/|\.\.\\\\|%2e%2e%2f|%2e%2e\/|\/etc\/passwd|\/etc\/shadow|c:\\\\windows|boot\.ini|\.\.%00|%00)/i',
             'severity' => 'high', 'block' => true,
         ],
+    ];
+
+    /**
+     * Signatures applied to submitted FREE TEXT (leave reasons, remarks,
+     * comments...). Deliberately narrower than the set above.
+     *
+     * A person writing "Family emergency -- urgent" is not attacking the server,
+     * but the full SQL-comment patterns match that prose exactly. Blocking it
+     * produced a 400 page, a high-severity intrusion
+     * record, and — after the auto-block threshold — a 24-hour IP ban for an
+     * employee filing a legitimate leave application.
+     *
+     * These patterns keep the payloads that have no innocent reading in prose
+     * and drop the punctuation-only ones (`-- `, comment blocks, %00).
+     *
+     * @var array<string, array{pattern:string, severity:string, block:bool}>
+     */
+    private array $freeTextSignatures = [
+        'sqli' => [
+            'pattern' => '/(\bUNION\b.*\bSELECT\b|\bSELECT\b.*\bFROM\b.*\bWHERE\b|\bOR\b\s+1\s*=\s*1|\bAND\b\s+1\s*=\s*1|;\s*DROP\s+TABLE|\bSLEEP\s*\(|\bBENCHMARK\s*\(|INFORMATION_SCHEMA|\bWAITFOR\s+DELAY\b|\bxp_cmdshell\b)/i',
+            'severity' => 'high', 'block' => true,
+        ],
+        'xss' => [
+            'pattern' => '/(<script\b|<\/script>|javascript:|onerror\s*=|onload\s*=|<iframe\b|document\.cookie|String\.fromCharCode)/i',
+            'severity' => 'high', 'block' => true,
+        ],
+        'traversal' => [
+            'pattern' => '/(\/etc\/passwd|\/etc\/shadow|c:\\\\windows|boot\.ini)/i',
+            'severity' => 'high', 'block' => true,
+        ],
+    ];
+
+    /**
+     * Input names whose values are prose written by a person. Matched on the
+     * final key segment, so `details[illness]` counts as `illness`.
+     *
+     * @var array<string>
+     */
+    private const FREE_TEXT_FIELDS = [
+        'purpose', 'purpose_other', 'comments', 'remarks', 'reason',
+        'late_filing_reason', 'disapproval_reason', 'hr_override_reason',
+        'illness', 'surgery_details', 'accident_details', 'travel_details',
+        'location_specify', 'calamity', 'calamity_area', 'description',
+        'details', 'signature', 'applicant_signature', 'blocked_reason',
     ];
 
     public function __construct(private readonly AuditLogger $audit)
@@ -50,15 +99,25 @@ class IntrusionDetectionService
             return null;
         }
 
-        $haystack = $this->haystack($request);
+        // Scanned in two passes: the URI and structured input get the full
+        // signature set, free-text values get the narrower one.
+        $passes = [
+            [$this->haystack($request), $this->signatures],
+            [$this->freeTextHaystack($request), $this->freeTextSignatures],
+        ];
 
-        foreach ($this->signatures as $category => $rule) {
-            if (preg_match($rule['pattern'], $haystack, $matches)) {
-                $this->record($request, $category, $rule['severity'], $matches[0] ?? $category);
-                $this->maybeAutoBlock($request);
+        foreach ($passes as [$haystack, $signatures]) {
+            if ($haystack === '') {
+                continue;
+            }
+            foreach ($signatures as $category => $rule) {
+                if (preg_match($rule['pattern'], $haystack, $matches)) {
+                    $this->record($request, $category, $rule['severity'], $matches[0] ?? $category);
+                    $this->maybeAutoBlock($request);
 
-                if ($rule['block']) {
-                    return response()->view('errors.blocked', ['ip' => $request->ip()], 400);
+                    if ($rule['block']) {
+                        return response()->view('errors.blocked', ['ip' => $request->ip()], 400);
+                    }
                 }
             }
         }
@@ -90,14 +149,47 @@ class IntrusionDetectionService
         ]);
     }
 
+    /** URI, query string and every non-free-text input value. */
     private function haystack(Request $request): string
     {
         $parts = [rawurldecode($request->getRequestUri())];
-        foreach ($request->all() as $key => $value) {
-            $parts[] = is_scalar($value) ? (string) $value : json_encode($value);
-        }
+        $this->collect($request->all(), $parts, freeText: false);
 
         return implode(' ', $parts);
+    }
+
+    /** Only the values a person types as prose. */
+    private function freeTextHaystack(Request $request): string
+    {
+        $parts = [];
+        $this->collect($request->all(), $parts, freeText: true);
+
+        return implode(' ', $parts);
+    }
+
+    /**
+     * Walk the input tree, keeping either the free-text values or everything
+     * else. Nested keys are judged by their own name, so `details[illness]`
+     * is treated as free text while `details[location]` is not.
+     */
+    private function collect(array $input, array &$parts, bool $freeText, bool $inheritedFreeText = false): void
+    {
+        foreach ($input as $key => $value) {
+            $isFreeText = $inheritedFreeText
+                || in_array(strtolower((string) $key), self::FREE_TEXT_FIELDS, true);
+
+            if (is_array($value)) {
+                $this->collect($value, $parts, $freeText, $isFreeText);
+
+                continue;
+            }
+            if (! is_scalar($value)) {
+                continue;
+            }
+            if ($isFreeText === $freeText) {
+                $parts[] = (string) $value;
+            }
+        }
     }
 
     private function rateAnomaly(Request $request): bool

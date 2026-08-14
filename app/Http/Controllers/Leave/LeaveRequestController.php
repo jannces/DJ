@@ -64,7 +64,49 @@ class LeaveRequestController extends Controller
             'profile' => $request->user()->employeeProfile,
             'vlBalance' => $this->balanceValue($request, 'VL'),
             'slBalance' => $this->balanceValue($request, 'SL'),
+            'check' => session('date_check'),
         ]);
+    }
+
+    /**
+     * Count the working days for the chosen dates and send the applicant back to
+     * the form with the answer, before they commit to submitting.
+     *
+     * Previously this number only appeared after submission, which meant the
+     * employee could not see the one figure that decides whether they can afford
+     * the leave (Nielsen #1, visibility of system status). Done as a normal form
+     * POST so the page stays JavaScript-free.
+     */
+    public function checkDates(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'leave_type_id' => ['nullable', 'array'],
+            'leave_type_id.*' => ['integer', 'exists:leave_types,id'],
+            'start_date' => ['required', 'date'],
+            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+        ]);
+
+        $days = $this->applications->computeWorkingDays(
+            Carbon::parse($data['start_date']),
+            Carbon::parse($data['end_date']),
+        );
+
+        $type = ! empty($data['leave_type_id'][0])
+            ? LeaveType::find($data['leave_type_id'][0])
+            : null;
+
+        $check = [
+            'working_days' => $days,
+            'start' => Carbon::parse($data['start_date'])->format('F d, Y'),
+            'end' => Carbon::parse($data['end_date'])->format('F d, Y'),
+            'type' => $type?->name,
+            'sufficient' => $type
+                ? $this->credits->hasSufficientCredits($request->user(), $type, $days)
+                : null,
+            'documents' => $type ? $this->policy->requiredDocuments($type, $days) : [],
+        ];
+
+        return back()->withInput()->with('date_check', $check);
     }
 
     private function balanceValue(Request $request, string $code): float

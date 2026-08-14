@@ -253,6 +253,52 @@ class EmployeeInterfaceTest extends TestCase
         ])->assertSessionHasErrors('leave_type_id');
     }
 
+    public function test_working_days_can_be_counted_before_submitting(): void
+    {
+        $vl = LeaveType::where('code', 'VL')->first();
+
+        // Mon-Wed = 3 working days, shown without committing to a submission.
+        $this->asEmployee()->post('/leave/check-dates', [
+            'leave_type_id' => [$vl->id],
+            'start_date' => '2026-07-13',
+            'end_date' => '2026-07-15',
+        ])->assertRedirect()->assertSessionHas('date_check');
+
+        $this->assertDatabaseCount('leave_requests', 0);
+
+        $check = session('date_check');
+        $this->assertSame(3.0, (float) $check['working_days']);
+    }
+
+    public function test_counting_working_days_warns_about_insufficient_credits(): void
+    {
+        $vl = LeaveType::where('code', 'VL')->first();
+        LeaveBalance::create([
+            'user_id' => $this->employee->id, 'leave_type_id' => $vl->id,
+            'earned' => 1, 'used' => 0, 'balance' => 1,
+        ]);
+
+        $this->asEmployee()->post('/leave/check-dates', [
+            'leave_type_id' => [$vl->id],
+            'start_date' => '2026-07-13',
+            'end_date' => '2026-07-17',
+        ])->assertRedirect();
+
+        $this->assertFalse(session('date_check')['sufficient']);
+    }
+
+    public function test_apply_page_header_no_longer_duplicates_the_sidebar_link(): void
+    {
+        $html = $this->asEmployee()->get('/leave/apply')->assertOk()->getContent();
+
+        // The header's Instructions button duplicated the sidebar entry and is gone.
+        $this->assertStringNotContainsString('bi-info-circle me-1"></i>Instructions', $html);
+
+        // The contextual link at the supporting-documents block stays: that is
+        // help at the point of need, not a second copy of a nav item.
+        $this->assertStringContainsString(route('leave.instructions'), $html);
+    }
+
     public function test_instructions_page_is_reachable_from_its_own_route(): void
     {
         $this->asEmployee()->get('/leave-instructions')
