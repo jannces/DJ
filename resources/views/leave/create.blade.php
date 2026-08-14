@@ -21,8 +21,6 @@
   • Section 7 is summarised here, not drawn in full: it is completed by the
     approving officer, so on the entry form it is a note plus the applicant's
     current credits. The complete section appears on the preview and the PDF.
-  • Zoom is display-only (see js/app.js): it scales the sheet with a CSS
-    transform and never changes a submitted value.
 --}}
 
 @php
@@ -49,14 +47,11 @@
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 no-print">
     <h1 class="h4 mb-0">Application for Leave</h1>
     <div class="d-flex align-items-center gap-2">
-        {{-- Zoom is display-only: it scales the sheet visually and never touches
-             the values that get submitted. --}}
-        <div class="csc-zoom" data-csc-zoom role="group" aria-label="Form zoom">
-            <button type="button" class="icon-btn" data-zoom="out" aria-label="Zoom out"><i class="bi bi-dash-lg"></i></button>
-            <span class="csc-zoom-level" data-zoom-level aria-live="polite">100%</span>
-            <button type="button" class="icon-btn" data-zoom="in" aria-label="Zoom in"><i class="bi bi-plus-lg"></i></button>
-            <button type="button" class="btn btn-sm btn-link px-1" data-zoom="reset">Reset</button>
-        </div>
+        {{-- Instructions live here now: the applicant needs the documentary
+             requirements while filling the form, not from a menu entry. --}}
+        <a href="{{ route('leave.instructions') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-info-circle me-1"></i>Instructions and Requirements
+        </a>
         <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
             <i class="bi bi-printer me-1"></i>Print
         </button>
@@ -322,34 +317,6 @@
                         </div>
                     </div>
 
-                    {{-- The applicant can see the computed count before submitting.
-                         formaction re-points this one button at the check route, so
-                         no second form and no JavaScript are needed. --}}
-                    <button type="submit" formaction="{{ route('leave.check-dates') }}" formnovalidate
-                            class="btn btn-outline-secondary btn-sm mt-2 no-print">
-                        <i class="bi bi-calculator me-1"></i>Count working days
-                    </button>
-
-                    @isset($check)
-                        <div class="csc-check-result no-print">
-                            <div><strong>{{ rtrim(rtrim(number_format($check['working_days'], 1), '0'), '.') }}</strong>
-                                working day(s)</div>
-                            <div class="csc-inline-note mb-0">
-                                {{ $check['start'] }} &ndash; {{ $check['end'] }}, excluding weekends and holidays.
-                            </div>
-                            @if ($check['sufficient'] === false)
-                                <div class="csc-check-warn">
-                                    Not enough {{ $check['type'] }} credits for this many days.
-                                </div>
-                            @endif
-                            @if (!empty($check['documents']))
-                                <div class="csc-inline-note mb-0">
-                                    Required for {{ $check['type'] }}:
-                                    {{ implode(', ', array_column($check['documents'], 'label')) }}.
-                                </div>
-                            @endif
-                        </div>
-                    @endisset
                 </td>
                 <td style="width:50%">
                     <div class="csc-sub">6.D COMMUTATION</div>

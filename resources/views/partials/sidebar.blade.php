@@ -34,20 +34,4 @@
         @endforeach
     </div>
 
-    {{-- Bottom utility block. Mirrors the reference layout, but every link goes
-         somewhere real in this system rather than being decoration. --}}
-    <div class="side-foot">
-        @can('leave.view-own')
-            <div class="side-foot-label">Reference</div>
-            <div class="side-note">
-                <div class="side-note-title">CSC Form No. 6</div>
-                <div class="side-note-sub">Documentary requirements for all 15 leave types.</div>
-                <a href="{{ route('leave.instructions') }}">Read the instructions &rarr;</a>
-            </div>
-        @endcan
-        <div class="side-links">
-            <a href="{{ route('notifications.index') }}"><i class="bi bi-bell"></i>Notifications</a>
-            <a href="{{ route('password.change') }}"><i class="bi bi-key"></i>Change password</a>
-        </div>
-    </div>
 </nav>

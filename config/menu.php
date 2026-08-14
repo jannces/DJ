@@ -17,8 +17,6 @@ return [
     ['label' => 'Leave Approvals', 'icon' => 'bi-clipboard-check', 'route' => 'review.index', 'permission' => 'leave.approve.final'],
     ['label' => 'All Leave Requests', 'icon' => 'bi-collection', 'route' => 'leave.all', 'permission' => 'leave.requests.view-all'],
 
-    ['heading' => 'Information'],
-    ['label' => 'Instructions and Requirements', 'icon' => 'bi-info-circle', 'route' => 'leave.instructions', 'permission' => 'leave.view-own'],
 
     ['heading' => 'HR Management'],
     ['label' => 'Employees', 'icon' => 'bi-person-badge', 'route' => 'employees.index', 'permission' => 'employees.view'],

@@ -598,13 +598,6 @@ footer.app-foot{ text-align:center; color:var(--muted-2); font-size:.76rem; padd
 .csc-official-note{ font-size:11px; }
 .csc-official-note strong{ letter-spacing:.02em; }
 
-/* Working-day check result */
-.csc-check-result{
-  margin-top:8px; padding:7px 9px; border:1px solid #000; background:#f7f7f7; font-size:11px;
-}
-.csc-check-result strong{ font-size:15px; }
-.csc-check-warn{ margin-top:3px; font-weight:700; }
-
 /* Validation messages sit with the section that caused them */
 .csc-field-error{
   border-left:3px solid var(--danger); background:var(--danger-bg);
@@ -913,25 +906,6 @@ body{ background:var(--bg); color:var(--text); }
 .lms-nav .nav-link.active i{ color:var(--side-text-hi); }
 .lms-nav .nav-link.active::before{ display:none; }
 .lms-nav .nav-link i{ font-size:1rem; opacity:.9; }
-
-/* Bottom utility block */
-.side-foot{ margin-top:auto; padding:.7rem; border-top:1px solid var(--side-hair); }
-.side-foot-label{
-  font-size:.66rem; letter-spacing:.09em; text-transform:uppercase;
-  color:var(--muted); padding:0 .6rem .35rem;
-}
-.side-note{
-  border:1px solid var(--side-hair); border-radius:.5rem; padding:.6rem .7rem; margin-bottom:.5rem;
-}
-.side-note-title{ font-size:.8rem; font-weight:600; color:var(--side-text-hi); }
-.side-note-sub{ font-size:.72rem; color:var(--muted); margin:.1rem 0 .3rem; }
-.side-note a{ font-size:.75rem; color:var(--primary); text-decoration:none; }
-.side-links a{
-  display:flex; align-items:center; gap:.55rem; padding:.4rem .6rem;
-  font-size:.8rem; color:var(--side-text); text-decoration:none; border-radius:.5rem;
-}
-.side-links a:hover{ background:var(--side-hover); color:var(--side-text-hi); }
-.side-links i{ font-size:.9rem; opacity:.85; }
 
 /* ---- 3. Topbar ----------------------------------------------------------- */
 .lms-topbar{

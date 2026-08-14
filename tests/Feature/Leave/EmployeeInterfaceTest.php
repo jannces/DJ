@@ -163,7 +163,8 @@ class EmployeeInterfaceTest extends TestCase
             ->assertSee('APPLICATION FOR LEAVE')
             ->assertSee('6.A TYPE OF LEAVE TO BE AVAILED OF')
             ->assertSee('6.D COMMUTATION')
-            // Instructions moved to their own sidebar page.
+            // The instructions sheet is a separate page reached from the header
+            // button; it is not appended to the form as a second printed page.
             ->assertDontSee('INSTRUCTIONS AND REQUIREMENTS')
             // Types come from the database, not a hardcoded list.
             ->assertSee('Vacation Leave')
@@ -285,50 +286,34 @@ class EmployeeInterfaceTest extends TestCase
         ])->assertSessionHasErrors('leave_type_id');
     }
 
-    public function test_working_days_can_be_counted_before_submitting(): void
+    public function test_instructions_are_reachable_from_the_application_form(): void
     {
-        $vl = LeaveType::where('code', 'VL')->first();
-
-        // Mon-Wed = 3 working days, shown without committing to a submission.
-        $this->asEmployee()->post('/leave/check-dates', [
-            'leave_type_id' => [$vl->id],
-            'start_date' => '2026-07-13',
-            'end_date' => '2026-07-15',
-        ])->assertRedirect()->assertSessionHas('date_check');
-
-        $this->assertDatabaseCount('leave_requests', 0);
-
-        $check = session('date_check');
-        $this->assertSame(3.0, (float) $check['working_days']);
+        // The sidebar no longer carries an Instructions entry, so the form itself
+        // is how an applicant reaches the documentary requirements.
+        $this->asEmployee()->get('/leave/apply')
+            ->assertOk()
+            ->assertSee('Instructions and Requirements')
+            ->assertSee(route('leave.instructions'), false);
     }
 
-    public function test_counting_working_days_warns_about_insufficient_credits(): void
+    public function test_the_employee_sidebar_carries_only_the_three_leave_entries(): void
     {
-        $vl = LeaveType::where('code', 'VL')->first();
-        LeaveBalance::create([
-            'user_id' => $this->employee->id, 'leave_type_id' => $vl->id,
-            'earned' => 1, 'used' => 0, 'balance' => 1,
-        ]);
+        $html = $this->asEmployee()->get('/dashboard')->assertOk()->getContent();
 
-        $this->asEmployee()->post('/leave/check-dates', [
-            'leave_type_id' => [$vl->id],
-            'start_date' => '2026-07-13',
-            'end_date' => '2026-07-17',
-        ])->assertRedirect();
-
-        $this->assertFalse(session('date_check')['sufficient']);
+        // Exactly Dashboard, Apply for Leave and My Leave Requests.
+        $this->assertSame(1, substr_count($html, 'Apply for Leave'));
+        $this->assertSame(1, substr_count($html, 'My Leave Requests'));
+        $this->assertStringNotContainsString('Change password</a>', $html);
+        // Nothing from the retired Information section or the footer block.
+        $this->assertStringNotContainsString(route('leave.instructions'), $html);
     }
 
-    public function test_apply_page_header_no_longer_duplicates_the_sidebar_link(): void
+    public function test_the_application_form_has_no_zoom_or_day_counter(): void
     {
         $html = $this->asEmployee()->get('/leave/apply')->assertOk()->getContent();
 
-        // The header's Instructions button duplicated the sidebar entry and is gone.
-        $this->assertStringNotContainsString('bi-info-circle me-1"></i>Instructions', $html);
-
-        // The contextual link at the supporting-documents block stays: that is
-        // help at the point of need, not a second copy of a nav item.
-        $this->assertStringContainsString(route('leave.instructions'), $html);
+        $this->assertStringNotContainsString('data-csc-zoom', $html);
+        $this->assertStringNotContainsString('Count working days', $html);
     }
 
     public function test_instructions_page_is_reachable_from_its_own_route(): void

@@ -13,9 +13,6 @@ Route::middleware('permission:leave.apply')->group(function () {
     Route::get('leave/apply', [\App\Http\Controllers\Leave\LeaveRequestController::class, 'create'])->name('leave.create');
     Route::post('leave', [\App\Http\Controllers\Leave\LeaveRequestController::class, 'store'])->name('leave.store');
     Route::post('leave/preview', [\App\Http\Controllers\Leave\LeaveRequestController::class, 'preview'])->name('leave.preview');
-    // Server-side working-day count, so the applicant sees the number before
-    // committing to a submission. Plain form POST — no JavaScript.
-    Route::post('leave/check-dates', [\App\Http\Controllers\Leave\LeaveRequestController::class, 'checkDates'])->name('leave.check-dates');
 });
 Route::middleware('permission:leave.view-own')->group(function () {
     Route::get('leave', [\App\Http\Controllers\Leave\LeaveRequestController::class, 'index'])->name('leave.index');
