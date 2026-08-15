@@ -309,6 +309,131 @@ class EmployeeInterfaceTest extends TestCase
             ->assertSee('7.C APPROVED FOR:');
     }
 
+    /**
+     * The preview is the SAME document as the entry form: same three parts,
+     * same 6.A list in the same CSC order. If someone edits one sheet without
+     * the other, the two orderings diverge and this fails.
+     */
+    public function test_the_preview_renders_the_same_sheet_as_the_entry_form(): void
+    {
+        $request = $this->fileVacationLeave();
+
+        $form = $this->asEmployee()->get('/leave/apply')->assertOk()->getContent();
+        $preview = $this->asEmployee()->get("/leave/{$request->id}/preview")->assertOk()->getContent();
+
+        foreach (['Part 1 of 3', 'Part 2 of 3', 'Part 3 of 3',
+            'APPLICATION FOR LEAVE', 'ANNEX A',
+            '6.A TYPE OF LEAVE TO BE AVAILED OF', '6.B DETAILS OF LEAVE',
+            '6.C NUMBER OF WORKING DAYS APPLIED FOR', '6.D COMMUTATION',
+            '7. DETAILS OF ACTION ON APPLICATION'] as $marker) {
+            $this->assertStringContainsString($marker, $form, "entry form is missing: {$marker}");
+            $this->assertStringContainsString($marker, $preview, "preview is missing: {$marker}");
+        }
+
+        // The leave-type names, in the order each sheet happens to print them.
+        $printedOrder = function (string $html): array {
+            $at = [];
+            foreach (LeaveType::active()->pluck('name') as $name) {
+                $position = strpos($html, (string) $name);
+                if ($position !== false) {
+                    $at[$name] = $position;
+                }
+            }
+            asort($at);
+
+            return array_keys($at);
+        };
+
+        $this->assertNotEmpty($printedOrder($form));
+        $this->assertSame($printedOrder($form), $printedOrder($preview),
+            '6.A lists the leave types in a different order on the two sheets');
+    }
+
+    /** Zoom controls are gone from the preview, as they are from the form. */
+    public function test_the_form_preview_has_no_zoom_controls(): void
+    {
+        $request = $this->fileVacationLeave();
+        $html = $this->asEmployee()->get("/leave/{$request->id}/preview")->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('data-csc-zoom', $html);
+        $this->assertStringNotContainsString('data-zoom', $html);
+    }
+
+    /**
+     * One click, one page: the form, the recorded details and the approval
+     * progress all live on the preview now.
+     */
+    public function test_the_preview_carries_the_details_and_the_timeline(): void
+    {
+        $request = $this->fileVacationLeave();
+
+        $this->asEmployee()->get("/leave/{$request->id}/preview")
+            ->assertOk()
+            ->assertSee('Approval progress')
+            ->assertSee('Application Submitted')
+            ->assertSee('Pending Approval')
+            ->assertSee('Application details')
+            ->assertSee('Supporting documents')
+            ->assertSee($request->reference_no);
+    }
+
+    /** …so the list needs exactly one destination per row. */
+    public function test_my_leave_requests_offers_one_destination_per_row(): void
+    {
+        $this->fileVacationLeave();
+        $html = $this->asEmployee()->get('/leave')->assertOk()->getContent();
+
+        $this->assertSame(1, substr_count($html, 'View Form'));
+        $this->assertStringNotContainsString('>Details<', $html);
+        $this->assertStringNotContainsString('Timeline', $html);
+    }
+
+    /**
+     * The download is one legal-size page. dompdf writes the sheet size into
+     * every page's MediaBox (612 x 1008 points = 8.5in x 14in), and each page
+     * object is tagged /Type /Page — so both facts are checkable without a
+     * PDF library.
+     */
+    public function test_the_downloaded_form_is_a_single_legal_page(): void
+    {
+        $request = $this->fileVacationLeave();
+
+        $pdf = $this->asEmployee()->get("/leave/{$request->id}/form6")->assertOk()->getContent();
+
+        $this->assertStringStartsWith('%PDF', $pdf);
+
+        // "/Type /Pages" is the page TREE, not a page: exclude it.
+        $pages = preg_match_all('#/Type\s*/Page(?![s])#', $pdf);
+        $this->assertSame(1, $pages, "the PDF runs to {$pages} pages; it must fit one");
+
+        $this->assertMatchesRegularExpression(
+            '#/MediaBox\s*\[\s*0(\.0+)?\s+0(\.0+)?\s+612(\.0+)?\s+1008(\.0+)?\s*\]#',
+            $pdf,
+            'the PDF is not legal size (612 x 1008 points)'
+        );
+    }
+
+    /** Files one approved-path vacation leave and returns it. */
+    private function fileVacationLeave(): \App\Models\LeaveRequest
+    {
+        $vl = LeaveType::where('code', 'VL')->first();
+        LeaveBalance::create([
+            'user_id' => $this->employee->id, 'leave_type_id' => $vl->id,
+            'earned' => 15, 'used' => 0, 'balance' => 15,
+        ]);
+        $this->asEmployee()->post('/leave', [
+            'leave_type_id' => [$vl->id],
+            'date_filed' => now()->toDateString(),
+            'start_date' => now()->addWeek()->next('Monday')->toDateString(),
+            'end_date' => now()->addWeek()->next('Monday')->toDateString(),
+            'commutation' => '0',
+            'applicant_signature' => $this->employee->name,
+            'details' => ['location' => 'within_ph', 'location_specify' => 'Alicia'],
+        ])->assertRedirect();
+
+        return \App\Models\LeaveRequest::where('user_id', $this->employee->id)->firstOrFail();
+    }
+
     public function test_a_custom_leave_type_appears_on_the_form_without_a_code_change(): void
     {
         LeaveType::create([

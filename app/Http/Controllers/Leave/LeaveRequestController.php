@@ -49,18 +49,27 @@ class LeaveRequestController extends Controller
         'VAWC', 'RL', 'SLBW', 'SEL', 'AL', 'MON', 'TL',
     ];
 
-    public function create(Request $request): View
+    /**
+     * The one list of leave types every rendering of Form No. 6 uses — the entry
+     * form, the read-only preview and the PDF. Keeping it in one place is what
+     * makes the three look like the same document: 6.A must list the same
+     * options in the same order wherever the form is drawn.
+     */
+    private function cscOrderedTypes(): \Illuminate\Support\Collection
     {
-        $types = LeaveType::active()->get()
+        return LeaveType::active()->get()
             ->sortBy(function (LeaveType $type) {
                 $position = array_search($type->code, self::CSC_FORM6_ORDER, true);
 
                 return $position === false ? count(self::CSC_FORM6_ORDER) : $position;
             })
             ->values();
+    }
 
+    public function create(Request $request): View
+    {
         return view('leave.create', [
-            'types' => $types,
+            'types' => $this->cscOrderedTypes(),
             'profile' => $request->user()->employeeProfile,
             'vlBalance' => $this->balanceValue($request, 'VL'),
             'slBalance' => $this->balanceValue($request, 'SL'),
@@ -167,11 +176,11 @@ class LeaveRequestController extends Controller
     public function previewForm(Request $request, LeaveRequest $leaveRequest): View
     {
         $this->authorizeView($request, $leaveRequest);
-        $leaveRequest->load('leaveType', 'user.employeeProfile.department', 'user.employeeProfile.position', 'approvals.approver');
+        $leaveRequest->load('leaveType', 'user.employeeProfile.department', 'user.employeeProfile.position', 'approvals.approver', 'documents');
 
         return view('leave.preview-form', [
             'r' => $leaveRequest,
-            'types' => LeaveType::active()->get(),
+            'types' => $this->cscOrderedTypes(),
             'vl' => $this->balanceForUser($leaveRequest, 'VL'),
             'sl' => $this->balanceForUser($leaveRequest, 'SL'),
         ]);
@@ -239,9 +248,13 @@ class LeaveRequestController extends Controller
         $vl = $this->balanceForUser($leaveRequest, 'VL');
         $sl = $this->balanceForUser($leaveRequest, 'SL');
 
+        // Legal portrait: the whole sheet — 1–5, all of 6 and all of 7 — is
+        // sized to land on ONE page, so the download is a single sheet of
+        // paper like the form it replaces.
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('leave.form6', [
             'r' => $leaveRequest, 'vl' => $vl, 'sl' => $sl,
-        ])->setPaper('a4');
+            'types' => $this->cscOrderedTypes(),
+        ])->setPaper('legal', 'portrait');
 
         return $pdf->stream("CSC-Form6-{$leaveRequest->reference_no}.pdf");
     }

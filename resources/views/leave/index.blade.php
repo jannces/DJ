@@ -16,16 +16,14 @@
                     <td class="small">{{ $r->start_date->format('M d') }} – {{ $r->end_date->format('M d, Y') }}</td>
                     <td>{{ rtrim(rtrim(number_format($r->working_days,1),'0'),'.') }}</td>
                     <td>@include('leave._status_badge', ['status' => $r->status])</td>
+                    {{-- One destination per row. The form preview now carries the
+                         filed form, the details and the approval progress, so the
+                         separate Timeline and Details buttons were three clicks
+                         to three pages that belong together. --}}
                     <td class="text-end">
-                        <div class="btn-group btn-group-sm">
-                            <a href="{{ route('leave.preview-form', $r) }}" class="btn btn-outline-secondary">
-                                <i class="bi bi-file-earmark-text me-1"></i>View Form
-                            </a>
-                            <a href="{{ route('leave.timeline', $r) }}" class="btn btn-outline-secondary">
-                                <i class="bi bi-list-check me-1"></i>Timeline
-                            </a>
-                            <a href="{{ route('leave.show', $r) }}" class="btn btn-outline-secondary">Details</a>
-                        </div>
+                        <a href="{{ route('leave.preview-form', $r) }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-file-earmark-text me-1"></i>View Form
+                        </a>
                     </td>
                 </tr>
             @empty

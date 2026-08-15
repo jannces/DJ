@@ -495,26 +495,16 @@ footer.app-foot{ text-align:center; color:var(--muted-2); font-size:.76rem; padd
   @page{ size:Letter portrait; margin:12mm; }
 }
 
-/* ---- CSC sheet: zoom viewport, timeline, instructions ---------------------
-   The zoom viewport scales the sheet visually only (CSS transform); form values
-   are never touched. Scrollbars appear on the viewport, so a zoomed sheet never
-   pushes the rest of the application sideways. */
+/* ---- CSC sheet: viewport, timeline, instructions --------------------------
+   The viewport is the sheet's scroll container, so a form wider than the
+   content column scrolls itself instead of pushing the application sideways.
+   (It used to host a JavaScript zoom control; the browser's own zoom does the
+   job, so the control and its script are gone.) */
 .csc-viewport{
   overflow:auto; max-width:100%; border-radius:var(--r-sm);
   background:var(--surface-2); padding:2px;
   overscroll-behavior-x:contain;
 }
-.csc-viewport [data-csc-scale]{
-  transform-origin:top left;
-  transition:transform var(--dur) var(--ease);
-}
-.csc-zoom{
-  display:inline-flex; align-items:center; gap:.15rem;
-  border:1px solid var(--border); border-radius:var(--r); padding:.15rem .3rem;
-  background:var(--surface);
-}
-.csc-zoom .icon-btn{ width:1.9rem; height:1.9rem; }
-.csc-zoom-level{ font-size:.78rem; font-variant-numeric:tabular-nums; min-width:3.1rem; text-align:center; }
 .csc-file{ display:block; width:100%; font:inherit; font-size:11px; padding:2px 0; }
 .csc-submit{
   display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
@@ -566,10 +556,9 @@ footer.app-foot{ text-align:center; color:var(--muted-2); font-size:.76rem; padd
 .table-responsive{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
 
 @media print{
-  /* Zoom must never affect the printed sheet. */
+  /* The scroll container must not clip the sheet on paper. */
   .csc-viewport{ overflow:visible; background:none; padding:0; }
-  .csc-viewport [data-csc-scale]{ transform:none !important; }
-  .csc-zoom, .csc-submit{ display:none !important; }
+  .csc-submit{ display:none !important; }
 }
 
 /* ---- Visual discipline pass -----------------------------------------------
@@ -1106,6 +1095,13 @@ body{ background:var(--bg); color:var(--text); }
   border-radius:0;
 }
 .csc-fill-input:focus{ outline:2px solid #6d28d9; outline-offset:1px; }
+/* …and on the read-only preview, the submitted value sits on that same rule,
+   so the preview and the entry form rule identical lines in identical places. */
+.csc-fill-value{
+  flex:1 1 auto; min-width:2rem; align-self:flex-end;
+  border-bottom:1px solid #000; min-height:.95em;
+  font-size:11px; padding:0 2px; overflow-wrap:anywhere;
+}
 
 /* Checkbox rows sit on one line with their rule. */
 .csc-check{ align-items:baseline; }

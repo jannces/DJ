@@ -70,8 +70,7 @@
 <form method="POST" action="{{ route('leave.store') }}" enctype="multipart/form-data" data-no-loader>
     @csrf
 
-    <div class="csc-viewport" data-csc-viewport>
-    <div data-csc-scale>
+    <div class="csc-viewport">
 
     {{-- ================= PART 1 — EMPLOYEE INFORMATION ================= --}}
     <div class="csc-partlabel no-print">Part 1 of 3 &middot; Employee information</div>
@@ -514,7 +513,6 @@
         <button class="btn btn-lgu" type="submit"><i class="bi bi-send me-1"></i>Submit application</button>
     </div>
 
-    </div>{{-- /scale --}}
     </div>{{-- /viewport --}}
 </form>
 
