@@ -1377,3 +1377,103 @@ span.dash-link:hover{ transform:none; box-shadow:none; color:var(--muted); }
   background-image:linear-gradient(145deg, color-mix(in srgb,var(--primary) 82%,#fff), var(--primary));
   box-shadow:0 2px 6px color-mix(in srgb,var(--primary) 40%,transparent);
 }
+
+/* ============================================================================
+   SYSTEM-WIDE PANEL LANGUAGE
+   ----------------------------------------------------------------------------
+   The dashboard's frame / header / table treatment, applied to every other page.
+
+   It was previously unreachable outside the dashboard: `--hair` and
+   `--dash-surface` were declared on `.dash`, so any page without that wrapper
+   rendered a `.dash-frame` with no hairline colour at all. They are theme
+   tokens now, and the Bootstrap classes the rest of the system already uses
+   (`.card`, `.card-header`, `.table`, `.list-group`) are mapped onto the same
+   values — so the look carries across without rewriting twenty templates.
+
+   Deliberately NOT touched: `.csc-sheet` and everything inside it. The CSC
+   Form No. 6 facsimile must stay monochrome and print-faithful.
+   ========================================================================== */
+
+:root{ --hair:var(--border); --dash-surface:var(--surface); }
+.dash{ --hair:var(--border); --dash-surface:var(--surface); }
+/* Re-stated at the original selector's specificity so the hardcoded greys the
+   dashboard used in dark mode give way to the indigo-tinted theme tokens. */
+:root[data-bs-theme="dark"] .dash{ --hair:var(--border); --dash-surface:var(--surface); }
+:root[data-bs-theme="dark"] .dash .dash-frame{ background:var(--surface); }
+
+/* ---- Panels: a card is a dash-frame ------------------------------------- */
+.card{
+  border:1px solid var(--hair); border-radius:.75rem;
+  background:var(--surface); margin-bottom:1rem;
+}
+.card-header{
+  display:flex; align-items:center; justify-content:space-between; gap:.75rem;
+  padding:.85rem 1.15rem; border-bottom:1px solid var(--hair);
+  background:transparent; color:var(--text);
+  font-size:.85rem; font-weight:600;
+}
+.card-header i{ color:var(--muted); font-size:.9rem; }
+.card-body{ padding:1.15rem; }
+.card > .table-responsive:first-child{ border-top-left-radius:.75rem; border-top-right-radius:.75rem; }
+
+/* ---- Tables: work with Bootstrap's variables, not against them ---------- */
+.card .table{
+  --bs-table-bg:transparent;
+  --bs-table-color:var(--text);
+  --bs-table-border-color:var(--hair);
+  --bs-table-hover-bg:color-mix(in srgb,var(--text) 3%,transparent);
+  --bs-table-hover-color:var(--text);
+  margin:0;
+}
+.card .table > thead > tr > th{
+  font-size:.75rem; font-weight:500; color:var(--muted); white-space:nowrap;
+  padding:.7rem 1.15rem; border-bottom:1px solid var(--hair);
+}
+.card .table > tbody > tr > td{
+  padding:.8rem 1.15rem; font-size:.85rem; vertical-align:middle;
+  border-bottom:1px solid var(--hair);
+}
+.card .table > tbody > tr:last-child > td{ border-bottom:0; }
+.card .table .num{ font-variant-numeric:tabular-nums; text-align:right; }
+
+/* ---- List groups read as table rows ------------------------------------ */
+.list-group-item{
+  background:transparent; color:var(--text); border-color:var(--hair);
+  border-left:0; border-right:0; padding:.8rem 1.15rem; font-size:.85rem;
+}
+.list-group-item:first-child{ border-top:0; }
+.list-group-item:last-child{ border-bottom:0; }
+
+/* ---- Pagination --------------------------------------------------------- */
+.pagination{ margin:0; gap:.3rem; }
+.page-link{
+  border:1px solid var(--hair); border-radius:.5rem; background:var(--surface);
+  color:var(--text-2); font-size:.82rem; padding:.35rem .7rem;
+}
+.page-link:hover{ background:var(--surface-hover); color:var(--text); }
+.page-item.active .page-link{
+  background:var(--primary-soft); border-color:var(--primary); color:var(--primary);
+}
+.page-item.disabled .page-link{ color:var(--muted-2); background:var(--surface); }
+
+/* ---- Inputs ------------------------------------------------------------- */
+.form-control,.form-select{
+  background:var(--surface); border:1px solid var(--border-strong);
+  color:var(--text); border-radius:.5rem; font-size:.85rem;
+}
+.form-control:focus,.form-select:focus{
+  background:var(--surface); color:var(--text);
+  border-color:var(--primary); box-shadow:none;
+}
+.form-control::placeholder{ color:var(--muted-2); }
+.form-label{ font-size:.78rem; font-weight:500; color:var(--muted); margin-bottom:.25rem; }
+
+/* ---- Headings, alerts, modals ------------------------------------------ */
+h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
+.alert{ border:1px solid var(--hair); border-radius:.65rem; font-size:.88rem; padding:.8rem 1rem; }
+.modal-content{ background:var(--surface); border:1px solid var(--hair); border-radius:.75rem; }
+.modal-header,.modal-footer{ border-color:var(--hair); padding:.85rem 1.15rem; }
+.modal-body{ padding:1.15rem; }
+
+/* Empty-state cells match the dashboard's. */
+.card .table td.text-center.text-muted{ padding:2.5rem 1rem; font-size:.85rem; }

@@ -232,21 +232,12 @@
                 </thead>
                 <tbody>
                 @forelse ($my_requests as $r)
-                    @php
-                        $st = match ($r->status) {
-                            'approved' => ['st-ok', 'bi-check-circle', 'Approved'],
-                            'rejected' => ['st-bad', 'bi-x-circle', 'Disapproved'],
-                            'cancelled' => ['st-off', 'bi-dash-circle', 'Cancelled'],
-                            'returned' => ['st-wait', 'bi-arrow-counterclockwise', 'Returned'],
-                            default => ['st-wait', 'bi-clock', 'Pending'],
-                        };
-                    @endphp
                     <tr>
                         <td class="ref">{{ $r->reference_no }}</td>
                         <td>{{ $r->leaveType->name }}</td>
                         <td class="text-muted">{{ $r->start_date->format('M d') }} &ndash; {{ $r->end_date->format('M d, Y') }}</td>
                         <td class="num">{{ rtrim(rtrim(number_format($r->working_days, 1), '0'), '.') }}</td>
-                        <td><span class="st {{ $st[0] }}"><i class="bi {{ $st[1] }}"></i>{{ $st[2] }}</span></td>
+                        <td>@include('leave._status_badge', ['status' => $r->status])</td>
                         <td class="text-end">
                             <a href="{{ route('leave.preview-form', $r) }}" class="dash-link">
                                 <i class="bi bi-file-earmark-text"></i>View form

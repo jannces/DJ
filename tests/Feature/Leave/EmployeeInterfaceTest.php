@@ -349,6 +349,29 @@ class EmployeeInterfaceTest extends TestCase
             '6.A lists the leave types in a different order on the two sheets');
     }
 
+    /**
+     * A status looks the same wherever it appears. The dashboard used to build
+     * its own chips inline while every other page rendered a Bootstrap badge,
+     * so one request showed as a soft pill in one place and a solid block in
+     * another. Both now come from leave/_status_badge.
+     */
+    public function test_a_status_renders_identically_on_every_page(): void
+    {
+        $request = $this->fileVacationLeave();
+
+        $dashboard = $this->asEmployee()->get('/dashboard')->assertOk()->getContent();
+        $list = $this->asEmployee()->get('/leave')->assertOk()->getContent();
+        $preview = $this->asEmployee()->get("/leave/{$request->id}/preview")->assertOk()->getContent();
+
+        // The shared chip: a .st pill with an icon, not a Bootstrap badge.
+        foreach (['dashboard' => $dashboard, 'my leave requests' => $list, 'preview' => $preview] as $page => $html) {
+            $this->assertStringContainsString('<span class="st st-wait"><i class="bi bi-clock"></i>Pending</span>',
+                $html, "the {$page} page is not using the shared status chip");
+            $this->assertStringNotContainsString('badge bg-info', $html,
+                "the {$page} page still renders a Bootstrap status badge");
+        }
+    }
+
     /** Zoom controls are gone from the preview, as they are from the form. */
     public function test_the_form_preview_has_no_zoom_controls(): void
     {
