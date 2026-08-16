@@ -3,20 +3,25 @@
 /*
  * Sidebar menu. Visibility is permission-driven (RBAC menu visibility):
  * an item renders only when the signed-in user holds `permission`.
+ *
+ * Information architecture: personal ("I am an employee") is separated from
+ * organisation-wide work ("I am HR"). Overview and the Leave group are the
+ * user's own leave; HR Management is the LGU-wide context.
  */
 return [
-    ['label' => 'Dashboard', 'icon' => 'bi-speedometer2', 'route' => 'dashboard', 'permission' => 'dashboard.view'],
+    ['label' => 'Overview', 'icon' => 'bi-grid-1x2', 'route' => 'dashboard', 'permission' => 'dashboard.view'],
 
     ['heading' => 'Leave'],
     ['label' => 'Apply for Leave', 'icon' => 'bi-calendar-plus', 'route' => 'leave.create', 'permission' => 'leave.apply'],
     ['label' => 'My Leave Requests', 'icon' => 'bi-card-checklist', 'route' => 'leave.index', 'permission' => 'leave.view-own'],
-    ['label' => 'My Balances', 'icon' => 'bi-wallet2', 'route' => 'leave.balances', 'permission' => 'leave.view-own'],
+    ['label' => 'My Leave Balance', 'icon' => 'bi-wallet2', 'route' => 'leave.balances', 'permission' => 'leave.view-own'],
     ['label' => 'Department Reviews', 'icon' => 'bi-people', 'route' => 'review.department.index', 'permission' => 'leave.review.department'],
-    ['label' => 'HR Validation', 'icon' => 'bi-clipboard-check', 'route' => 'review.hr.index', 'permission' => 'leave.certify.hr'],
     ['label' => 'Final Approval', 'icon' => 'bi-award', 'route' => 'review.final.index', 'permission' => 'leave.approve.final'],
-    ['label' => 'All Leave Requests', 'icon' => 'bi-collection', 'route' => 'leave.all', 'permission' => 'leave.requests.view-all'],
 
     ['heading' => 'HR Management'],
+    ['label' => 'Dashboard', 'icon' => 'bi-speedometer2', 'route' => 'hr.dashboard', 'permission' => 'leave.certify.hr'],
+    ['label' => 'Leave Requests', 'icon' => 'bi-collection', 'route' => 'leave.all', 'permission' => 'leave.requests.view-all'],
+    ['label' => 'Leave Approvals', 'icon' => 'bi-clipboard-check', 'route' => 'review.hr.index', 'permission' => 'leave.certify.hr'],
     ['label' => 'Employees', 'icon' => 'bi-person-badge', 'route' => 'employees.index', 'permission' => 'employees.view'],
     ['label' => 'Departments', 'icon' => 'bi-diagram-3', 'route' => 'departments.index', 'permission' => 'departments.manage'],
     ['label' => 'Positions', 'icon' => 'bi-briefcase', 'route' => 'positions.index', 'permission' => 'positions.manage'],

@@ -57,6 +57,67 @@ class DashboardService
         return $data;
     }
 
+    /**
+     * Read-only view data for the HR user's *personal* Overview page. Every
+     * value is a plain read of rows the system already writes — no counting
+     * rule, balance calculation or status logic is defined here.
+     */
+    public function personalOverview(User $user): array
+    {
+        $own = LeaveRequest::where('user_id', $user->id);
+
+        return [
+            'balances' => LeaveBalance::with('leaveType')->where('user_id', $user->id)->get(),
+            'counts' => [
+                'pending' => (clone $own)->whereNotIn('status', ['approved', 'rejected', 'cancelled'])->count(),
+                'approved' => (clone $own)->where('status', 'approved')->count(),
+                'rejected' => (clone $own)->where('status', 'rejected')->count(),
+            ],
+            'upcoming' => (clone $own)->with('leaveType')
+                ->where('status', 'approved')
+                ->whereDate('end_date', '>=', today())
+                ->orderBy('start_date')->limit(3)->get(),
+            'recent' => (clone $own)->with('leaveType')->latest('updated_at')->limit(5)->get(),
+        ];
+    }
+
+    /**
+     * Read-only view data for the organisation-wide HR dashboard. Counters and
+     * series come from the same queries the dashboard already used.
+     */
+    public function hrOverview(): array
+    {
+        return [
+            'kpis' => [
+                'employees' => EmployeeProfile::count(),
+                'pending' => LeaveRequest::whereNotIn('status', ['approved', 'rejected', 'cancelled'])->count(),
+                'awaiting_hr' => LeaveRequest::where('status', LeaveRequest::STATUS_HR_REVIEW)->count(),
+                'approved_this_month' => LeaveRequest::where('status', 'approved')
+                    ->whereBetween('decided_at', [now()->startOfMonth(), now()->endOfMonth()])->count(),
+                'on_leave_today' => LeaveRequest::where('status', 'approved')
+                    ->whereDate('start_date', '<=', today())
+                    ->whereDate('end_date', '>=', today())->count(),
+                'departments' => Department::count(),
+            ],
+            'trend' => $this->leavesByMonth(),
+            'byType' => $this->leavesByType(),
+            'byDepartment' => $this->employeesByDepartment(),
+            'recent' => LeaveRequest::with('leaveType', 'user.employeeProfile.department')
+                ->latest()->limit(8)->get(),
+        ];
+    }
+
+    /** Headcount per department, for the HR dashboard bar chart. */
+    public function employeesByDepartment(): array
+    {
+        $rows = Department::withCount('employees')->orderByDesc('employees_count')->limit(8)->get();
+
+        return [
+            'labels' => $rows->pluck('name')->all(),
+            'data' => $rows->pluck('employees_count')->all(),
+        ];
+    }
+
     public function primaryRole(User $user): string
     {
         return app(\App\Services\Rbac\RbacService::class)->userRoleSlugs($user)->first() ?? 'employee';

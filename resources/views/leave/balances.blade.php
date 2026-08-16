@@ -1,38 +1,86 @@
 @extends('layouts.app')
-@section('title', 'My Balances')
+@section('title', 'My Leave Balance')
 @section('content')
-<h1 class="h4 mb-3">My Leave Balances</h1>
-<div class="row g-3 mb-3">
-    @foreach ($balances as $b)
-        <div class="col-md-3">
-            <div class="card"><div class="card-body">
-                <div class="text-muted small">{{ $b->leaveType->name }}</div>
-                <div class="h4 mb-0">{{ number_format($b->balance, 2) }}</div>
-                <div class="small text-muted">Earned {{ number_format($b->earned,2) }} · Used {{ number_format($b->used,2) }}</div>
-            </div></div>
+{{-- Presentation only: earned/used/balance are shown exactly as stored. --}}
+@include('partials.page-head', [
+    'title' => 'My Leave Balance',
+    'sub' => 'Credits currently on record and how they moved',
+    'crumbs' => ['Overview' => route('dashboard'), 'Leave' => null, 'My Leave Balance' => null],
+])
+
+<div class="hr-stack">
+    <section aria-label="Balance summary">
+        @if ($balances->isEmpty())
+            <div class="card">@include('partials.empty-state', [
+                'icon' => 'bi-wallet2', 'title' => 'No balances on record',
+                'body' => 'Leave credits will appear here once they have been recorded for your account.',
+            ])</div>
+        @else
+            <div class="kpi-grid">
+                @foreach ($balances as $b)
+                    @php
+                        $earned = (float) $b->earned;
+                        $remaining = (float) $b->balance;
+                        $pct = $earned > 0 ? max(0, min(100, ($remaining / $earned) * 100)) : 0;
+                        $tone = $remaining <= 0 ? 'is-empty' : ($pct < 25 ? 'is-low' : '');
+                    @endphp
+                    <div class="kpi">
+                        <div class="kpi-top">
+                            <span class="kpi-label">{{ $b->leaveType->name }}</span>
+                            <span class="kpi-mark"><i class="bi bi-wallet2" aria-hidden="true"></i></span>
+                        </div>
+                        <div class="balance-row">
+                            <span class="days cell-num">{{ number_format($remaining, 2) }}</span>
+                            <span class="kpi-foot">days remaining</span>
+                        </div>
+                        <div class="meter {{ $tone }}" role="img"
+                             aria-label="{{ number_format($remaining, 2) }} of {{ number_format($earned, 2) }} days remaining">
+                            <span style="width:{{ number_format($pct, 1) }}%"></span>
+                        </div>
+                        <div class="kpi-foot cell-num">Earned {{ number_format($earned, 2) }} · Used {{ number_format($b->used, 2) }}</div>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+    </section>
+
+    <section aria-labelledby="credit-history">
+        <div class="card">
+            <div class="card-header" id="credit-history">Credit History</div>
+            <div class="table-scroll">
+                <table class="table table-quiet">
+                    <thead>
+                        <tr>
+                            <th scope="col">Date</th>
+                            <th scope="col">Type</th>
+                            <th scope="col">Entry</th>
+                            <th scope="col" class="text-end">Days</th>
+                            <th scope="col" class="text-end">Balance After</th>
+                            <th scope="col">Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @forelse ($history as $h)
+                        <tr>
+                            <td class="cell-meta cell-num">{{ $h->created_at->format('M j, Y') }}</td>
+                            <td class="cell-primary">{{ $h->leaveType->code }}</td>
+                            <td><span class="status status-idle">{{ ucwords(str_replace('_', ' ', $h->entry_type)) }}</span></td>
+                            <td class="text-end cell-num {{ $h->days < 0 ? 'text-danger' : 'text-success' }}">
+                                {{ $h->days > 0 ? '+' : '' }}{{ number_format($h->days, 2) }}
+                            </td>
+                            <td class="text-end cell-num">{{ number_format($h->balance_after, 2) }}</td>
+                            <td class="cell-meta">{{ $h->remarks }}</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="6">@include('partials.empty-state', [
+                            'icon' => 'bi-clock-history', 'title' => 'No credit history',
+                            'body' => 'Accruals, deductions and adjustments will be listed here.',
+                        ])</td></tr>
+                    @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
-    @endforeach
-</div>
-<div class="card">
-    <div class="card-header fw-semibold">Credit history</div>
-    <div class="table-responsive">
-        <table class="table table-sm mb-0">
-            <thead><tr><th>Date</th><th>Type</th><th>Entry</th><th class="text-end">Days</th><th class="text-end">Balance</th><th>Remarks</th></tr></thead>
-            <tbody>
-            @forelse ($history as $h)
-                <tr>
-                    <td class="small">{{ $h->created_at->format('M d, Y') }}</td>
-                    <td>{{ $h->leaveType->code }}</td>
-                    <td><span class="badge bg-light text-dark">{{ $h->entry_type }}</span></td>
-                    <td class="text-end {{ $h->days < 0 ? 'text-danger' : 'text-success' }}">{{ number_format($h->days, 2) }}</td>
-                    <td class="text-end">{{ number_format($h->balance_after, 2) }}</td>
-                    <td class="small">{{ $h->remarks }}</td>
-                </tr>
-            @empty
-                <tr><td colspan="6" class="text-center text-muted py-3">No history yet.</td></tr>
-            @endforelse
-            </tbody>
-        </table>
-    </div>
+    </section>
 </div>
 @endsection

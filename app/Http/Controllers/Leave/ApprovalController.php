@@ -33,7 +33,8 @@ class ApprovalController extends Controller
             ->where('status', LeaveRequest::STATUS_HR_REVIEW)
             ->latest()->paginate(15);
 
-        return view('leave.review', ['requests' => $requests, 'queue' => 'hr', 'title' => 'HR Validation']);
+        // Same query and payload; the HR queue just renders its own template.
+        return view('leave.review-hr', ['requests' => $requests, 'queue' => 'hr', 'title' => 'Leave Approvals']);
     }
 
     public function finalQueue(Request $request): View

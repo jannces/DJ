@@ -1,7 +1,11 @@
 @extends('layouts.app')
 @section('title', 'Apply for Leave')
 @section('content')
-<h1 class="h4 mb-3">Application for Leave — CSC Form No. 6</h1>
+@include('partials.page-head', [
+    'title' => 'Apply for Leave',
+    'sub' => 'Application for Leave — CSC Form No. 6',
+    'crumbs' => ['Overview' => route('dashboard'), 'Leave' => null, 'Apply for Leave' => null],
+])
 
 <form method="POST" action="{{ route('leave.store') }}" enctype="multipart/form-data" id="leaveForm" data-no-loader>
     @csrf
@@ -13,7 +17,7 @@
     <div class="row g-3">
         <div class="col-lg-8">
             <div class="card mb-3">
-                <div class="card-header fw-semibold">1. Employee information</div>
+                <div class="card-header"><span class="step-chip">1</span>Employee Information</div>
                 <div class="card-body row g-3">
                     <div class="col-md-6"><label class="form-label">Office / Department</label>
                         <input class="form-control" value="{{ $profile?->department?->name ?? '—' }}" readonly></div>
@@ -29,7 +33,7 @@
             </div>
 
             <div class="card mb-3">
-                <div class="card-header fw-semibold">2. Details of application</div>
+                <div class="card-header"><span class="step-chip">2</span>Details of Application</div>
                 <div class="card-body row g-3">
                     <div class="col-md-6"><label class="form-label">Type of leave</label>
                         <select name="leave_type_id" id="leaveType" class="form-select @error('leave_type_id') is-invalid @enderror" required>
@@ -75,7 +79,7 @@
             </div>
 
             <div class="card">
-                <div class="card-header fw-semibold">3. Supporting documents</div>
+                <div class="card-header"><span class="step-chip">3</span>Supporting Documents</div>
                 <div class="card-body">
                     <div id="docList" class="text-muted small mb-2">Select a leave type to see required documents.</div>
                     <div id="docUploads"></div>
@@ -88,14 +92,19 @@
         </div>
 
         <div class="col-lg-4">
-            <div class="card">
-                <div class="card-header fw-semibold">Your credits</div>
+            <div class="card form-summary">
+                <div class="card-header">Summary</div>
                 <div class="card-body">
-                    <div class="d-flex justify-content-between"><span>Vacation Leave</span><strong>{{ number_format($vlBalance, 2) }}</strong></div>
-                    <div class="d-flex justify-content-between"><span>Sick Leave</span><strong>{{ number_format($slBalance, 2) }}</strong></div>
-                    <hr>
-                    <label class="form-label">Applicant signature (type your full name)</label>
-                    <input name="applicant_signature" class="form-control @error('applicant_signature') is-invalid @enderror"
+                    <div class="cell-meta mb-2">Your available credits</div>
+                    <div class="d-flex justify-content-between align-items-center py-1">
+                        <span>Vacation Leave</span><strong class="cell-num">{{ number_format($vlBalance, 2) }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center py-1">
+                        <span>Sick Leave</span><strong class="cell-num">{{ number_format($slBalance, 2) }}</strong>
+                    </div>
+                    <div class="divider"></div>
+                    <label class="form-label" for="applicant_signature">Applicant signature (type your full name)</label>
+                    <input id="applicant_signature" name="applicant_signature" class="form-control @error('applicant_signature') is-invalid @enderror"
                            value="{{ old('applicant_signature', auth()->user()->name) }}" required>
                     @error('applicant_signature')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     <button class="btn btn-lgu w-100 mt-3" type="submit"><i class="bi bi-send me-1"></i>Submit application</button>

@@ -33,6 +33,9 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'otp.verified', 'force.pwchange'])->group(function () {
     Route::get('/', fn () => redirect()->route('dashboard'));
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    // Organisation-wide HR view, gated by the existing HR certification permission.
+    Route::get('/hr/dashboard', [DashboardController::class, 'hr'])
+        ->middleware('permission:leave.certify.hr')->name('hr.dashboard');
 
     // Self-service password change
     Route::get('/change-password', [PasswordChangeController::class, 'edit'])->name('password.change');
