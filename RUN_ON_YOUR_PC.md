@@ -135,13 +135,46 @@ Use one of these seeded accounts (from the demo seeder). **All demo passwords ar
 | Employee | `employee@alicia.gov.ph` |
 
 ### About the OTP (one-time password)
-After you type your password, the system emails a **6-digit code**. Since you set
-`MAIL_MAILER=log` in `.env` for first setup, the email is **not really sent** — it is
-written to a file. To read your code:
+After you type your password, the system emails a **6-digit code** to the address on
+your user account. Since you set `MAIL_MAILER=log` in `.env` for first setup, the
+email is **not really sent** — it is written to a file. To read your code:
 
 1. Open the file `storage\logs\laravel.log` in Notepad.
 2. Scroll to the bottom. You'll see the 6-digit code in the latest message.
 3. Type that code on the OTP screen.
+
+### Sending the OTP to a real inbox
+When you want the code to arrive in an actual mailbox (Gmail, the LGU mail server),
+change these lines in `.env`. For Gmail you must turn on **2-Step Verification** in
+your Google Account and create an **App Password** (Google → Security → App
+passwords) — your normal Gmail password will be rejected.
+
+```
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_SCHEME=tls
+MAIL_USERNAME=youraccount@gmail.com
+MAIL_PASSWORD="abcd efgh ijkl mnop"     # the 16-character App Password
+MAIL_FROM_ADDRESS="youraccount@gmail.com"   # must match MAIL_USERNAME for Gmail
+MAIL_FROM_NAME="LGU Alicia LMS"
+```
+
+Then apply and test it:
+
+```
+php artisan config:clear
+php artisan mail:test youraccount@gmail.com
+```
+
+If the command says the message was handed to the `smtp` transport and the email
+lands in your inbox, logins will now deliver real OTPs. Two things to remember:
+
+- **The account's email must be a real mailbox.** The demo users
+  (`employee@alicia.gov.ph`, …) don't exist, so their codes bounce. Edit the user
+  under **Administration → Users** and set a real address before testing.
+- OTP mail is sent immediately (no `queue:work` needed). Only set
+  `MAIL_QUEUE_OTP=true` if you keep a queue worker running.
 
 > **Tip:** To skip OTP entirely while testing, log in as Super Admin once, go to
 > **Administration → System Settings**, and turn **`auth.otp_enabled`** OFF.
@@ -176,7 +209,7 @@ small letter, a number, and a symbol — for example `MyStr0ng!Pass2026`).
 | MySQL won't start in XAMPP | Another program is using port 3306. Stop it, or change the port in XAMPP config. |
 | "could not find driver" | In XAMPP, edit `C:\xampp\php\php.ini`, remove the `;` before `extension=pdo_mysql`, save, restart Apache. |
 | Login says database error | Make sure MySQL is **green** in XAMPP and you created the `lms_alicia` database (Part C step 5). |
-| I didn't get the OTP email | Read it from `storage\logs\laravel.log` (Part E), or turn off OTP in System Settings for testing. |
+| I didn't get the OTP email | With `MAIL_MAILER=log`, read it from `storage\logs\laravel.log` (Part E). On SMTP, run `php artisan mail:test your@email` — it prints the exact SMTP error. Check the user's email address is real, look in Spam, and confirm you used a Gmail **App Password**. |
 | Page looks unstyled | Run `php artisan storage:link` and refresh; make sure you opened `http://127.0.0.1:8000` (not the `public` folder directly). |
 | Locked out (3 wrong passwords) | Wait 24 hours, or ask a Super Admin to unblock you under **Users**, or reset with the CLI (below). |
 

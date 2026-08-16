@@ -4,13 +4,16 @@ namespace App\Mail;
 
 use App\Models\User;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class OtpCodeMail extends Mailable implements ShouldQueue
+/**
+ * Delivery mode is decided by OtpService: sent inline by default so the code
+ * arrives without a queue worker, queued when MAIL_QUEUE_OTP=true.
+ */
+class OtpCodeMail extends Mailable
 {
     use Queueable, SerializesModels;
 

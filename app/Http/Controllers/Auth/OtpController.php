@@ -59,7 +59,9 @@ class OtpController extends Controller
         }
         RateLimiter::hit($key, 120);
 
-        $this->otp->issue($request->user());
+        if (! $this->otp->issue($request->user())) {
+            return back()->withErrors(['code' => 'We could not send the code. Contact the System Administrator.']);
+        }
 
         return back()->with('status', 'A new code is on its way to your inbox.');
     }

@@ -44,13 +44,16 @@ class AuthApiController extends Controller
         $this->security->recordSuccess($request, $user);
 
         if ($this->otp->enabled()) {
-            $this->otp->issue($user);
+            $sent = $this->otp->issue($user);
 
             return response()->json([
                 'otp_required' => true,
                 'user_id' => $user->id,
-                'message' => 'An OTP has been emailed to you.',
-            ]);
+                'otp_sent' => $sent,
+                'message' => $sent
+                    ? 'An OTP has been emailed to '.$this->otp->maskedRecipient($user).'.'
+                    : 'The OTP could not be emailed. Contact the System Administrator.',
+            ], $sent ? 200 : 503);
         }
 
         return response()->json([

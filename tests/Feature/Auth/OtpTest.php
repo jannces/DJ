@@ -2,9 +2,11 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Mail\OtpCodeMail;
 use App\Models\User;
 use App\Services\Auth\OtpService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class OtpTest extends TestCase
@@ -36,6 +38,32 @@ class OtpTest extends TestCase
 
         $this->post('/otp/verify', ['code' => '123456'])->assertRedirect();
         $this->assertTrue(session('otp_verified'));
+    }
+
+    public function test_code_is_emailed_to_the_account_address(): void
+    {
+        Mail::fake();
+        $user = User::factory()->create(['email' => 'juan.delacruz@alicia.gov.ph']);
+
+        $this->assertTrue(app(OtpService::class)->issue($user));
+
+        Mail::assertSent(OtpCodeMail::class, fn (OtpCodeMail $mail) => $mail->hasTo('juan.delacruz@alicia.gov.ph'));
+    }
+
+    public function test_delivery_failure_is_reported_to_the_caller(): void
+    {
+        Mail::shouldReceive('to')->once()->andThrow(new \RuntimeException('smtp unreachable'));
+        $user = User::factory()->create();
+
+        $this->assertFalse(app(OtpService::class)->issue($user));
+        $this->assertDatabaseCount('otp_codes', 1);
+    }
+
+    public function test_recipient_is_masked_for_display(): void
+    {
+        $user = User::factory()->make(['email' => 'juan.delacruz@alicia.gov.ph']);
+
+        $this->assertSame('jua***uz@alicia.gov.ph', app(OtpService::class)->maskedRecipient($user));
     }
 
     public function test_expired_or_wrong_code_is_rejected(): void

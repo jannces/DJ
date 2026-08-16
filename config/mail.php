@@ -115,4 +115,18 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | OTP Delivery
+    |--------------------------------------------------------------------------
+    |
+    | Login OTP emails are sent inline by default: a queued OTP never leaves
+    | the jobs table unless "php artisan queue:work" is running, which looks
+    | to the user like the code was never sent. Turn this on only where a
+    | worker is supervised (see docs/Deployment.md).
+    |
+    */
+
+    'otp_queue' => env('MAIL_QUEUE_OTP', false),
+
 ];

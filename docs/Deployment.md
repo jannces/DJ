@@ -28,8 +28,23 @@ DB_HOST=127.0.0.1  DB_DATABASE=lms_alicia  DB_USERNAME=lms_app  DB_PASSWORD=<str
 SESSION_DRIVER=database  SESSION_SECURE_COOKIE=true
 QUEUE_CONNECTION=database        # or redis
 CACHE_STORE=database             # or redis
-MAIL_MAILER=smtp  MAIL_HOST=<lan-smtp>  MAIL_PORT=25 ...
+MAIL_MAILER=smtp  MAIL_HOST=<lan-smtp>  MAIL_PORT=587  MAIL_SCHEME=tls
+MAIL_USERNAME=<mailbox>  MAIL_PASSWORD=<secret>  MAIL_FROM_ADDRESS="no-reply@alicia.gov.ph"
+MAIL_QUEUE_OTP=false             # true only if queue:work is supervised
 ```
+
+Prove the transport before go-live (a real OTP-shaped email is sent, and any SMTP
+error is printed verbatim):
+```bash
+php artisan config:clear
+php artisan mail:test admin@alicia.gov.ph
+```
+
+> OTP delivery is only as good as the address on each account: user records must
+> carry real mailboxes, and the relay must accept `MAIL_FROM_ADDRESS` as a sender
+> (SPF/DKIM on the domain if mail leaves the LAN). External providers such as
+> Gmail additionally require an App Password and `MAIL_FROM_ADDRESS` equal to
+> `MAIL_USERNAME`.
 
 Create DB + user (phpMyAdmin or):
 ```sql

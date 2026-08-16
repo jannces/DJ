@@ -90,9 +90,14 @@ class LoginController extends Controller
 
         if ($this->otp->enabled()) {
             $request->session()->put('otp_verified', false);
-            $this->otp->issue($user);
+            $sent = $this->otp->issue($user);
 
-            return redirect()->route('otp.show')->with('status', 'We emailed you a one-time password.');
+            return redirect()->route('otp.show')->with(
+                'status',
+                $sent
+                    ? 'We emailed a one-time password to '.$this->otp->maskedRecipient($user).'.'
+                    : 'We could not send the one-time password right now. Try "Resend code", or contact the System Administrator.'
+            );
         }
 
         $request->session()->put('otp_verified', true);
