@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Api\V1\AuthApiController;
 use App\Http\Controllers\Api\V1\SecurityApiController;
 use Illuminate\Support\Facades\Route;
@@ -25,3 +26,8 @@ Route::prefix('v1')->name('api.')->group(function () {
 // Session-authenticated alert polling for the web UI bell (uses web guard).
 Route::middleware(['web', 'auth'])->get('/internal/security/alerts', [SecurityApiController::class, 'alerts'])
     ->name('web.security.alerts');
+
+// Same, for every user's notification bell — no permission gate, since a user
+// only ever polls their own notifications.
+Route::middleware(['web', 'auth'])->get('/internal/notifications/unread', [NotificationController::class, 'unread'])
+    ->name('web.notifications.unread');

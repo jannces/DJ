@@ -184,6 +184,11 @@ On the **server**, log in as Super Admin (`127.0.0.1` is always pre-authorized) 
 Repeat for each workstation. The allow-list is cached for 60 seconds, so wait a minute
 (or restart Apache) before testing a newly added device.
 
+> Setting this up so HR and an employee can be signed in on separate laptops at the
+> same time? Continue with **`docs/Two-Device-Testing.md`** — LAN access alone is not
+> enough, because queued notifications need a worker before anything reaches the
+> other device.
+
 > If you are still setting up and want everything reachable first, leave
 > `security.device_enforcement` **OFF** in **Administration → System Settings**, get the
 > LAN access working, then register the devices and turn it back **ON**. It is a real

@@ -28,6 +28,7 @@ class SystemSettingSeeder extends Seeder
             ['leave', 'leave.vl_hard_deadline_days', '3', 'int', 'HR rule: VL must be filed N days ahead (warning + HR override)'],
             ['general', 'general.lgu_name', 'Local Government Unit of Alicia', 'string', 'Organization name on forms and reports'],
             ['general', 'general.alerts_poll_seconds', '15', 'int', 'Dashboard alert polling interval'],
+            ['general', 'general.notifications_poll_seconds', '15', 'int', 'Notification bell polling interval (seconds)'],
         ];
 
         foreach ($settings as [$group, $key, $value, $type, $description]) {

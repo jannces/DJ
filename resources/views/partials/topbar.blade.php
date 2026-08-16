@@ -25,10 +25,13 @@
             </a>
         @endcan
 
-        <a href="{{ route('notifications.index') }}" class="icon-btn" aria-label="Notifications" title="Notifications">
+        @php $unread = auth()->user()?->unreadNotifications()->count() ?? 0 @endphp
+        <a href="{{ route('notifications.index') }}" id="notif-bell" class="icon-btn"
+           data-url="{{ route('web.notifications.unread') }}"
+           data-interval="{{ \App\Models\SystemSetting::get('general.notifications_poll_seconds', 15) }}"
+           aria-label="Notifications" title="Notifications">
             <i class="bi bi-bell"></i>
-            @php $unread = auth()->user()?->unreadNotifications()->count() ?? 0 @endphp
-            @if ($unread)<span class="dot-badge">{{ $unread > 99 ? '99+' : $unread }}</span>@endif
+            <span id="notif-badge" class="dot-badge {{ $unread ? '' : 'd-none' }}">{{ $unread > 99 ? '99+' : $unread }}</span>
         </a>
 
         <button class="icon-btn" onclick="lmsToggleTheme()" aria-label="Toggle dark mode" title="Light / dark mode">

@@ -136,5 +136,31 @@
       };
       poll(); setInterval(poll, Number(bell.dataset.interval || 15) * 1000);
     }
+
+    // Real-time leave notifications (every signed-in user). Lets a decision
+    // made on one machine surface on another without a page refresh.
+    const notifBell = document.getElementById('notif-bell');
+    if (notifBell) {
+      const badge = document.getElementById('notif-badge');
+      // Seeded from the server-rendered badge so the first poll does not
+      // re-toast notifications that were already unread when the page loaded.
+      let lastId = null, primed = false;
+      const pollNotifs = function () {
+        lmsFetch(notifBell.dataset.url).then(function (r) { return r.ok ? r.json() : null; }).then(function (data) {
+          if (!data) return;
+          if (data.unread > 0) {
+            badge.textContent = data.unread > 99 ? '99+' : data.unread;
+            badge.classList.remove('d-none');
+          } else { badge.classList.add('d-none'); }
+
+          if (data.latest && primed && data.latest.id !== lastId) {
+            lmsToast('info', data.latest.title);
+          }
+          lastId = data.latest ? data.latest.id : null;
+          primed = true;
+        }).catch(function () {});
+      };
+      pollNotifs(); setInterval(pollNotifs, Number(notifBell.dataset.interval || 15) * 1000);
+    }
   });
 })();
