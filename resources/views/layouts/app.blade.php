@@ -30,6 +30,16 @@
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             @endif
+            @if ($errors->any())
+                {{-- Without this, a rejected form silently re-renders and looks like nothing happened. --}}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="bi bi-x-octagon me-1"></i>We could not save your changes:
+                    <ul class="mb-0 mt-1 small">
+                        @foreach ($errors->all() as $message)<li>{{ $message }}</li>@endforeach
+                    </ul>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            @endif
             @yield('content')
         </main>
         <footer class="app-foot no-print">

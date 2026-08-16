@@ -98,7 +98,7 @@
                         </div>
                     @endforeach
                     @unless ($user->exists)
-                        <p class="text-muted small mt-2 mb-0">A temporary password is generated and shown after saving.</p>
+                        <p class="text-muted small mt-2 mb-0">The default password is shown after saving; the user must change it on first login.</p>
                     @endunless
                 </div>
             </div>
@@ -114,9 +114,8 @@
         <div class="card">
             <div class="card-header fw-semibold">Fine-grained permission overrides</div>
             <div class="card-body">
-                <input type="hidden" name="roles[]" value="">
-                @foreach ($assignedRoles as $rid)<input type="hidden" name="roles[]" value="{{ $rid }}">@endforeach
-                <p class="text-muted small">Grant or explicitly deny individual permissions (deny wins over any role allow).</p>
+                <p class="text-muted small">Grant or explicitly deny individual permissions (deny wins over any role allow).
+                    Roles are saved with the <strong>Save</strong> button above.</p>
                 @foreach ($permissions as $module => $perms)
                     <div class="mb-2">
                         <div class="text-uppercase small text-muted">{{ $module }}</div>

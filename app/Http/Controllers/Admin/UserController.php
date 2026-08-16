@@ -133,7 +133,22 @@ class UserController extends Controller
             'employment_status' => ['required', 'string', 'max:30'],
             'contact_no' => ['nullable', 'string', 'max:30'],
             'address' => ['nullable', 'string', 'max:255'],
+            'roles' => ['array'],
+            'roles.*' => ['nullable', 'exists:roles,id'],
         ]);
+
+        // The form ships the role checkboxes with the rest of the account, so
+        // "Save" has to apply them — otherwise ticking a role does nothing.
+        $submitted = $this->ids($data['roles'] ?? []);
+        $current = $user->roles->pluck('id')->sort()->values()->all();
+
+        if ($submitted !== $current) {
+            if ($request->user()->id === $user->id) {
+                return back()->withInput()->with('error', 'You cannot change your own roles.');
+            }
+            $this->rbac->syncUserRoles($user, $submitted);
+            $this->audit->log('user_access_changed', $user, ['roles' => $current], ['roles' => $submitted]);
+        }
 
         $old = $user->getAttributes();
         $user->update(['name' => $data['name'], 'email' => $data['email']]);
@@ -150,26 +165,47 @@ class UserController extends Controller
             return back()->with('error', 'You cannot change your own roles or permissions.');
         }
 
+        // "nullable" keeps a blank checkbox value from failing the whole form.
         $data = $request->validate([
-            'roles' => ['array'], 'roles.*' => ['exists:roles,id'],
-            'allow' => ['array'], 'allow.*' => ['exists:permissions,id'],
-            'deny' => ['array'], 'deny.*' => ['exists:permissions,id'],
+            'roles' => ['array'], 'roles.*' => ['nullable', 'exists:roles,id'],
+            'allow' => ['array'], 'allow.*' => ['nullable', 'exists:permissions,id'],
+            'deny' => ['array'], 'deny.*' => ['nullable', 'exists:permissions,id'],
         ]);
 
-        $this->rbac->syncUserRoles($user, $data['roles'] ?? []);
+        // Roles belong to the account form; only touch them if a caller sent them.
+        if ($request->has('roles')) {
+            $this->rbac->syncUserRoles($user, $this->ids($data['roles'] ?? []));
+        }
 
         $pivot = [];
-        foreach ($data['allow'] ?? [] as $id) {
+        foreach ($this->ids($data['allow'] ?? []) as $id) {
             $pivot[$id] = ['type' => 'allow'];
         }
-        foreach ($data['deny'] ?? [] as $id) {
-            $pivot[$id] = ['type' => 'deny'];
+        foreach ($this->ids($data['deny'] ?? []) as $id) {
+            $pivot[$id] = ['type' => 'deny']; // deny wins when both boxes are ticked
         }
+
+        $before = $user->directPermissions->pluck('id')->sort()->values()->all();
         $user->directPermissions()->sync($pivot);
         $this->rbac->bumpVersion();
-        $this->audit->log('user_access_changed', $user, [], $data);
+        $this->audit->log('user_access_changed', $user, ['permissions' => $before], $data);
 
         return back()->with('status', 'Access updated.');
+    }
+
+    /**
+     * Checkbox arrays arrive with blank placeholder entries; keep the real ids
+     * only, as sorted integers so two sets can be compared.
+     *
+     * @param  array<int, mixed>  $values
+     * @return array<int, int>
+     */
+    private function ids(array $values): array
+    {
+        return collect($values)
+            ->filter(fn ($value) => $value !== null && $value !== '')
+            ->map(fn ($value) => (int) $value)
+            ->unique()->sort()->values()->all();
     }
 
     public function resetPassword(User $user): RedirectResponse
