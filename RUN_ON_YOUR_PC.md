@@ -188,7 +188,8 @@ php artisan db:seed --class=DemoDataSeeder
 
 ### Useful commands
 ```
-php artisan test            # run the automated tests (should say "47 passed")
+php artisan test            # run the automated tests
+php artisan lms:lan         # show LAN URLs for other devices + check what blocks them
 php artisan lms:backup      # make a backup zip in storage/app/backups
 php artisan leave:accrue    # add this month's 1.25 VL + 1.25 SL credits to everyone
 ```
@@ -198,7 +199,14 @@ php artisan leave:accrue    # add this month's 1.25 VL + 1.25 SL credits to ever
 ## Part H — Opening it from another laptop (over the network)
 
 To let a second laptop on the same Wi-Fi open the system by IP address
-(e.g. `http://192.168.1.10`), follow **`docs/LAN-Access.md`**. The short version:
+(e.g. `http://192.168.1.10`), run this on the server first:
+
+```
+php artisan lms:lan
+```
+
+It prints the exact URLs the other laptop should open and checks what would block
+them. Then follow **`docs/LAN-Access.md`**. The short version:
 
 1. On the server, run `ipconfig` and note the **IPv4 Address**.
 2. In `.env` set `APP_URL=http://<that-ip>` and **`SESSION_SECURE_COOKIE=false`**,

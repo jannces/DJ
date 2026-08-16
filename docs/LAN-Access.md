@@ -9,9 +9,43 @@ is required.
 
 ---
 
+## Quick check: `php artisan lms:lan`
+
+Run this on the server first — it prints the URLs other devices should open and
+checks the settings that silently break access:
+
+```
+php artisan lms:lan
+```
+
+```
+  LGU Alicia LMS — access from another device
+
+  On the other device — same Wi-Fi or switch — open:
+
+    http://192.168.1.14:8000   Wi-Fi
+    http://10.0.5.22:8000      Ethernet
+
+  Start the server with:
+
+    php artisan serve --host=0.0.0.0 --port=8000
+
+  Checks
+  [FAIL] SESSION_SECURE_COOKIE=true, but you are serving over plain http://
+  [ ok ] Config is not cached — .env edits take effect immediately.
+  [ ok ] Device enforcement is OFF — any LAN address may connect.
+```
+
+Use `--port=80` when serving through Apache, and `--https` for the certificate-based
+deployment. The command exits non-zero if it finds a blocker, and each `[FAIL]` /
+`[warn]` line names the fix. The rest of this guide explains each step in full.
+
+---
+
 ## Step 1 — Find the server's IP address
 
-On the **server PC**, open Command Prompt and run:
+`php artisan lms:lan` prints this for you. To read it yourself, open Command Prompt on
+the **server PC** and run:
 
 ```
 ipconfig
@@ -183,6 +217,9 @@ With HTTPS you keep `SESSION_SECURE_COOKIE=true` and set
 | Page loads but has no styling / broken layout | `APP_URL` still points at the old hostname | Step 2, then `php artisan config:cache` |
 | Works from the server, not from the laptop | Different networks (e.g. laptop on guest Wi-Fi) | Put both on the same network/VLAN |
 | Worked yesterday, not today | Server's DHCP address changed | Reserve a static IP (Step 1) |
+
+On the server, `php artisan lms:lan` diagnoses every row above except the firewall
+(which cannot be checked from inside PHP).
 
 Quick check from the other laptop — open Command Prompt and run:
 
