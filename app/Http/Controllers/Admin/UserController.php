@@ -84,12 +84,12 @@ class UserController extends Controller
             'date_hired' => ['nullable', 'date'],
         ]);
 
-        $tempPassword = Str::password(14);
+        $defaultPassword = (string) config('auth.default_new_user_password');
         $user = User::create([
             'name' => $data['name'],
             'username' => $data['username'],
             'email' => $data['email'],
-            'password' => Hash::make($tempPassword),
+            'password' => Hash::make($defaultPassword),
             'status' => User::STATUS_ACTIVE,
             'must_change_password' => true,
             'email_verified_at' => now(),
@@ -97,10 +97,10 @@ class UserController extends Controller
 
         $user->employeeProfile()->create($data + ['user_id' => $user->id]);
         $this->rbac->syncUserRoles($user, $data['roles'] ?? []);
-        $this->audit->log('user_created', $user, [], ['email' => $user->email, 'temp_password' => '[GENERATED]']);
+        $this->audit->log('user_created', $user, [], ['email' => $user->email, 'password' => '[DEFAULT]']);
 
         return redirect()->route('users.index')
-            ->with('status', "User created. Temporary password: {$tempPassword} (share securely; the user must change it on first login).");
+            ->with('status', "User created. Default password: {$defaultPassword} — the user must change it on first login.");
     }
 
     public function edit(User $user): View

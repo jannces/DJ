@@ -6,13 +6,15 @@ Audience: Super Admin and System Administrator of LGU Alicia.
 - Seeded accounts (rotate immediately): see Deployment.md §5. Default password policy forces
   a change on first login (`must_change_password`).
 - Create users under **Admin → Users → Create**: identity, employee profile, department,
-  position, salary, role(s). New users receive a welcome email with a temporary password.
+  position, salary, role(s). New accounts start with the default password
+  `OneAlicia123` (configurable via `DEFAULT_NEW_USER_PASSWORD`), shown in the confirmation
+  banner; `must_change_password` forces the owner to set their own on first login.
 
 ## 2. User account management
 | Task | Where |
 |---|---|
 | Create / update / archive / restore / delete | Admin → Users (archive = soft delete + archives register; delete only from the archive view) |
-| Reset password | Users → row menu → *Reset password* (emails a reset link; force-change flag set) |
+| Reset password | Users → row menu → *Reset password* (generates a random one-time password shown on screen; force-change flag set) |
 | Assign roles / direct permissions | Users → row menu → *Access* (deny overrides allow) |
 | Manual block / unblock | Users → row menu (reason required; audited) — also lifts a 3-strike lockout |
 | Activate / deactivate | row menu (deactivated users cannot log in but keep history) |

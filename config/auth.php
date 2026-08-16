@@ -114,4 +114,18 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Default Password For New Accounts
+    |--------------------------------------------------------------------------
+    |
+    | Accounts created under Administration → Users start with this password so
+    | the HR officer can hand it over verbally. It is always paired with
+    | must_change_password, so the account cannot be used until the owner sets
+    | their own password (StrongPassword rules) at first login.
+    |
+    */
+
+    'default_new_user_password' => env('DEFAULT_NEW_USER_PASSWORD', 'OneAlicia123'),
+
 ];
