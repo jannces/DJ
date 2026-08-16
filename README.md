@@ -7,6 +7,9 @@ real-time intrusion detection, and full CSC Form No. 6 (Revised 2020) support.
 
 > **New here? Read [`RUN_ON_YOUR_PC.md`](RUN_ON_YOUR_PC.md)** for a complete,
 > beginner-friendly setup guide.
+>
+> **Want other laptops on the office network to open it by IP address?**
+> See [`docs/LAN-Access.md`](docs/LAN-Access.md).
 
 ## Highlights
 - **Authentication:** login, **email OTP** MFA, remember-me, forgot/reset, strong-password
@@ -44,7 +47,8 @@ php artisan serve                               # http://127.0.0.1:8000
 Run the tests: `php artisan test` (**47 passing / 152 assertions**).
 
 ## Documentation (`/docs`)
-Architecture · Requirements · Database · Security · API · Roadmap · Deployment · Testing ·
+Architecture · Requirements · Database · Security · API · Roadmap · Deployment · LAN-Access ·
+Testing ·
 ThreatModel (STRIDE) · AdminGuide · UserGuide · DecisionLog + **12 ADRs** · **Diagrams**
 (context/DFD/use-case/class/activity/sequence/deployment/network/flowcharts) ·
 PenetrationTestReport · ISO25010 · SecurityReport.

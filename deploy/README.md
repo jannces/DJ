@@ -4,6 +4,7 @@
 |------|---------|
 | `make-cert.sh` / `make-cert.bat` | Generate a self-signed TLS cert (`certs/lms.crt`, `certs/lms.key`) |
 | `apache-vhost.conf` | Apache VirtualHost (HTTP→HTTPS redirect, LAN-only, TLS) |
+| `apache-vhost-ip.conf` | Apache VirtualHost for plain-HTTP access by IP (`http://192.168.1.10`) — see `docs/LAN-Access.md` |
 | `lms-queue.service` | systemd unit for the queue worker (Linux) |
 
 See `docs/Deployment.md` for the full step-by-step LAN/XAMPP installation and the

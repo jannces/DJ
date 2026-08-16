@@ -195,7 +195,28 @@ php artisan leave:accrue    # add this month's 1.25 VL + 1.25 SL credits to ever
 
 ---
 
-## Part H — Running it for the whole office (real LAN deployment)
+## Part H — Opening it from another laptop (over the network)
+
+To let a second laptop on the same Wi-Fi open the system by IP address
+(e.g. `http://192.168.1.10`), follow **`docs/LAN-Access.md`**. The short version:
+
+1. On the server, run `ipconfig` and note the **IPv4 Address**.
+2. In `.env` set `APP_URL=http://<that-ip>` and **`SESSION_SECURE_COOKIE=false`**,
+   then run `php artisan config:clear`.
+   *(Skipping this one line is why most people can see the login page from the other
+   laptop but can never actually log in.)*
+3. Start the server with `php artisan serve --host=0.0.0.0 --port=8000`
+   (the plain `php artisan serve` from Part D only accepts connections from the
+   server itself), **or** set up Apache with `deploy/apache-vhost-ip.conf`.
+4. Allow the port through Windows Firewall (Administrator Command Prompt):
+   `netsh advfirewall firewall add rule name="LMS HTTP 8000" dir=in action=allow protocol=TCP localport=8000`
+5. If **Authorized Devices** enforcement is ON, register the other laptop's IP under
+   **Administration → Authorized Devices**, or it gets a 403 "Unauthorized device".
+
+The other laptop then opens `http://192.168.1.10:8000` (or `http://192.168.1.10`
+with Apache).
+
+## Part I — Running it for the whole office (real LAN deployment)
 
 When you're ready to let other office computers use it over the network with proper
 HTTPS and Apache (not `php artisan serve`), follow **`docs/Deployment.md`** — it has the
