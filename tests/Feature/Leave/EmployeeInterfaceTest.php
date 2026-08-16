@@ -255,13 +255,50 @@ class EmployeeInterfaceTest extends TestCase
             $this->assertStringContainsString($field, $html, "Missing from the form: {$field}");
         }
 
-        // Each landmark sits in the part it belongs to.
+        // Each landmark sits in the part it belongs to: 1–5, then 6.A–6.D,
+        // then 7.A–7.D.
         $p2 = strpos($html, 'Part 2 of 3');
         $p3 = strpos($html, 'Part 3 of 3');
         $this->assertLessThan($p2, strpos($html, '1. OFFICE/DEPARTMENT'));
         $this->assertGreaterThan($p2, strpos($html, '6.A TYPE OF LEAVE TO BE AVAILED OF'));
         $this->assertLessThan($p3, strpos($html, '6.D COMMUTATION'));
         $this->assertGreaterThan($p3, strpos($html, '7.A CERTIFICATION OF LEAVE CREDITS'));
+
+        // On the printed CSC form, Monetization and Terminal Leave are the last
+        // two checkboxes of 6.B — they are NOT in the 6.A list. They had drifted
+        // into 6.A because both are leave types in the database.
+        $sixB = strpos($html, '6.B DETAILS OF LEAVE');
+        $this->assertGreaterThan($sixB, strpos($html, 'Monetization of Leave Credits'),
+            'Monetization of Leave Credits is printed in 6.B, not 6.A');
+        $this->assertGreaterThan($sixB, strpos($html, 'Terminal Leave'),
+            'Terminal Leave is printed in 6.B, not 6.A');
+
+        // 6.B carries exactly the four "In case of…" groups the sheet prints.
+        $this->assertSame(4, substr_count($html, 'In case of '),
+            '6.B has drifted from the official sheet: it must carry exactly four '
+            .'"In case of…" groups — Vacation/SPL, Sick, SLBW and Study Leave');
+    }
+
+    /**
+     * Fields this office needs but the CSC sheet does not carry are collected
+     * below the form, not smuggled into 6.B. Without them six leave types would
+     * be impossible to file, because the policy engine requires them.
+     */
+    public function test_office_specific_fields_sit_outside_the_official_sheet(): void
+    {
+        $html = $this->asEmployee()->get('/leave/apply')->assertOk()->getContent();
+
+        $officialSheetEnds = strpos($html, 'ADDITIONAL DETAILS REQUIRED BY THIS OFFICE');
+        $this->assertNotFalse($officialSheetEnds, 'the office-specific block is missing');
+
+        foreach (['details[separation_type]', 'details[reason]', 'details[days_to_monetize]',
+            'details[expected_delivery]', 'details[travel_details]', 'details[accident_details]',
+            'details[calamity]', 'details[calamity_area]', 'late_filing_reason'] as $field) {
+            $at = strpos($html, 'name="'.$field.'"');
+            $this->assertNotFalse($at, "no input for the required field: {$field}");
+            $this->assertGreaterThan($officialSheetEnds, $at,
+                "{$field} is not on the CSC sheet and must sit in the office block");
+        }
     }
 
     /**

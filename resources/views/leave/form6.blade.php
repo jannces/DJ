@@ -42,6 +42,13 @@
     // A value sitting on a ruled line — the PDF's .csc-fill-value.
     $rule = fn (?string $v) => '<span class="rl">'.($v !== null && $v !== '' ? e($v) : '&nbsp;').'</span>';
     $detail = fn (string $k) => $details[$k] ?? null;
+
+    // Same partition as the two web sheets: Monetization and Terminal Leave are
+    // printed at the foot of 6.B on the official form, not in the 6.A list.
+    $inSixB = ['MON', 'TL'];
+    $sixA = $types->reject(fn ($t) => in_array($t->code, $inSixB, true));
+    $sixB = $types->filter(fn ($t) => in_array($t->code, $inSixB, true))
+                  ->sortBy(fn ($t) => array_search($t->code, $inSixB, true));
 @endphp
 <!DOCTYPE html>
 <html><head><meta charset="utf-8">
@@ -134,11 +141,12 @@
   <table>
     <tr><td colspan="2" class="sec">6. DETAILS OF APPLICATION</td></tr>
     <tr>
-      {{-- 6.A — every active type, in the CSC order, exactly as on screen. --}}
+      {{-- 6.A — the printed list. Monetization and Terminal Leave sit at the
+           foot of 6.B on the official sheet, not here. --}}
       <td style="width:50%">
         <div class="sub">6.A TYPE OF LEAVE TO BE AVAILED OF</div>
         <table class="rows">
-          @foreach ($types as $t)
+          @foreach ($sixA as $t)
             <tr>
               <td class="b">{!! $box($t->id === $r->leave_type_id) !!}</td>
               <td>
@@ -154,7 +162,7 @@
         </table>
       </td>
 
-      {{-- 6.B — same blocks, same order as the entry form and the preview. --}}
+      {{-- 6.B — the four printed "In case of…" groups, then the two checkboxes. --}}
       <td style="width:50%">
         <div class="sub">6.B DETAILS OF LEAVE</div>
         <table class="rows">
@@ -171,31 +179,12 @@
 
           <tr><td colspan="2" class="case">In case of Study Leave:</td></tr>
           <tr><td class="b">{!! $box($detail('purpose') === 'masters') !!}</td><td>Completion of Master's Degree</td></tr>
-          <tr><td class="b">{!! $box(in_array($detail('purpose'), ['bar', 'board'], true)) !!}</td><td>BAR/Board Examination Review</td></tr>
-          <tr><td class="b">&nbsp;</td><td>Other purpose: {!! $rule($detail('purpose_other')) !!}</td></tr>
+          <tr><td class="b">{!! $box(in_array($detail('purpose'), ['bar', 'board'], true)) !!}</td><td>BAR/Board Examination Review <em>Other</em></td></tr>
+          <tr><td class="b">&nbsp;</td><td><em>purpose:</em> {!! $rule($detail('purpose_other')) !!}</td></tr>
 
-          <tr><td class="b">{!! $box($r->leaveType->code === 'MON') !!}</td><td>Monetization of Leave Credits</td></tr>
-          <tr><td class="b">{!! $box($r->leaveType->code === 'TL') !!}</td><td>Terminal Leave</td></tr>
-
-          <tr><td colspan="2" class="case">In case of Terminal Leave:</td></tr>
-          <tr><td class="b">{!! $box($detail('separation_type') === 'retirement') !!}</td><td>Retirement</td></tr>
-          <tr><td class="b">{!! $box($detail('separation_type') === 'resignation') !!}</td><td>Resignation</td></tr>
-          <tr><td class="b">&nbsp;</td><td>Monetization — reason {!! $rule($detail('reason')) !!}</td></tr>
-          <tr><td class="b">&nbsp;</td><td>Days to monetize {!! $rule($detail('days_to_monetize')) !!}</td></tr>
-
-          <tr><td colspan="2" class="case">In case of Maternity Leave:</td></tr>
-          <tr><td class="b">&nbsp;</td><td>Expected/actual delivery {!! $rule($detail('expected_delivery')) !!}</td></tr>
-          <tr><td class="b">{!! $box((bool) $detail('extension')) !!}</td><td>Availing additional extension (R.A. 11210)</td></tr>
-
-          <tr><td colspan="2" class="case">In case of Rehabilitation Privilege:</td></tr>
-          <tr><td class="b">&nbsp;</td><td>Accident {!! $rule($detail('accident_details')) !!}</td></tr>
-
-          <tr><td colspan="2" class="case">In case of Special Emergency (Calamity) Leave:</td></tr>
-          <tr><td class="b">&nbsp;</td><td>Calamity {!! $rule($detail('calamity')) !!}</td></tr>
-          <tr><td class="b">&nbsp;</td><td>Affected area {!! $rule($detail('calamity_area')) !!}</td></tr>
-
-          <tr><td colspan="2" class="case">If Sick Leave is filed after returning to work:</td></tr>
-          <tr><td class="b">&nbsp;</td><td>Reason {!! $rule($r->late_filing_reason) !!}</td></tr>
+          @foreach ($sixB as $t)
+            <tr><td class="b">{!! $box($t->id === $r->leave_type_id) !!}</td><td>{{ $t->name }}</td></tr>
+          @endforeach
         </table>
       </td>
     </tr>

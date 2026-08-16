@@ -150,6 +150,19 @@
     <div class="csc-sheet csc-sheet-wide csc-part">
         <div class="csc-section">6. DETAILS OF APPLICATION</div>
 
+        {{-- 6.A lists the leave types as printed. Monetization and Terminal
+             Leave are NOT in this column on the official sheet — they are two
+             checkboxes at the foot of 6.B — but they are still leave types, so
+             they post the same leave_type_id[] and the "exactly one" rule is
+             unchanged. --}}
+        @php
+            $inSixB = ['MON', 'TL'];
+            $sixA = $types->reject(fn ($t) => in_array($t->code, $inSixB, true));
+            $sixB = $types->filter(fn ($t) => in_array($t->code, $inSixB, true))
+                          ->sortBy(fn ($t) => array_search($t->code, $inSixB, true));
+            $ticked = (array) old('leave_type_id', []);
+        @endphp
+
         <table class="csc-table csc-split">
             <tr>
                 {{-- ---------- 6.A TYPE OF LEAVE ---------- --}}
@@ -158,10 +171,10 @@
                     @error('leave_type_id')
                         <div class="csc-field-error no-print">{{ $message }}</div>
                     @enderror
-                    @foreach ($types as $t)
+                    @foreach ($sixA as $t)
                         <label class="csc-check">
                             <input type="checkbox" name="leave_type_id[]" value="{{ $t->id }}"
-                                   @checked(in_array((string) $t->id, (array) old('leave_type_id', []), true))>
+                                   @checked(in_array((string) $t->id, $ticked, true))>
                             <span class="csc-box" aria-hidden="true"></span>
                             <span class="csc-check-text">
                                 {{ $t->name }}
@@ -171,14 +184,17 @@
                             </span>
                         </label>
                     @endforeach
-                    <div class="csc-others">
+                    <div class="csc-others csc-rowline">
                         <span class="csc-check-text">Others:</span>
-                        <input type="text" name="purpose" class="csc-line" style="width:60%"
-                               value="{{ old('purpose') }}" placeholder="">
+                        <input type="text" name="purpose" class="csc-fill-input"
+                               value="{{ old('purpose') }}" aria-label="Other leave type">
                     </div>
                 </td>
 
                 {{-- ---------- 6.B DETAILS OF LEAVE ---------- --}}
+                {{-- Exactly the blocks printed on CSC Form No. 6: four "In case
+                     of…" groups, then the Monetization and Terminal Leave
+                     checkboxes. Nothing else belongs in this column. --}}
                 <td style="width:50%">
                     <div class="csc-sub">6.B DETAILS OF LEAVE</div>
                     @if ($errors->has('policy'))
@@ -187,7 +203,6 @@
                         </div>
                     @endif
 
-                    {{-- Each option carries its rule on the SAME line, as printed. --}}
                     <div class="csc-case"><em>In case of Vacation/Special Privilege Leave:</em></div>
                     <label class="csc-check csc-rowline">
                         <input type="radio" name="details[location]" value="within_ph" @checked(old('details.location')==='within_ph')>
@@ -218,15 +233,13 @@
                         <span class="csc-fill" aria-hidden="true"></span>
                     </label>
 
-                    {{-- Sick Leave and SLBW both store details.illness, so one
-                         input serves both; a duplicate of the same name would
-                         overwrite it on submit. --}}
+                    {{-- Sick Leave and SLBW both store details.illness, so the
+                         input above serves both, as the printed form intends. --}}
                     <div class="csc-case"><em>In case of Special Leave Benefits for Women:</em></div>
                     <div class="csc-rowline">
-                        <span class="csc-check-text">(Specify Illness above)</span>
+                        <span class="csc-check-text">(Specify Illness)</span>
                         <input type="text" name="details[surgery_details]" class="csc-fill-input"
-                               value="{{ old('details.surgery_details') }}"
-                               placeholder="Surgery details" aria-label="Surgery details">
+                               value="{{ old('details.surgery_details') }}" aria-label="Specify gynecological illness">
                     </div>
 
                     <div class="csc-case"><em>In case of Study Leave:</em></div>
@@ -246,79 +259,15 @@
                                value="{{ old('details.purpose_other') }}" aria-label="Other study purpose">
                     </div>
 
-                    {{-- Printed for fidelity with the official sheet. Both are
-                         leave TYPES, chosen in 6.A — they are not separate
-                         details, so these rows carry no input of their own. --}}
-                    <div class="csc-check csc-rowline">
-                        <span class="csc-box" aria-hidden="true"></span>
-                        <span class="csc-check-text">Monetization of Leave Credits <span class="csc-cite">(tick in 6.A)</span></span>
-                    </div>
-                    <div class="csc-check csc-rowline">
-                        <span class="csc-box" aria-hidden="true"></span>
-                        <span class="csc-check-text">Terminal Leave <span class="csc-cite">(tick in 6.A)</span></span>
-                    </div>
-
-                    <div class="csc-case"><em>In case of Terminal Leave:</em></div>
-                    <label class="csc-check csc-rowline">
-                        <input type="radio" name="details[separation_type]" value="retirement" @checked(old('details.separation_type')==='retirement')>
-                        <span class="csc-box" aria-hidden="true"></span>
-                        <span class="csc-check-text">Retirement</span>
-                    </label>
-                    <label class="csc-check csc-rowline">
-                        <input type="radio" name="details[separation_type]" value="resignation" @checked(old('details.separation_type')==='resignation')>
-                        <span class="csc-box" aria-hidden="true"></span>
-                        <span class="csc-check-text">Resignation</span>
-                    </label>
-                    <div class="csc-rowline">
-                        <span class="csc-check-text">Monetization &mdash; reason</span>
-                        <input type="text" name="details[reason]" class="csc-fill-input"
-                               value="{{ old('details.reason') }}" aria-label="Reason for monetization">
-                    </div>
-                    <div class="csc-rowline">
-                        <span class="csc-check-text">Days to monetize</span>
-                        <input type="number" step="0.5" min="0" name="details[days_to_monetize]" class="csc-fill-input"
-                               value="{{ old('details.days_to_monetize') }}" aria-label="Days to monetize">
-                    </div>
-
-                    {{-- Details the CSC sheet leaves to the attached documents,
-                         but which this system's policy engine requires. --}}
-                    <div class="csc-case"><em>In case of Maternity Leave:</em></div>
-                    <div class="csc-rowline">
-                        <span class="csc-check-text">Expected/actual delivery</span>
-                        <input type="date" name="details[expected_delivery]" class="csc-fill-input"
-                               value="{{ old('details.expected_delivery') }}" aria-label="Expected date of delivery">
-                    </div>
-                    <label class="csc-check csc-rowline">
-                        <input type="checkbox" name="details[extension]" value="1" @checked(old('details.extension'))>
-                        <span class="csc-box" aria-hidden="true"></span>
-                        <span class="csc-check-text">Availing additional extension (R.A. 11210)</span>
-                    </label>
-
-                    <div class="csc-case"><em>In case of Rehabilitation Privilege:</em></div>
-                    <div class="csc-rowline">
-                        <span class="csc-check-text">Accident</span>
-                        <input type="text" name="details[accident_details]" class="csc-fill-input"
-                               value="{{ old('details.accident_details') }}" aria-label="Details of work-related accident">
-                    </div>
-
-                    <div class="csc-case"><em>In case of Special Emergency (Calamity) Leave:</em></div>
-                    <div class="csc-rowline">
-                        <span class="csc-check-text">Calamity</span>
-                        <input type="text" name="details[calamity]" class="csc-fill-input"
-                               value="{{ old('details.calamity') }}" aria-label="Declared calamity">
-                    </div>
-                    <div class="csc-rowline">
-                        <span class="csc-check-text">Affected area</span>
-                        <input type="text" name="details[calamity_area]" class="csc-fill-input"
-                               value="{{ old('details.calamity_area') }}" aria-label="Affected area">
-                    </div>
-
-                    <div class="csc-case"><em>If Sick Leave is filed after returning to work:</em></div>
-                    <div class="csc-rowline">
-                        <span class="csc-check-text">Reason</span>
-                        <input type="text" name="late_filing_reason" class="csc-fill-input"
-                               value="{{ old('late_filing_reason') }}" aria-label="Late filing reason">
-                    </div>
+                    {{-- Printed here on the official sheet, not in 6.A. --}}
+                    @foreach ($sixB as $t)
+                        <label class="csc-check csc-rowline">
+                            <input type="checkbox" name="leave_type_id[]" value="{{ $t->id }}"
+                                   @checked(in_array((string) $t->id, $ticked, true))>
+                            <span class="csc-box" aria-hidden="true"></span>
+                            <span class="csc-check-text">{{ $t->name }}</span>
+                        </label>
+                    @endforeach
                 </td>
             </tr>
         </table>
@@ -367,6 +316,93 @@
                                value="{{ old('applicant_signature', $user->name) }}" required
                                aria-label="Signature of applicant">
                         <div class="csc-sublabel">(Signature of Applicant)</div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        {{-- ============ OFFICE-SPECIFIC DETAILS ============ --}}
+        {{-- These are NOT on CSC Form No. 6. The printed sheet leaves them to the
+             attached documents, but this office's policy engine requires them for
+             the leave types named below, so removing the rows would make those
+             types impossible to file. Kept clearly separate from the official
+             sheet above, and left off the printed copy. --}}
+        <table class="csc-table no-print">
+            <tr>
+                <td>
+                    <div class="csc-sub">ADDITIONAL DETAILS REQUIRED BY THIS OFFICE</div>
+                    <div class="csc-inline-note">
+                        Complete only the block matching the leave type you ticked in
+                        6.A or 6.B. These fields do not appear on the printed form.
+                    </div>
+
+                    <div class="csc-case"><em>Terminal Leave:</em></div>
+                    <label class="csc-check csc-rowline">
+                        <input type="radio" name="details[separation_type]" value="retirement" @checked(old('details.separation_type')==='retirement')>
+                        <span class="csc-box" aria-hidden="true"></span>
+                        <span class="csc-check-text">Retirement</span>
+                    </label>
+                    <label class="csc-check csc-rowline">
+                        <input type="radio" name="details[separation_type]" value="resignation" @checked(old('details.separation_type')==='resignation')>
+                        <span class="csc-box" aria-hidden="true"></span>
+                        <span class="csc-check-text">Resignation</span>
+                    </label>
+
+                    <div class="csc-case"><em>Monetization of Leave Credits:</em></div>
+                    <div class="csc-rowline">
+                        <span class="csc-check-text">Reason</span>
+                        <input type="text" name="details[reason]" class="csc-fill-input"
+                               value="{{ old('details.reason') }}" aria-label="Reason for monetization">
+                    </div>
+                    <div class="csc-rowline">
+                        <span class="csc-check-text">Days to monetize</span>
+                        <input type="number" step="0.5" min="0" name="details[days_to_monetize]" class="csc-fill-input"
+                               value="{{ old('details.days_to_monetize') }}" aria-label="Days to monetize">
+                    </div>
+
+                    <div class="csc-case"><em>Maternity Leave:</em></div>
+                    <div class="csc-rowline">
+                        <span class="csc-check-text">Expected/actual delivery</span>
+                        <input type="date" name="details[expected_delivery]" class="csc-fill-input"
+                               value="{{ old('details.expected_delivery') }}" aria-label="Expected date of delivery">
+                    </div>
+                    <label class="csc-check csc-rowline">
+                        <input type="checkbox" name="details[extension]" value="1" @checked(old('details.extension'))>
+                        <span class="csc-box" aria-hidden="true"></span>
+                        <span class="csc-check-text">Availing additional extension (R.A. 11210)</span>
+                    </label>
+
+                    <div class="csc-case"><em>Special Privilege Leave:</em></div>
+                    <div class="csc-rowline">
+                        <span class="csc-check-text">Purpose / travel details</span>
+                        <input type="text" name="details[travel_details]" class="csc-fill-input"
+                               value="{{ old('details.travel_details') }}" aria-label="Purpose or travel details">
+                    </div>
+
+                    <div class="csc-case"><em>Rehabilitation Privilege:</em></div>
+                    <div class="csc-rowline">
+                        <span class="csc-check-text">Details of work-related accident</span>
+                        <input type="text" name="details[accident_details]" class="csc-fill-input"
+                               value="{{ old('details.accident_details') }}" aria-label="Details of work-related accident">
+                    </div>
+
+                    <div class="csc-case"><em>Special Emergency (Calamity) Leave:</em></div>
+                    <div class="csc-rowline">
+                        <span class="csc-check-text">Declared calamity</span>
+                        <input type="text" name="details[calamity]" class="csc-fill-input"
+                               value="{{ old('details.calamity') }}" aria-label="Declared calamity">
+                    </div>
+                    <div class="csc-rowline">
+                        <span class="csc-check-text">Affected area</span>
+                        <input type="text" name="details[calamity_area]" class="csc-fill-input"
+                               value="{{ old('details.calamity_area') }}" aria-label="Affected area">
+                    </div>
+
+                    <div class="csc-case"><em>Sick Leave filed after returning to work:</em></div>
+                    <div class="csc-rowline">
+                        <span class="csc-check-text">Reason for late filing</span>
+                        <input type="text" name="late_filing_reason" class="csc-fill-input"
+                               value="{{ old('late_filing_reason') }}" aria-label="Late filing reason">
                     </div>
                 </td>
             </tr>

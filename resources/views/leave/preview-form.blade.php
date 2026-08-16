@@ -149,12 +149,21 @@
     <div class="csc-sheet csc-sheet-wide csc-part">
         <div class="csc-section">6. DETAILS OF APPLICATION</div>
 
+        {{-- Same partition as the entry form: Monetization and Terminal Leave
+             are printed at the foot of 6.B on the official sheet, not in 6.A. --}}
+        @php
+            $inSixB = ['MON', 'TL'];
+            $sixA = $types->reject(fn ($t) => in_array($t->code, $inSixB, true));
+            $sixB = $types->filter(fn ($t) => in_array($t->code, $inSixB, true))
+                          ->sortBy(fn ($t) => array_search($t->code, $inSixB, true));
+        @endphp
+
         <table class="csc-table csc-split">
             <tr>
                 {{-- ---------- 6.A TYPE OF LEAVE ---------- --}}
                 <td style="width:50%">
                     <div class="csc-sub">6.A TYPE OF LEAVE TO BE AVAILED OF</div>
-                    @foreach ($types as $t)
+                    @foreach ($sixA as $t)
                         <div class="csc-check">
                             <span class="{{ $tick($t->id === $r->leave_type_id) }}" aria-hidden="true"></span>
                             <span class="csc-check-text">
@@ -172,8 +181,6 @@
                 </td>
 
                 {{-- ---------- 6.B DETAILS OF LEAVE ---------- --}}
-                {{-- Same blocks, same order as the entry form, so a printed
-                     preview and a printed blank form line up row for row. --}}
                 <td style="width:50%">
                     <div class="csc-sub">6.B DETAILS OF LEAVE</div>
 
@@ -203,7 +210,7 @@
 
                     <div class="csc-case"><em>In case of Special Leave Benefits for Women:</em></div>
                     <div class="csc-rowline">
-                        <span class="csc-check-text">(Specify Illness above)</span>
+                        <span class="csc-check-text">(Specify Illness)</span>
                         <span class="csc-fill-value">{{ $detail('surgery_details') }}</span>
                     </div>
 
@@ -221,66 +228,12 @@
                         <span class="csc-fill-value">{{ $detail('purpose_other') }}</span>
                     </div>
 
-                    {{-- Both are leave TYPES, ticked in 6.A — printed here only
-                         for fidelity with the official sheet, as on the form. --}}
-                    <div class="csc-check csc-rowline">
-                        <span class="{{ $tick($r->leaveType->code === 'MON') }}" aria-hidden="true"></span>
-                        <span class="csc-check-text">Monetization of Leave Credits <span class="csc-cite">(ticked in 6.A)</span></span>
-                    </div>
-                    <div class="csc-check csc-rowline">
-                        <span class="{{ $tick($r->leaveType->code === 'TL') }}" aria-hidden="true"></span>
-                        <span class="csc-check-text">Terminal Leave <span class="csc-cite">(ticked in 6.A)</span></span>
-                    </div>
-
-                    <div class="csc-case"><em>In case of Terminal Leave:</em></div>
-                    <div class="csc-check csc-rowline">
-                        <span class="{{ $tick($detail('separation_type') === 'retirement') }}" aria-hidden="true"></span>
-                        <span class="csc-check-text">Retirement</span>
-                    </div>
-                    <div class="csc-check csc-rowline">
-                        <span class="{{ $tick($detail('separation_type') === 'resignation') }}" aria-hidden="true"></span>
-                        <span class="csc-check-text">Resignation</span>
-                    </div>
-                    <div class="csc-rowline">
-                        <span class="csc-check-text">Monetization &mdash; reason</span>
-                        <span class="csc-fill-value">{{ $detail('reason') }}</span>
-                    </div>
-                    <div class="csc-rowline">
-                        <span class="csc-check-text">Days to monetize</span>
-                        <span class="csc-fill-value">{{ $detail('days_to_monetize') }}</span>
-                    </div>
-
-                    <div class="csc-case"><em>In case of Maternity Leave:</em></div>
-                    <div class="csc-rowline">
-                        <span class="csc-check-text">Expected/actual delivery</span>
-                        <span class="csc-fill-value">{{ $detail('expected_delivery') }}</span>
-                    </div>
-                    <div class="csc-check csc-rowline">
-                        <span class="{{ $tick((bool) $detail('extension')) }}" aria-hidden="true"></span>
-                        <span class="csc-check-text">Availing additional extension (R.A. 11210)</span>
-                    </div>
-
-                    <div class="csc-case"><em>In case of Rehabilitation Privilege:</em></div>
-                    <div class="csc-rowline">
-                        <span class="csc-check-text">Accident</span>
-                        <span class="csc-fill-value">{{ $detail('accident_details') }}</span>
-                    </div>
-
-                    <div class="csc-case"><em>In case of Special Emergency (Calamity) Leave:</em></div>
-                    <div class="csc-rowline">
-                        <span class="csc-check-text">Calamity</span>
-                        <span class="csc-fill-value">{{ $detail('calamity') }}</span>
-                    </div>
-                    <div class="csc-rowline">
-                        <span class="csc-check-text">Affected area</span>
-                        <span class="csc-fill-value">{{ $detail('calamity_area') }}</span>
-                    </div>
-
-                    <div class="csc-case"><em>If Sick Leave is filed after returning to work:</em></div>
-                    <div class="csc-rowline">
-                        <span class="csc-check-text">Reason</span>
-                        <span class="csc-fill-value">{{ $r->late_filing_reason }}</span>
-                    </div>
+                    @foreach ($sixB as $t)
+                        <div class="csc-check csc-rowline">
+                            <span class="{{ $tick($t->id === $r->leave_type_id) }}" aria-hidden="true"></span>
+                            <span class="csc-check-text">{{ $t->name }}</span>
+                        </div>
+                    @endforeach
                 </td>
             </tr>
         </table>
@@ -328,6 +281,40 @@
                 </td>
             </tr>
         </table>
+
+        {{-- The entry form's office-specific block, shown only when something was
+             actually recorded in it. Not part of CSC Form No. 6, so it is left
+             off the printed copy, exactly as on the entry form. --}}
+        @php
+            $officeKeys = ['separation_type' => 'Separation', 'reason' => 'Reason for monetization',
+                'days_to_monetize' => 'Days to monetize', 'expected_delivery' => 'Expected/actual delivery',
+                'extension' => 'Availing additional extension (R.A. 11210)',
+                'travel_details' => 'Purpose / travel details',
+                'accident_details' => 'Details of work-related accident',
+                'calamity' => 'Declared calamity', 'calamity_area' => 'Affected area'];
+            $officeFilled = collect($officeKeys)->filter(fn ($label, $key) => ! empty($detail($key)));
+        @endphp
+        @if ($officeFilled->isNotEmpty() || $r->late_filing_reason)
+            <table class="csc-table no-print">
+                <tr>
+                    <td>
+                        <div class="csc-sub">ADDITIONAL DETAILS REQUIRED BY THIS OFFICE</div>
+                        @foreach ($officeFilled as $key => $label)
+                            <div class="csc-rowline">
+                                <span class="csc-check-text">{{ $label }}</span>
+                                <span class="csc-fill-value">{{ $detail($key) }}</span>
+                            </div>
+                        @endforeach
+                        @if ($r->late_filing_reason)
+                            <div class="csc-rowline">
+                                <span class="csc-check-text">Reason for late filing</span>
+                                <span class="csc-fill-value">{{ $r->late_filing_reason }}</span>
+                            </div>
+                        @endif
+                    </td>
+                </tr>
+            </table>
+        @endif
 
         {{-- The entry form's upload block has no read-only counterpart here:
              the attachments get their own card below, where they can also be
