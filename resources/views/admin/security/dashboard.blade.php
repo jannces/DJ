@@ -22,10 +22,14 @@
 </div>
 
 <div class="row g-3 mb-4">
+    {{-- The canvases need a parent with a real height. Charts are configured
+         system-wide with maintainAspectRatio off (public/js/app.js), so a
+         responsive canvas takes 100% of its container — and a container sized
+         by its own contents then grows on every resize tick, forever. --}}
     <div class="col-lg-8"><div class="card h-100"><div class="card-header fw-semibold">Attacks (last 7 days)</div>
-        <div class="card-body"><canvas id="trend" height="90"></canvas></div></div></div>
+        <div class="card-body"><div class="chart-box"><canvas id="trend"></canvas></div></div></div></div>
     <div class="col-lg-4"><div class="card h-100"><div class="card-header fw-semibold">By category</div>
-        <div class="card-body"><canvas id="cats" height="90"></canvas></div></div></div>
+        <div class="card-body"><div class="chart-box chart-box-sm"><canvas id="cats"></canvas></div></div></div></div>
 </div>
 
 <div class="row g-3">

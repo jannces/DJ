@@ -1639,3 +1639,23 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   .lf-foot,.lf-head .btn{ display:none !important; }
   .lf .card{ break-inside:avoid; page-break-inside:avoid; border-color:#000; }
 }
+
+/* ============================================================================
+   CHART CONTAINERS
+   ----------------------------------------------------------------------------
+   Charts are configured system-wide with `maintainAspectRatio = false`
+   (public/js/app.js), so a responsive canvas sizes itself to 100% of its
+   parent's height. A parent whose own height comes from its contents therefore
+   grows on every resize tick — the canvas asks the container, the container
+   answers with the canvas, and neither settles. The Security Dashboard's two
+   charts grew without limit for exactly this reason.
+
+   Any canvas must sit inside a box with a real height. The other four charts
+   already do this with inline heights; this is the same guarantee as a class.
+   ========================================================================== */
+.chart-box{ position:relative; height:260px; }
+.chart-box-sm{ height:220px; }
+@media (max-width:575.98px){
+  .chart-box{ height:220px; }
+  .chart-box-sm{ height:200px; }
+}
