@@ -198,33 +198,29 @@ class DashboardService
     }
 
     /**
-     * Slice the per-day map down to one window.
+     * Reduce the per-day map to the two figures one window reports.
      *
      * "Distinct" is the number of *people*, not the sum of the daily counts —
      * one employee off for five days is one employee. It cannot be recovered
-     * from the counts alone, which is why the map carries the IDs.
+     * from the counts alone, which is why the map carries the IDs. The peak is
+     * the worst single day, which is the figure somebody staffing an office
+     * actually needs; the day-by-day series it came from is not returned,
+     * because nothing renders it.
      */
     private function windowFrom(array $byDay, CarbonInterface $from, CarbonInterface $to): array
     {
-        $today = now()->toDateString();
-        $days = [];
         $everyone = [];
+        $peak = 0;
 
         for ($d = $from->copy(); $d->lte($to); $d->addDay()) {
-            $key = $d->toDateString();
-            $ids = $byDay[$key] ?? [];
+            $ids = $byDay[$d->toDateString()] ?? [];
             $everyone = array_merge($everyone, $ids);
-            $days[] = [
-                'date' => $d->copy(),
-                'count' => count($ids),
-                'future' => $key > $today,
-            ];
+            $peak = max($peak, count($ids));
         }
 
         return [
-            'days' => $days,
             'distinct' => count(array_unique($everyone)),
-            'peak' => $days ? max(array_column($days, 'count')) : 0,
+            'peak' => $peak,
         ];
     }
 

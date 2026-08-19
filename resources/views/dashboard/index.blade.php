@@ -134,7 +134,8 @@
     {{-- ---------- Employees on leave ---------- --}}
     {{-- The three windows are not the same measure and the card says so under
          every number: today is a headcount, week and month are *distinct*
-         employees. One person off for five days is one employee, not five. --}}
+         employees. One person off for five days is one employee, not five, so
+         these cannot be added to each other or compared. --}}
     <div class="dash-frame" id="an-onleave">
         <div class="dash-head">
             <p class="dash-title"><i class="bi bi-person-walking"></i>Employees on leave</p>
@@ -147,10 +148,7 @@
         <div class="dash-body">
             <div class="an-pane pane-today">
                 <div class="big-figure">{{ $onLeave['today'] }}</div>
-                <div class="big-sub">
-                    on approved leave right now &mdash; a headcount, not a total
-                </div>
-                @include('dashboard._day_line', ['days' => $onLeave['week']['days'], 'height' => 180, 'id' => 'today'])
+                <div class="big-sub">on approved leave right now &mdash; a headcount, not a total</div>
             </div>
 
             <div class="an-pane pane-week">
@@ -159,7 +157,6 @@
                     distinct employees out on at least one day this week &middot;
                     peak {{ $onLeave['week']['peak'] }} in a day
                 </div>
-                @include('dashboard._day_line', ['days' => $onLeave['week']['days'], 'height' => 200, 'id' => 'week'])
             </div>
 
             <div class="an-pane pane-month">
@@ -168,13 +165,7 @@
                     distinct employees out on at least one day in {{ now()->format('F') }} &middot;
                     peak {{ $onLeave['month']['peak'] }} in a day
                 </div>
-                @include('dashboard._day_line', ['days' => $onLeave['month']['days'], 'height' => 200, 'labelEvery' => 5, 'id' => 'month'])
             </div>
-
-            <p class="big-sub mt-3 mb-0">
-                Solid is leave already taken. Dashed is approved leave still to come &mdash;
-                the half you can still plan around.
-            </p>
         </div>
     </div>
 

@@ -38,7 +38,7 @@
 @endphp
 
 <div class="bar-plot" style="--plot-h:{{ $height }}px">
-    <div class="day-axis">
+    <div class="chart-axis">
         @for ($i = 4; $i >= 0; $i--)
             <span>{{ (int) ($ceiling / 4 * $i) }}</span>
         @endfor
@@ -47,14 +47,14 @@
     <div class="bar-cols">
         @forelse ($rows as $row)
             <div class="bar-col {{ ! empty($row['muted']) ? 'is-muted' : 'tone-'.($row['tone'] ?? 0) }} {{ $row['value'] === 0 ? 'is-zero' : '' }}">
-                <span class="day-tip">
+                <span class="chart-tip">
                     <b>{{ $row['name'] }}</b> &middot; {{ $row['value'] }}
                     {{ $row['value'] === 1 ? 'application' : 'applications' }}
                     @if (! empty($row['note']))<br>{{ $row['note'] }}@endif
                 </span>
                 <span class="bar-value">{{ $row['value'] }}</span>
                 <span class="bar-fill" style="height:{{ round($row['value'] / $ceiling * 100, 1) }}%"></span>
-                <span class="day-label" title="{{ $row['name'] }}">{{ $row['label'] }}</span>
+                <span class="chart-label" title="{{ $row['name'] }}">{{ $row['label'] }}</span>
             </div>
         @empty
             <div class="dash-empty">Nothing on record for this period.</div>

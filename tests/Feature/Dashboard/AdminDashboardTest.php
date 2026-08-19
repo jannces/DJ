@@ -150,12 +150,15 @@ class AdminDashboardTest extends TestCase
         $this->file($employee, 'approved', $start->toDateString(), $start->copy()->addDays(4)->toDateString());
         $this->file($other, 'approved', $start->toDateString(), $start->toDateString());
 
-        $month = app(DashboardService::class)->onLeaveWindows()['month'];
+        $service = app(DashboardService::class);
+        $month = $service->onLeaveWindows()['month'];
 
         $this->assertSame(2, $month['distinct'], 'five days off is still one person');
         $this->assertSame(2, $month['peak'], 'both are out on the first day');
-        $this->assertSame(6, array_sum(array_column($month['days'], 'count')),
-            'the daily counts still total the employee-days');
+
+        $byDay = $service->onLeaveByDay(now()->startOfMonth(), now()->endOfMonth());
+        $this->assertSame(6, array_sum(array_map('count', $byDay)),
+            'the daily expansion still totals the employee-days');
     }
 
     public function test_leave_outside_the_window_is_not_counted_and_leave_across_it_is(): void
@@ -175,10 +178,11 @@ class AdminDashboardTest extends TestCase
         $this->file($this->makeUser('employee'), 'pending',
             $inside->toDateString(), $inside->toDateString());
 
-        $month = app(DashboardService::class)->onLeaveWindows()['month'];
+        $service = app(DashboardService::class);
+        $this->assertSame(1, $service->onLeaveWindows()['month']['distinct']);
 
-        $this->assertSame(1, $month['distinct']);
-        $this->assertSame(2, array_sum(array_column($month['days'], 'count')),
+        $byDay = $service->onLeaveByDay(now()->startOfMonth(), now()->endOfMonth());
+        $this->assertSame(2, array_sum(array_map('count', $byDay)),
             'only the two days that fall inside the month should be counted');
     }
 
@@ -205,8 +209,9 @@ class AdminDashboardTest extends TestCase
 
         $this->assertCount(1, $queries,
             'today, this week and this month should cost one query between them, not one per day');
-        $this->assertArrayHasKey('today', $windows);
-        $this->assertCount(7, $windows['week']['days']);
+        foreach (['today', 'week', 'month'] as $key) {
+            $this->assertArrayHasKey($key, $windows);
+        }
     }
 
     public function test_employees_with_no_department_are_reported_not_dropped(): void
@@ -336,12 +341,10 @@ class AdminDashboardTest extends TestCase
         $html = $this->visit('system-admin')->assertOk()->getContent();
 
         $this->assertStringNotContainsString('<canvas', $html);
-        $this->assertStringContainsString('<svg class="day-svg"', $html);
-        // Outcome is a pie; leave types and departments are bar charts; on
-        // leave is a line.
+        // Outcome is a pie; leave types and departments are bar charts.
+        $this->assertStringContainsString('<svg class="pie"', $html);
         $this->assertStringContainsString('class="pie-slice', $html);
         $this->assertStringContainsString('class="bar-fill"', $html);
-        $this->assertStringContainsString('class="day-stroke"', $html);
         // Every chart carries a table, so none of it is readable by colour alone.
         $this->assertStringContainsString('Show the numbers', $html);
     }

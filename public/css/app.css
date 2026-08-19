@@ -1672,11 +1672,10 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
      · there is no canvas, so they cannot repeat the runaway-growth bug the
        Security Dashboard charts had (see CHART CONTAINERS above).
 
-   Two chart forms, chosen by what the number is. Discrete counts per bucket
-   (applications filed, leave types, departments) are bars: a bucket with
-   nothing in it should read as an absent column. A level that persists through
-   time (how many people are on leave) is a line, because the space between
-   Monday and Tuesday is real and a line may cross it.
+   Two chart forms, chosen by what the number is. A part-to-whole split with a
+   handful of slices (applications by outcome) is a pie. Discrete counts per
+   bucket (leave types, departments) are bars: a bucket with nothing in it
+   should read as an absent column, not as a gap in the axis.
 
    COLOUR. Every value below was checked against a colour-blindness simulation
    rather than picked by eye. One hue per chart, never one per column: the
@@ -1732,11 +1731,6 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .slice-rejected{ fill:var(--seg-rejected); }
 .slice-pending{ fill:var(--seg-pending); }
 
-/* The on-leave line keeps the brand hue: it is one series, so a categorical
-   slot would be saying something about a distinction that does not exist. */
-.accent-violet{ --accent:#5341b8; }
-:root[data-bs-theme="dark"] .accent-violet{ --accent:#8574e6; }
-
 /* ---- Period switch: a radio group, revealed with :has() ------------------ */
 .an-switch{ display:flex; gap:.3rem; flex-wrap:wrap; }
 .an-switch label{
@@ -1769,16 +1763,16 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .chart-foot{ font-size:.72rem; color:var(--muted); margin:.9rem 0 0; }
 
 /* ---- Shared plot frame --------------------------------------------------- */
-.bar-plot,.day-plot{
+.bar-plot{
   display:grid; grid-template-columns:2.4rem minmax(0,1fr); gap:.55rem;
 }
-.day-axis{
+.chart-axis{
   display:flex; flex-direction:column; justify-content:space-between;
   align-items:flex-end; padding-bottom:1.5rem; line-height:1;
   font-size:.66rem; color:var(--muted-2); font-variant-numeric:tabular-nums;
 }
 /* The plot area itself: four bands of hairline, and a firmer baseline. */
-.bar-cols,.day-line{
+.bar-cols{
   position:relative; height:var(--plot-h,220px); padding-bottom:1.5rem;
   border-bottom:1px solid var(--border-strong); min-width:0;
   background-image:repeating-linear-gradient(
@@ -1786,23 +1780,21 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   background-size:100% calc(100% - 1.5rem);
   background-repeat:no-repeat;
 }
-.day-label{
+.chart-label{
   position:absolute; bottom:-1.4rem; left:0; right:0; text-align:center;
   font-size:.65rem; color:var(--muted); white-space:nowrap; overflow:hidden;
   text-overflow:ellipsis;
 }
-.is-today > .day-label{ color:var(--primary); font-weight:700; }
 
 /* Hover readout. Positioned over the plot, so it outranks the marks. */
-.day-tip{
+.chart-tip{
   position:absolute; bottom:100%; left:50%; transform:translate(-50%,-.45rem);
   background:var(--text); color:var(--bg); font-size:.7rem; line-height:1.4;
   font-weight:500; padding:.4rem .6rem; border-radius:.4rem;
   white-space:nowrap; opacity:0; pointer-events:none; transition:opacity .12s;
   z-index:5; box-shadow:0 6px 18px rgb(0 0 0 / .18);
 }
-.bar-col:hover > .day-tip,
-.day-hit:hover > .day-tip{ opacity:1; }
+.bar-col:hover > .chart-tip{ opacity:1; }
 
 /* ---- Vertical bars (single hue per chart) -------------------------------- */
 .bar-cols{ display:flex; align-items:flex-end; gap:.4rem; }
@@ -1866,46 +1858,6 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .pie-value{ font-weight:700; font-variant-numeric:tabular-nums; }
 .pie-share{ text-align:right; color:var(--muted); font-variant-numeric:tabular-nums; }
 
-/* ---- Day line ------------------------------------------------------------ */
-.day-line{ color:var(--accent); }
-.day-svg{
-  position:absolute; top:0; left:0; display:block;
-  width:100%; height:calc(100% - 1.5rem);
-}
-.day-fill{ stroke:none; }
-.day-fill.is-future{ opacity:.45; }
-.day-stroke{
-  fill:none; stroke:var(--accent); stroke-width:2.25;
-  stroke-linejoin:round; stroke-linecap:round;
-  vector-effect:non-scaling-stroke;
-}
-.day-stroke.is-future{ stroke-dasharray:5 4; opacity:.55; }
-.day-hits{ position:absolute; inset:0 0 1.5rem 0; display:flex; }
-.day-hit{ flex:1; position:relative; min-width:0; }
-/* Crosshair: the hovered day gets a full-height rule, so the eye can carry the
-   point down to its date without guessing which column it belongs to. */
-.day-hit::after{
-  content:""; position:absolute; top:0; bottom:0; left:50%; width:1px;
-  background:var(--accent); opacity:0; transition:opacity .12s;
-}
-.day-hit:hover::after{ opacity:.35; }
-.day-hit:hover{ background:color-mix(in srgb,var(--accent) 8%,transparent); }
-.day-hit .day-tip{ bottom:auto; top:.3rem; transform:translate(-50%,0); }
-.day-hit:first-child .day-tip{ left:0; transform:none; }
-.day-hit:last-child .day-tip{ left:auto; right:0; transform:none; }
-/* The SVG is stretched with preserveAspectRatio="none", so a circle drawn
-   inside it would come out an ellipse. The markers are HTML instead. */
-.day-dot{
-  position:absolute; left:50%; bottom:var(--dot-y,0); width:9px; height:9px;
-  box-sizing:border-box; margin:0 0 -4.5px -4.5px; border-radius:50%;
-  background:var(--accent); border:2px solid var(--dash-surface,var(--surface));
-}
-.day-dot.is-future{ background:var(--muted); }
-.day-dot.is-now{
-  width:13px; height:13px; margin:0 0 -6.5px -6.5px;
-  box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent);
-}
-
 /* ---- "Show the numbers": the table view every chart carries -------------- */
 .an-numbers{ margin-top:1rem; }
 .an-numbers summary{
@@ -1924,6 +1876,6 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   /* Only one pane of a switch is on screen; on paper show them all, since
      nobody can click a radio on a printout. */
   .an-pane{ display:block !important; }
-  .an-switch,.day-tip{ display:none !important; }
+  .an-switch,.chart-tip{ display:none !important; }
   .dash-frame{ break-inside:avoid; page-break-inside:avoid; }
 }
