@@ -16,20 +16,64 @@ use Illuminate\Support\Carbon;
 /**
  * Produces the nine report datasets. Each returns a uniform structure
  * {title, columns, rows} that a single set of PDF/XLSX/CSV exporters consumes.
+ * Which of them a given account may run is declared in CATALOGUE below.
  */
 class ReportService
 {
-    public const REPORTS = [
-        'employee-leave' => 'Employee Leave Report',
-        'department' => 'Department Report',
-        'monthly' => 'Monthly Report',
-        'annual' => 'Annual Report',
-        'leave-balance' => 'Leave Balance Report',
-        'intrusion' => 'Intrusion Report',
-        'audit' => 'Audit Report',
-        'blocked-login' => 'Blocked Login Report',
-        'user-activity' => 'User Activity Report',
+    /**
+     * The report catalogue: what each one is called, who may run it, and which
+     * side of the system it belongs to.
+     *
+     * The permission is the point. Before this every report was gated on
+     * `reports.generate` alone, which the System Administrator holds — so an
+     * account with no leave permission at all could open, and export, every
+     * employee's leave record through the reports module. Each report now
+     * names the permission its *subject* requires, not merely the right to run
+     * reports in general, and the controller checks it before building
+     * anything. The grouping is what the page and the menu read.
+     */
+    public const CATALOGUE = [
+        'employee-leave' => ['title' => 'Employee Leave Report', 'permission' => 'leave.requests.view-all', 'group' => 'leave'],
+        'department' => ['title' => 'Department Report', 'permission' => 'leave.requests.view-all', 'group' => 'leave'],
+        'monthly' => ['title' => 'Monthly Report', 'permission' => 'leave.requests.view-all', 'group' => 'leave'],
+        'annual' => ['title' => 'Annual Report', 'permission' => 'leave.requests.view-all', 'group' => 'leave'],
+        'leave-balance' => ['title' => 'Leave Balance Report', 'permission' => 'leave.requests.view-all', 'group' => 'leave'],
+        'intrusion' => ['title' => 'Intrusion Report', 'permission' => 'reports.security', 'group' => 'security'],
+        'audit' => ['title' => 'Audit Report', 'permission' => 'reports.security', 'group' => 'security'],
+        'blocked-login' => ['title' => 'Blocked Login Report', 'permission' => 'reports.security', 'group' => 'security'],
+        'user-activity' => ['title' => 'User Activity Report', 'permission' => 'reports.security', 'group' => 'security'],
     ];
+
+    public const GROUPS = [
+        'security' => 'Security',
+        'leave' => 'Leave',
+    ];
+
+    /** The permission a report requires, or null if there is no such report. */
+    public static function permissionFor(string $report): ?string
+    {
+        return self::CATALOGUE[$report]['permission'] ?? null;
+    }
+
+    /**
+     * The catalogue a user may actually run, grouped for the page.
+     *
+     * @return array<string,array<string,string>> group slug => [key => title]
+     */
+    public static function visibleTo(User $user): array
+    {
+        // Seeded from GROUPS so the page follows the declared order rather
+        // than whichever group happened to have the first visible report.
+        $groups = array_fill_keys(array_keys(self::GROUPS), []);
+
+        foreach (self::CATALOGUE as $key => $report) {
+            if ($user->hasPermission($report['permission'])) {
+                $groups[$report['group']][$key] = $report['title'];
+            }
+        }
+
+        return array_filter($groups);
+    }
 
     /** @return array{key:string,title:string,columns:array,rows:array,generated_at:string,filters:array} */
     public function build(string $report, array $filters = []): array
@@ -49,7 +93,7 @@ class ReportService
 
         return [
             'key' => $report,
-            'title' => self::REPORTS[$report] ?? $report,
+            'title' => self::CATALOGUE[$report]['title'] ?? $report,
             'columns' => $columns,
             'rows' => $rows,
             'generated_at' => now()->format('F d, Y H:i'),
