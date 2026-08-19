@@ -62,18 +62,21 @@ class DashboardService
                 ->where('user_id', $user->id)->latest()->limit(8)->get();
         }
 
-        // The back-office analytics: whoever can see every application gets the
-        // numbers about every application. That is HR, the Mayor and the Vice
-        // Mayor — previously all three landed on the employee dashboard and saw
-        // none of this.
-        if ($user->hasPermission('leave.requests.view-all')) {
-            $data['back_office'] = true;
-            $data['bo_users'] = $this->registeredUsers();
-            $data['bo_outcome'] = $this->applicationsByOutcome((int) now()->year);
-            $data['bo_on_leave'] = $this->onLeaveWindows();
-            $data['bo_types_month'] = $this->mostAppliedTypes(now()->startOfMonth(), now()->endOfMonth());
-            $data['bo_types_year'] = $this->mostAppliedTypes(now()->startOfYear(), now()->endOfYear());
-            $data['bo_departments'] = $this->applicationsByDepartment(now()->startOfYear(), now()->endOfYear());
+        // Leave analytics for the administrator's Dashboard — the plain one,
+        // not the Security Dashboard. It rendered two counters before this and
+        // discarded the rest of what this service already computed.
+        //
+        // Gated with the system counters above rather than on a leave
+        // permission: these are read-only aggregates about the installation,
+        // and the administrator holds none of the leave permissions.
+        if ($user->hasPermission('security.dashboard') || $user->hasPermission('users.manage')) {
+            $data['leave_analytics'] = true;
+            $data['an_users'] = $this->registeredUsers();
+            $data['an_outcome'] = $this->applicationsByOutcome((int) now()->year);
+            $data['an_on_leave'] = $this->onLeaveWindows();
+            $data['an_types_month'] = $this->mostAppliedTypes(now()->startOfMonth(), now()->endOfMonth());
+            $data['an_types_year'] = $this->mostAppliedTypes(now()->startOfYear(), now()->endOfYear());
+            $data['an_departments'] = $this->applicationsByDepartment(now()->startOfYear(), now()->endOfYear());
         }
 
         return $data;

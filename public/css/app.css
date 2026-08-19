@@ -1679,39 +1679,39 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
    ========================================================================== */
 
 /* ---- Period switch: a radio group, revealed with :has() ------------------ */
-.bo-switch{ display:flex; gap:.3rem; flex-wrap:wrap; }
-.bo-switch label{
+.an-switch{ display:flex; gap:.3rem; flex-wrap:wrap; }
+.an-switch label{
   cursor:pointer; font-size:.74rem; padding:.28rem .65rem; border-radius:.45rem;
   border:1px solid var(--border); background:var(--surface-2,transparent);
   color:var(--muted); white-space:nowrap; margin:0;
 }
-.bo-switch input{ position:absolute; opacity:0; pointer-events:none; }
-.bo-switch label:has(input:checked){
+.an-switch input{ position:absolute; opacity:0; pointer-events:none; }
+.an-switch label:has(input:checked){
   border-color:var(--primary); background:color-mix(in srgb,var(--primary) 10%,transparent);
   color:var(--primary); font-weight:600;
 }
-.bo-switch label:focus-within{ outline:2px solid var(--primary); outline-offset:2px; }
+.an-switch label:focus-within{ outline:2px solid var(--primary); outline-offset:2px; }
 
-.bo-pane{ display:none; }
-#bo-onleave:has(#onleave-today:checked) .pane-today,
-#bo-onleave:has(#onleave-week:checked)  .pane-week,
-#bo-onleave:has(#onleave-month:checked) .pane-month,
-#bo-types:has(#types-month:checked)     .pane-month,
-#bo-types:has(#types-year:checked)      .pane-year{ display:block; }
+.an-pane{ display:none; }
+#an-onleave:has(#onleave-today:checked) .pane-today,
+#an-onleave:has(#onleave-week:checked)  .pane-week,
+#an-onleave:has(#onleave-month:checked) .pane-month,
+#an-types:has(#types-month:checked)     .pane-month,
+#an-types:has(#types-year:checked)      .pane-year{ display:block; }
 
 /* Without :has() no pane would ever show. Fall back to the first one. */
 @supports not selector(:has(*)){
-  .bo-switch{ display:none; }
-  #bo-onleave .pane-today,
-  #bo-types .pane-month{ display:block; }
+  .an-switch{ display:none; }
+  #an-onleave .pane-today,
+  #an-types .pane-month{ display:block; }
 }
 
 /* ---- Legend -------------------------------------------------------------- */
-.bo-legend{ display:flex; gap:1rem; flex-wrap:wrap; font-size:.76rem;
+.an-legend{ display:flex; gap:1rem; flex-wrap:wrap; font-size:.76rem;
   color:var(--muted); margin-bottom:.9rem; }
-.bo-legend span{ display:flex; align-items:center; gap:.4rem; }
-.bo-legend b{ color:var(--text); font-variant-numeric:tabular-nums; }
-.bo-legend i{ width:.7rem; height:.7rem; border-radius:2px; flex:none; }
+.an-legend span{ display:flex; align-items:center; gap:.4rem; }
+.an-legend b{ color:var(--text); font-variant-numeric:tabular-nums; }
+.an-legend i{ width:.7rem; height:.7rem; border-radius:2px; flex:none; }
 
 /* Status colours, checked against a colour-blindness simulation rather than
    picked by eye: the obvious dark-mode trio (#34d399 / #fbbf24 / #fb7185) puts
@@ -1829,30 +1829,28 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .rankbar .day-tip{ left:auto; right:0; transform:translate(0,-.3rem); }
 
 /* ---- "Show the numbers": the table view every chart carries -------------- */
-.bo-numbers{ margin-top:1rem; }
-.bo-numbers summary{
+.an-numbers{ margin-top:1rem; }
+.an-numbers summary{
   cursor:pointer; font-size:.76rem; color:var(--muted); list-style:none;
   display:inline-flex; align-items:center; gap:.35rem;
 }
-.bo-numbers summary::-webkit-details-marker{ display:none; }
-.bo-numbers summary::before{ content:"\25B8"; font-size:.7rem; }
-.bo-numbers[open] summary::before{ content:"\25BE"; }
-.bo-numbers .table-responsive{ margin-top:.6rem; }
+.an-numbers summary::-webkit-details-marker{ display:none; }
+.an-numbers summary::before{ content:"\25B8"; font-size:.7rem; }
+.an-numbers[open] summary::before{ content:"\25BE"; }
+.an-numbers .table-responsive{ margin-top:.6rem; }
 
 /* ---- Layout helpers ------------------------------------------------------ */
 .dash-row2{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
 @media (max-width:992px){ .dash-row2{ grid-template-columns:minmax(0,1fr); } }
 .dash-row2 .dash-frame{ display:flex; flex-direction:column; }
 .dash-row2 .dash-body{ flex:1; }
-.trio-4{ grid-template-columns:repeat(4,minmax(0,1fr)); }
-@media (max-width:700px){ .trio-4{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
 
 /* ---- Print --------------------------------------------------------------- */
 @media print{
   /* Only one pane of a switch is on screen; on paper show them all, since
      nobody can click a radio on a printout. */
-  .bo-pane{ display:block !important; }
-  .bo-switch,.day-tip{ display:none !important; }
-  .bo-numbers[open] summary,.bo-numbers{ display:block; }
+  .an-pane{ display:block !important; }
+  .an-switch,.day-tip{ display:none !important; }
+  .an-numbers[open] summary,.an-numbers{ display:block; }
   .dash-frame{ break-inside:avoid; page-break-inside:avoid; }
 }

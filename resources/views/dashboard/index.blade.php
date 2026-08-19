@@ -3,18 +3,14 @@
 @section('content')
 
 {{--
-  The dashboard serves three audiences out of one page, each gated on what it
-  is allowed to see:
+  Each area gets the dashboard for its own work, gated on permission:
 
-    · back office  — anyone holding leave.requests.view-all: HR, the Mayor, the
-                     Vice Mayor. They decide leave, so they get the numbers
-                     about leave. Before this they landed on the employee
-                     dashboard and saw none of it.
-    · system row   — users.manage / security.dashboard: accounts and devices,
-                     which belong to whoever runs the installation.
-    · own records  — leave.view-own: credits, applications, credit history.
+    · administrator — users.manage / security.dashboard: the leave analytics
+                      as read-only aggregates, plus the account and device
+                      figures. This page rendered two counters before.
+    · own records   — leave.view-own: credits, applications, credit history.
 
-  Somebody with two of those sees both halves. Everything comes from
+  Somebody holding both sees both halves. Everything comes from
   DashboardService scoped to the authenticated user; nothing is hardcoded.
 
   The charts here are HTML, CSS and inline SVG — no canvas, no script. They
@@ -25,36 +21,36 @@
 
 @php
     $isEmployee = isset($my_balances);
-    $backOffice = ! empty($back_office);
+    $analytics = ! empty($leave_analytics);
 
     $vl = $isEmployee ? $my_balances->first(fn ($b) => $b->leaveType->code === 'VL') : null;
     $sl = $isEmployee ? $my_balances->first(fn ($b) => $b->leaveType->code === 'SL') : null;
 @endphp
 
 {{-- ==================================================================== --}}
-{{-- Back office                                                          --}}
+{{-- Leave analytics — administrator's Dashboard                          --}}
 {{-- ==================================================================== --}}
-@if ($backOffice)
+@if ($analytics)
     @php
-        $months = $bo_outcome['months'];
-        $totals = $bo_outcome['totals'];
+        $months = $an_outcome['months'];
+        $totals = $an_outcome['totals'];
         $thisMonth = $months[now()->month - 1];
         $ceiling = max(2, max(array_column($months, 'total')));
 
-        $onLeave = $bo_on_leave;
+        $onLeave = $an_on_leave;
     @endphp
 
     <div class="kpi-grid">
         <div class="kpi-card">
             <div class="kpi-label"><i class="bi bi-people"></i>Registered users</div>
-            <div class="kpi-value">{{ $bo_users['total'] }}</div>
+            <div class="kpi-value">{{ $an_users['total'] }}</div>
             <div class="splitbar mt-2">
-                <span class="split-a" style="width:{{ $bo_users['total'] ? round($bo_users['employees'] / $bo_users['total'] * 100, 1) : 0 }}%"></span>
-                <span class="split-b" style="width:{{ $bo_users['total'] ? round($bo_users['officers'] / $bo_users['total'] * 100, 1) : 0 }}%"></span>
+                <span class="split-a" style="width:{{ $an_users['total'] ? round($an_users['employees'] / $an_users['total'] * 100, 1) : 0 }}%"></span>
+                <span class="split-b" style="width:{{ $an_users['total'] ? round($an_users['officers'] / $an_users['total'] * 100, 1) : 0 }}%"></span>
             </div>
             <div class="kpi-hint">
-                {{ $bo_users['employees'] }} with an employee record &middot;
-                {{ $bo_users['officers'] }} without
+                {{ $an_users['employees'] }} with an employee record &middot;
+                {{ $an_users['officers'] }} without
             </div>
         </div>
 
@@ -90,7 +86,7 @@
             <span class="dash-link">filed in {{ now()->year }}</span>
         </div>
         <div class="dash-body">
-            <div class="bo-legend">
+            <div class="an-legend">
                 <span><i class="key-approved"></i>Approved <b>{{ $totals['approved'] }}</b></span>
                 <span><i class="key-rejected"></i>Rejected <b>{{ $totals['rejected'] }}</b></span>
                 <span><i class="key-pending"></i>Awaiting <b>{{ $totals['pending'] }}</b></span>
@@ -126,7 +122,7 @@
                 </div>
             </div>
 
-            <details class="bo-numbers">
+            <details class="an-numbers">
                 <summary>Show the numbers</summary>
                 <div class="table-responsive">
                     <table class="dash-table">
@@ -163,17 +159,17 @@
     {{-- The three windows are not the same measure and the card says so under
          every number: today is a headcount, week and month are *distinct*
          employees. One person off for five days is one employee, not five. --}}
-    <div class="dash-frame" id="bo-onleave">
+    <div class="dash-frame" id="an-onleave">
         <div class="dash-head">
             <p class="dash-title"><i class="bi bi-person-walking"></i>Employees on leave</p>
-            <div class="bo-switch">
+            <div class="an-switch">
                 <label><input type="radio" name="onleave-window" id="onleave-today" checked>Today</label>
                 <label><input type="radio" name="onleave-window" id="onleave-week">This week</label>
                 <label><input type="radio" name="onleave-window" id="onleave-month">This month</label>
             </div>
         </div>
         <div class="dash-body">
-            <div class="bo-pane pane-today">
+            <div class="an-pane pane-today">
                 <div class="big-figure">{{ $onLeave['today'] }}</div>
                 <div class="big-sub">
                     on approved leave right now &mdash; a headcount, not a total
@@ -181,7 +177,7 @@
                 @include('dashboard._day_line', ['days' => $onLeave['week']['days'], 'height' => 150])
             </div>
 
-            <div class="bo-pane pane-week">
+            <div class="an-pane pane-week">
                 <div class="big-figure">{{ $onLeave['week']['distinct'] }}</div>
                 <div class="big-sub">
                     distinct employees out on at least one day this week &middot;
@@ -190,7 +186,7 @@
                 @include('dashboard._day_line', ['days' => $onLeave['week']['days'], 'height' => 170])
             </div>
 
-            <div class="bo-pane pane-month">
+            <div class="an-pane pane-month">
                 <div class="big-figure">{{ $onLeave['month']['distinct'] }}</div>
                 <div class="big-sub">
                     distinct employees out on at least one day in {{ now()->format('F') }} &middot;
@@ -212,17 +208,17 @@
              column. One colour: length already carries the magnitude, so a
              second encoding in colour would imply a difference that is not
              there. --}}
-        <div class="dash-frame" id="bo-types">
+        <div class="dash-frame" id="an-types">
             <div class="dash-head">
                 <p class="dash-title"><i class="bi bi-list-ol"></i>Most applied leave type</p>
-                <div class="bo-switch">
+                <div class="an-switch">
                     <label><input type="radio" name="types-window" id="types-month" checked>This month</label>
                     <label><input type="radio" name="types-window" id="types-year">This year</label>
                 </div>
             </div>
             <div class="dash-body">
-                @foreach (['month' => $bo_types_month, 'year' => $bo_types_year] as $window => $rows)
-                    <div class="bo-pane pane-{{ $window }}">
+                @foreach (['month' => $an_types_month, 'year' => $an_types_year] as $window => $rows)
+                    <div class="an-pane pane-{{ $window }}">
                         @forelse ($rows as $row)
                             <div class="rankbar">
                                 <span class="rankbar-name" title="{{ $row['name'] }}">{{ $row['name'] }}</span>
@@ -249,7 +245,7 @@
                 <span class="dash-link">{{ now()->year }} to date</span>
             </div>
             <div class="dash-body">
-                @forelse ($bo_departments as $row)
+                @forelse ($an_departments as $row)
                     <div class="rankbar {{ $row['unassigned'] ? 'is-muted' : '' }}">
                         <span class="rankbar-name" title="{{ $row['name'] }}">{{ $row['name'] }}</span>
                         <span class="rankbar-track">
@@ -271,7 +267,7 @@
 @endif
 
 {{-- ==================================================================== --}}
-{{-- System row — accounts and devices, not leave                         --}}
+{{-- System row — devices and alerts                                     --}}
 {{-- ==================================================================== --}}
 @if (! empty($system_row))
     <div class="dash-frame">
@@ -282,11 +278,11 @@
             @endcan
         </div>
         <div class="dash-body">
-            <div class="trio trio-4">
-                <div>
-                    <div class="trio-label">Employee records</div>
-                    <div class="trio-value">{{ $cards['employees'] ?? 0 }}</div>
-                </div>
+            {{-- No headcount here: "Registered users" above already splits the
+                 accounts into those with an employee record and those without,
+                 and two counters of the same thing invite the question of why
+                 they disagree. --}}
+            <div class="trio">
                 <div>
                     <div class="trio-label">Devices online</div>
                     <div class="trio-value">{{ $cards['devices_online'] ?? 0 }}</div>

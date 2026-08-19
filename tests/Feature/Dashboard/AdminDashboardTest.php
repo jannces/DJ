@@ -12,15 +12,17 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * The back-office dashboard: the leave analytics, and who is allowed to see
- * them.
+ * The System Administrator's Dashboard — the plain one, not the Security
+ * Dashboard.
  *
- * These figures belong to whoever decides leave — HR, the Mayor, the Vice
- * Mayor. All three used to land on the employee dashboard, because the view
- * decided identity with `isset($my_balances)` and they inherit that from the
- * Employee role, so none of them saw a single organisation-wide number.
+ * It rendered two counters before this. DashboardService was already computing
+ * intrusions today, devices online and devices offline for the same page, and
+ * the view discarded all three because they were not in its KPI map. The leave
+ * analytics are read-only aggregates about the installation, gated with those
+ * system counters rather than on a leave permission — the administrator holds
+ * none of the leave permissions and still does not.
  */
-class BackOfficeDashboardTest extends TestCase
+class AdminDashboardTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -53,15 +55,18 @@ class BackOfficeDashboardTest extends TestCase
         ]);
     }
 
-    public function test_every_approver_role_reaches_the_leave_analytics(): void
+    public function test_the_administrator_dashboard_carries_the_analytics(): void
     {
-        foreach (['hr', 'mayor', 'vice-mayor'] as $role) {
-            $this->visit($role)
-                ->assertOk()
-                ->assertSee('Applications by outcome')
-                ->assertSee('Employees on leave')
-                ->assertSee('Applications by department');
-        }
+        $this->visit('system-admin')
+            ->assertOk()
+            ->assertSee('Registered users')
+            ->assertSee('Applications by outcome')
+            ->assertSee('Employees on leave')
+            ->assertSee('Most applied leave type')
+            ->assertSee('Applications by department')
+            // ...alongside the system figures the view used to throw away.
+            ->assertSee('Devices online')
+            ->assertSee('Intrusions today');
     }
 
     public function test_an_employee_sees_none_of_it(): void
@@ -70,22 +75,24 @@ class BackOfficeDashboardTest extends TestCase
             ->assertOk()
             ->assertDontSee('Applications by outcome')
             ->assertDontSee('Applications by department')
+            ->assertDontSee('Devices online')
             // ...but keeps their own page.
             ->assertSee('Credit summary');
     }
 
     /**
-     * The System Administrator holds no leave permission at all, so the leave
-     * panels stay closed to them — but the account and device figures the
-     * service already computed are no longer thrown away by the view.
+     * The analytics are administration, not approval. An approver's dashboard
+     * is unchanged by this work — they reach every one of these figures through
+     * the Reports module, which is where a "give me the numbers for period X"
+     * question belongs.
      */
-    public function test_the_system_administrator_gets_system_figures_not_leave_ones(): void
+    public function test_the_approver_roles_are_left_as_they_were(): void
     {
-        $this->visit('system-admin')
-            ->assertOk()
-            ->assertDontSee('Applications by outcome')
-            ->assertSee('Devices online')
-            ->assertSee('Intrusions today');
+        foreach (['hr', 'mayor', 'vice-mayor'] as $role) {
+            $this->visit($role)
+                ->assertOk()
+                ->assertDontSee('Applications by outcome');
+        }
     }
 
     public function test_the_outcome_chart_columns_add_up_to_the_year(): void
@@ -247,7 +254,7 @@ class BackOfficeDashboardTest extends TestCase
      */
     public function test_the_analytics_need_no_script_and_no_canvas(): void
     {
-        $html = $this->visit('hr')->assertOk()->getContent();
+        $html = $this->visit('system-admin')->assertOk()->getContent();
 
         $this->assertStringNotContainsString('<canvas', $html);
         $this->assertStringContainsString('<svg class="day-svg"', $html);
@@ -258,14 +265,14 @@ class BackOfficeDashboardTest extends TestCase
     /** The period switches are radios revealed with :has(), not scripted tabs. */
     public function test_the_period_switches_are_plain_radio_inputs(): void
     {
-        $html = $this->visit('hr')->assertOk()->getContent();
+        $html = $this->visit('system-admin')->assertOk()->getContent();
 
         foreach (['onleave-today', 'onleave-week', 'onleave-month', 'types-month', 'types-year'] as $id) {
             $this->assertStringContainsString('id="'.$id.'"', $html);
         }
 
         $css = file_get_contents(public_path('css/app.css'));
-        $this->assertStringContainsString('#bo-onleave:has(#onleave-week:checked)', $css);
+        $this->assertStringContainsString('#an-onleave:has(#onleave-week:checked)', $css);
         $this->assertStringContainsString('@supports not selector(:has(*))', $css,
             'a browser without :has() must still be shown one pane, not none');
     }
