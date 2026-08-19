@@ -9,12 +9,10 @@
   card styling rather than the .csc-sheet facsimile.
 --}}
 
-<div class="page-head no-print">
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <div>
-            <h1>Instructions and Requirements</h1>
-            <div class="sub">Civil Service Form No. 6 (Revised 2020) &middot; documentary requirements per leave type</div>
-        </div>
+<x-page-head class="no-print"
+    title="Instructions and Requirements"
+    sub="Civil Service Form No. 6 (Revised 2020) · documentary requirements per leave type"
+    :back-url="route('leave.create')" back-label="Apply for Leave">
         <div class="d-flex gap-2">
             @can('leave.apply')
                 <a href="{{ route('leave.create') }}" class="btn btn-outline-secondary btn-sm">
@@ -25,8 +23,7 @@
                 <i class="bi bi-printer me-1"></i>Print
             </button>
         </div>
-    </div>
-</div>
+</x-page-head>
 
 <div class="card">
     <div class="card-body instr-page">

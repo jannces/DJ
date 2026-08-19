@@ -360,6 +360,11 @@ class EmployeeInterfaceTest extends TestCase
             $this->assertStringContainsString($marker, $preview, "preview is missing: {$marker}");
         }
 
+        // ...and offers a way back to the list it was opened from, which is a
+        // real link because this page is often opened in a new tab.
+        $this->assertStringContainsString('class="back-link"', $preview);
+        $this->assertStringContainsString('My Leave Requests', $preview);
+
         // The entry form is NOT the facsimile — that is the point of the change.
         $this->assertStringNotContainsString('csc-sheet', $form);
 

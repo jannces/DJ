@@ -1,11 +1,18 @@
 @extends('layouts.app')
 @section('title', 'Leave '.$leaveRequest->reference_no)
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-        <h1 class="h4 mb-0">{{ $leaveRequest->reference_no }}</h1>
-        <div class="text-muted small">{{ $leaveRequest->leaveType->name }} · filed {{ $leaveRequest->date_filed->format('M d, Y') }}</div>
-    </div>
+@php
+    // Two parents: the employee who filed it came from My Leave Requests, an
+    // approver from All Leave Requests. Picked by permission rather than by the
+    // referrer, which is absent on a direct visit and forgeable when it is not.
+    $viewsAll = auth()->user()?->hasPermission('leave.requests.view-all');
+@endphp
+
+<x-page-head class="mb-3"
+    :title="$leaveRequest->reference_no"
+    :sub="$leaveRequest->leaveType->name.' · filed '.$leaveRequest->date_filed->format('M d, Y')"
+    :back-url="$viewsAll ? route('leave.all') : route('leave.index')"
+    :back-label="$viewsAll ? 'All Leave Requests' : 'My Leave Requests'">
     <div>
         <a href="{{ route('leave.form6', $leaveRequest) }}" class="btn btn-outline-secondary btn-sm" target="_blank"><i class="bi bi-printer me-1"></i>CSC Form 6 (PDF)</a>
         @if ($leaveRequest->user_id === auth()->id() && $leaveRequest->isCancellable())
@@ -14,7 +21,7 @@
             </form>
         @endif
     </div>
-</div>
+</x-page-head>
 
 <div class="row g-3">
     <div class="col-lg-8">

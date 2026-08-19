@@ -1,7 +1,10 @@
 @extends('layouts.app')
 @section('title', 'Search')
 @section('content')
-<h1 class="h4 mb-3">Search results for “{{ $q }}”</h1>
+{{-- Search is opened from the top bar, so it has no list behind it; the
+     dashboard is the honest destination. --}}
+<x-page-head class="mb-3" :title="'Search results for “'.$q.'”'"
+    :back-url="route('dashboard')" back-label="Dashboard" />
 @if (strlen($q) < 2)
     <p class="text-muted">Enter at least 2 characters.</p>
 @else

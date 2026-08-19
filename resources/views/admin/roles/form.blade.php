@@ -1,7 +1,8 @@
 @extends('layouts.app')
 @section('title', $role->exists ? 'Edit role' : 'New role')
 @section('content')
-<h1 class="h4 mb-3">{{ $role->exists ? 'Edit role: '.$role->name : 'Create role' }}</h1>
+<x-page-head class="mb-3" :title="$role->exists ? 'Edit role: '.$role->name : 'Create role'"
+    :back-url="route('roles.index')" back-label="Roles &amp; Permissions" />
 <form method="POST" action="{{ $role->exists ? route('roles.update', $role) : route('roles.store') }}">
     @csrf
     @if ($role->exists) @method('PUT') @endif

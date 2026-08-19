@@ -1966,3 +1966,34 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   font-size:.72rem; font-weight:600; letter-spacing:.09em; text-transform:uppercase;
   color:var(--muted); margin:0 0 .6rem;
 }
+
+/* ============================================================================
+   PAGE HEADER — title, subtitle, actions, and the way back
+   ----------------------------------------------------------------------------
+   One shape for every screen. The back link sits above the title in a fixed
+   slot so the eye learns one place to look, and it names its destination
+   ("Reports") rather than saying "Back" — you should know where a control
+   takes you before you press it.
+   ========================================================================== */
+.page-head{ display:flex; flex-direction:column; gap:.5rem; }
+.page-head-row{
+  display:flex; align-items:flex-start; justify-content:space-between;
+  gap:1rem; flex-wrap:wrap;
+}
+.page-head-main{ min-width:0; }
+.page-head-actions{ display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+
+.back-link{
+  display:inline-flex; align-items:center; gap:.4rem; align-self:flex-start;
+  font-size:.78rem; font-weight:600; color:var(--muted); text-decoration:none;
+  padding:.28rem .6rem .28rem .45rem; border-radius:.45rem;
+  border:1px solid transparent; transition:color var(--dur) var(--ease),
+    background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.back-link:hover,.back-link:focus-visible{
+  color:var(--primary); background:color-mix(in srgb,var(--primary) 9%,transparent);
+  border-color:var(--border-strong);
+}
+.back-link i{ font-size:.9rem; line-height:1; }
+
+@media print{ .back-link,.page-head-actions{ display:none !important; } }

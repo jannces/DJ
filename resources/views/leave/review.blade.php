@@ -1,13 +1,10 @@
 @extends('layouts.app')
 @section('title', $title)
 @section('content')
-<div class="page-head">
-    <h1>{{ $title }}</h1>
-    <div class="sub">
-        Any one of the Municipal Mayor, the Vice Mayor or the HR Office may decide an
-        application. The first decision is final.
-    </div>
-</div>
+{{-- A sidebar page, so no back link — but the same header shape as everything
+     else, rather than its own hand-written one. --}}
+<x-page-head :title="$title"
+    sub="Any one of the Municipal Mayor, the Vice Mayor or the HR Office may decide an application. The first decision is final." />
 <div class="card">
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">

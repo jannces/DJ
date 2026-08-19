@@ -1,7 +1,8 @@
 @extends('layouts.app')
 @section('title', $user->name)
 @section('content')
-<h1 class="h4 mb-3">{{ $user->name }} <span class="text-muted small">{{ $user->employeeProfile?->employee_no }}</span></h1>
+<x-page-head class="mb-3" :title="$user->name" :sub="$user->employeeProfile?->employee_no"
+    :back-url="route('employees.index')" back-label="Employees" />
 <div class="row g-3">
     <div class="col-lg-4">
         <div class="card"><div class="card-header fw-semibold">Profile</div><div class="card-body">

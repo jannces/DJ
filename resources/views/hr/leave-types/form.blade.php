@@ -1,7 +1,8 @@
 @extends('layouts.app')
 @section('title', $type->exists ? 'Edit leave type' : 'New leave type')
 @section('content')
-<h1 class="h4 mb-3">{{ $type->exists ? 'Edit: '.$type->name : 'New custom leave type' }}</h1>
+<x-page-head class="mb-3" :title="$type->exists ? 'Edit: '.$type->name : 'New custom leave type'"
+    :back-url="route('leave-types.index')" back-label="Leave Types" />
 <form method="POST" action="{{ $type->exists ? route('leave-types.update',$type) : route('leave-types.store') }}">
     @csrf @if($type->exists) @method('PUT') @endif
     <div class="row g-3">

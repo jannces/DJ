@@ -1,7 +1,8 @@
 @extends('layouts.app')
 @section('title', 'User history')
 @section('content')
-<h1 class="h4 mb-3">History — {{ $user->name }}</h1>
+<x-page-head class="mb-3" :title="'History — '.$user->name"
+    :back-url="route('users.index')" back-label="Users" />
 <div class="row g-3">
     <div class="col-lg-4">
         <div class="card"><div class="card-header fw-semibold">Failed login attempts</div>

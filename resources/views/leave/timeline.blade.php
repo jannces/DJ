@@ -14,22 +14,14 @@
     $isApproved = $r->status === \App\Models\LeaveRequest::STATUS_APPROVED;
 @endphp
 
-<div class="page-head">
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <div>
-            <h1>Approval Timeline</h1>
-            <div class="sub">{{ $r->reference_no }} &middot; {{ $r->leaveType->name }}</div>
-        </div>
-        <div class="d-flex gap-2">
-            <a href="{{ route('leave.index') }}" class="btn btn-outline-secondary btn-sm">
-                <i class="bi bi-arrow-left me-1"></i>Back to My Leave Requests
-            </a>
-            <a href="{{ route('leave.preview-form', $r) }}" class="btn btn-outline-secondary btn-sm">
-                <i class="bi bi-file-earmark-text me-1"></i>View Form
-            </a>
-        </div>
-    </div>
-</div>
+<x-page-head
+    title="Approval Timeline"
+    :sub="$r->reference_no.' · '.$r->leaveType->name"
+    :back-url="route('leave.index')" back-label="My Leave Requests">
+    <a href="{{ route('leave.preview-form', $r) }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-file-earmark-text me-1"></i>View Form
+    </a>
+</x-page-head>
 
 <div class="row g-3">
     <div class="col-lg-7">

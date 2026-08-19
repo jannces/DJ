@@ -1,7 +1,8 @@
 @extends('layouts.app')
 @section('title', $user->exists ? 'Edit user' : 'New user')
 @section('content')
-<h1 class="h4 mb-3">{{ $user->exists ? 'Edit user: '.$user->name : 'Create user' }}</h1>
+<x-page-head class="mb-3" :title="$user->exists ? 'Edit user: '.$user->name : 'Create user'"
+    :back-url="route('users.index')" back-label="Users" />
 
 <form method="POST" action="{{ $user->exists ? route('users.update', $user) : route('users.store') }}">
     @csrf

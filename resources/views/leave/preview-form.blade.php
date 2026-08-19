@@ -47,13 +47,9 @@
     $detail = fn (string $key) => $details[$key] ?? null;
 @endphp
 
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 no-print">
-    <div>
-        <a href="{{ route('leave.index') }}" class="btn btn-outline-secondary btn-sm mb-2">
-            <i class="bi bi-arrow-left me-1"></i>Back to My Leave Requests
-        </a>
-        <h1 class="h4 mb-0">Form Preview — {{ $r->reference_no }}</h1>
-    </div>
+<x-page-head class="mb-3 no-print"
+    :title="'Form Preview — '.$r->reference_no"
+    :back-url="route('leave.index')" back-label="My Leave Requests">
     <div class="d-flex align-items-center gap-2">
         @if ($r->user_id === auth()->id() && $r->isCancellable())
             <form method="POST" action="{{ route('leave.cancel', $r) }}" class="d-inline"
@@ -71,7 +67,7 @@
             <i class="bi bi-download me-1"></i>Download Form
         </a>
     </div>
-</div>
+</x-page-head>
 
 <div class="csc-viewport">
 
