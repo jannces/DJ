@@ -63,6 +63,53 @@ class SecurityDashboardTest extends TestCase
     }
 
     /**
+     * The intrusion trend lived on two pages at once: a bar chart on the plain
+     * Dashboard and a line chart here, both looping the last seven days and
+     * counting the same table. Only the chart type differed, which is the only
+     * reason it never looked like a duplicate. It belongs here.
+     */
+    public function test_the_intrusion_trend_lives_only_on_the_security_dashboard(): void
+    {
+        $dashboard = $this->asSysadmin()->get('/dashboard')->assertOk()->getContent();
+        $this->assertStringNotContainsString('chartIntrusions', $dashboard);
+        $this->assertStringNotContainsString('Intrusion attempts', $dashboard);
+
+        $security = $this->get('/security')->assertOk()->getContent();
+        $this->assertStringContainsString('id="trend"', $security);
+        $this->assertStringContainsString('Attacks (last 7 days)', $security);
+    }
+
+    /**
+     * Bars, not a line. Attacks per day are seven discrete counts, so a day
+     * with none belongs as an absent bar — a line dipping to the axis and back
+     * reads as though something happened when nothing did.
+     */
+    public function test_the_seven_day_trend_is_drawn_as_bars(): void
+    {
+        $html = $this->asSysadmin()->get('/security')->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression(
+            "/getElementById\('trend'\).*?type:\s*'bar'/s",
+            $html,
+            'the 7-day trend should be a bar chart'
+        );
+    }
+
+    /** Seven days, one query — not one count per day. */
+    public function test_the_trend_is_built_without_a_query_per_day(): void
+    {
+        $this->asSysadmin();
+
+        \DB::enableQueryLog();
+        app(\App\Services\DashboardService::class)->intrusionsByDay();
+        $queries = \DB::getQueryLog();
+        \DB::disableQueryLog();
+
+        $this->assertCount(1, $queries,
+            'seven days of counts is one grouped query, not seven round trips');
+    }
+
+    /**
      * The same invariant for every chart in the system, checked against the
      * Blade sources rather than one rendered page — a canvas added to any view
      * without a sized parent is this bug returning somewhere new.

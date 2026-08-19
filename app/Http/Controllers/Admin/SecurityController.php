@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\BlockedIp;
 use App\Models\FailedLogin;
 use App\Models\IntrusionLog;
+use App\Services\DashboardService;
 use App\Services\Security\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,7 +20,7 @@ class SecurityController extends Controller
     {
     }
 
-    public function dashboard(): View
+    public function dashboard(DashboardService $dashboard): View
     {
         $today = today();
 
@@ -41,13 +42,11 @@ class SecurityController extends Controller
         $byCategory = IntrusionLog::select('category', DB::raw('count(*) as total'))
             ->groupBy('category')->pluck('total', 'category');
 
-        // 7-day trend
-        $trend = ['labels' => [], 'data' => []];
-        for ($i = 6; $i >= 0; $i--) {
-            $day = now()->subDays($i);
-            $trend['labels'][] = $day->format('D');
-            $trend['data'][] = IntrusionLog::whereDate('created_at', $day->toDateString())->count();
-        }
+        // 7-day trend. This is the only page that draws it now — the plain
+        // Dashboard used to draw the identical series from its own copy of the
+        // same loop, in bar form, so the duplication did not look like one.
+        // One grouped query, gaps filled in PHP, rather than seven counts.
+        $trend = $dashboard->intrusionsByDay();
 
         $recent = IntrusionLog::with('user')->latest()->limit(15)->get();
 

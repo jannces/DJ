@@ -60,10 +60,13 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // Bars, not a line: attacks per day are seven discrete counts, so a day
+    // with none belongs as an absent bar. A line dipping to the axis and back
+    // reads as though something happened when nothing did.
     const trend = @json($trend);
     new Chart(document.getElementById('trend'), {
-        type: 'line',
-        data: { labels: trend.labels, datasets: [{ label: 'Events', data: trend.data, borderColor: '#be123c', backgroundColor: 'rgba(185,28,28,.12)', fill: true, tension: .3 }] },
+        type: 'bar',
+        data: { labels: trend.labels, datasets: [{ label: 'Events', data: trend.data, backgroundColor: '#be123c', borderRadius: 4, maxBarThickness: 44 }] },
         options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
     });
     const cats = @json($byCategory);

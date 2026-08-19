@@ -151,10 +151,12 @@ class EmployeeInterfaceTest extends TestCase
 
         $this->asEmployee()->get('/dashboard')
             ->assertOk()
-            // Counters describe the employee's own applications...
-            ->assertSee('Pending')
-            ->assertSee('Approved')
-            ->assertSee('Rejected')
+            // Counters describe the employee's own applications, and say so:
+            // a back-office user sees these below the organisation-wide figures,
+            // where a bare "Approved" would be ambiguous.
+            ->assertSee('My pending')
+            ->assertSee('My approved')
+            ->assertSee('My rejected')
             // Three counters only — no days-taken card.
             ->assertDontSee('Days taken')
             // ...not their leave-type balances.

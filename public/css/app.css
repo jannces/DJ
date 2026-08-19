@@ -1659,3 +1659,200 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   .chart-box{ height:220px; }
   .chart-box-sm{ height:200px; }
 }
+
+/* ============================================================================
+   DASHBOARD ANALYTICS — stacked columns, ranked bars, day lines
+   ----------------------------------------------------------------------------
+   The back-office panels draw their charts in HTML, CSS and inline SVG rather
+   than on a canvas. Three reasons, in order of how much they matter here:
+
+     · no JavaScript, which is the standing rule for this system;
+     · they print, and a leave report that cannot print is half a report;
+     · there is no canvas, so they cannot repeat the runaway-growth bug that
+       the Security Dashboard charts had (see CHART CONTAINERS above).
+
+   Two chart forms, chosen by what the number is. Discrete events counted per
+   bucket (applications filed, leave types, departments) get bars: a bucket with
+   nothing in it should read as an absent bar. A level that persists through
+   time (how many people are on leave) gets a line, because the space between
+   Monday and Tuesday is real and a line may cross it.
+   ========================================================================== */
+
+/* ---- Period switch: a radio group, revealed with :has() ------------------ */
+.bo-switch{ display:flex; gap:.3rem; flex-wrap:wrap; }
+.bo-switch label{
+  cursor:pointer; font-size:.74rem; padding:.28rem .65rem; border-radius:.45rem;
+  border:1px solid var(--border); background:var(--surface-2,transparent);
+  color:var(--muted); white-space:nowrap; margin:0;
+}
+.bo-switch input{ position:absolute; opacity:0; pointer-events:none; }
+.bo-switch label:has(input:checked){
+  border-color:var(--primary); background:color-mix(in srgb,var(--primary) 10%,transparent);
+  color:var(--primary); font-weight:600;
+}
+.bo-switch label:focus-within{ outline:2px solid var(--primary); outline-offset:2px; }
+
+.bo-pane{ display:none; }
+#bo-onleave:has(#onleave-today:checked) .pane-today,
+#bo-onleave:has(#onleave-week:checked)  .pane-week,
+#bo-onleave:has(#onleave-month:checked) .pane-month,
+#bo-types:has(#types-month:checked)     .pane-month,
+#bo-types:has(#types-year:checked)      .pane-year{ display:block; }
+
+/* Without :has() no pane would ever show. Fall back to the first one. */
+@supports not selector(:has(*)){
+  .bo-switch{ display:none; }
+  #bo-onleave .pane-today,
+  #bo-types .pane-month{ display:block; }
+}
+
+/* ---- Legend -------------------------------------------------------------- */
+.bo-legend{ display:flex; gap:1rem; flex-wrap:wrap; font-size:.76rem;
+  color:var(--muted); margin-bottom:.9rem; }
+.bo-legend span{ display:flex; align-items:center; gap:.4rem; }
+.bo-legend b{ color:var(--text); font-variant-numeric:tabular-nums; }
+.bo-legend i{ width:.7rem; height:.7rem; border-radius:2px; flex:none; }
+
+/* Status colours, checked against a colour-blindness simulation rather than
+   picked by eye: the obvious dark-mode trio (#34d399 / #fbbf24 / #fb7185) puts
+   green and red 4.6 ΔE apart under deuteranopia, which is indistinguishable.
+   These clear 8 ΔE on every pair in both themes, and every chart also carries a
+   "Show the numbers" table so nothing here is readable by colour alone. */
+.key-approved{ background:#0f9d58; }
+.key-rejected{ background:#c02222; }
+.key-pending{ background:#d4a017; }
+:root[data-bs-theme="dark"] .key-approved{ background:#30a689; }
+:root[data-bs-theme="dark"] .key-rejected{ background:#cc3347; }
+:root[data-bs-theme="dark"] .key-pending{ background:#bc882f; }
+
+/* ---- Shared plot frame --------------------------------------------------- */
+.stackplot,.day-plot{
+  display:grid; grid-template-columns:2.2rem minmax(0,1fr); gap:.5rem;
+}
+.day-axis{
+  display:flex; flex-direction:column; justify-content:space-between;
+  align-items:flex-end; padding-bottom:1.4rem; line-height:1;
+  font-size:.66rem; color:var(--muted); font-variant-numeric:tabular-nums;
+}
+.day-label{
+  position:absolute; bottom:-1.3rem; left:0; right:0; text-align:center;
+  font-size:.66rem; color:var(--muted); white-space:nowrap; overflow:hidden;
+}
+.is-now > .day-label,.is-today > .day-label{ color:var(--primary); font-weight:700; }
+
+/* Hover readout. Positioned over the plot, so it needs to outrank the marks. */
+.day-tip{
+  position:absolute; bottom:100%; left:50%; transform:translate(-50%,-.4rem);
+  background:var(--text); color:var(--bg); font-size:.7rem; line-height:1.35;
+  font-weight:500; padding:.35rem .55rem; border-radius:.35rem;
+  white-space:nowrap; opacity:0; pointer-events:none; transition:opacity .12s;
+  z-index:5;
+}
+.stack-col:hover > .day-tip,
+.day-hit:hover > .day-tip,
+.rankbar:hover > .day-tip{ opacity:1; }
+
+/* ---- Stacked columns ----------------------------------------------------- */
+.stack-cols{
+  position:relative; display:flex; align-items:flex-end; gap:.5rem;
+  height:var(--plot-h,230px); padding-bottom:1.4rem;
+  border-bottom:1px solid var(--border); min-width:0;
+}
+.stack-col{
+  flex:1; min-width:0; height:100%; position:relative;
+  display:flex; flex-direction:column; justify-content:flex-end;
+}
+.stack-col.is-empty{ opacity:.35; }
+.stack-col:hover .stack-bar{ filter:brightness(1.08); }
+.stack-bar{
+  display:flex; flex-direction:column; gap:2px; border-radius:4px 4px 0 0;
+  min-height:2px;
+}
+/* A 2px gap of the card's own background separates the segments; a lone
+   segment fills the bar, which the stacked ones override with an explicit
+   flex value per series. */
+.stack-seg{ display:block; flex:1 1 0; min-height:2px; }
+.stack-bar .stack-seg:first-child{ border-radius:4px 4px 0 0; }
+
+/* ---- Day line ------------------------------------------------------------ */
+.day-line{
+  position:relative; height:var(--plot-h,170px); padding-bottom:1.4rem;
+  border-bottom:1px solid var(--border); min-width:0;
+}
+.day-svg{ position:absolute; inset:0 0 1.4rem 0; width:100%; display:block; }
+.day-grid{ stroke:var(--border); stroke-width:1; vector-effect:non-scaling-stroke; }
+.day-fill{ fill:var(--primary); opacity:.13; }
+.day-fill.is-future{ opacity:.05; }
+.day-stroke{
+  fill:none; stroke:var(--primary); stroke-width:2;
+  stroke-linejoin:round; stroke-linecap:round;
+  vector-effect:non-scaling-stroke;
+}
+.day-stroke.is-future{ stroke-dasharray:5 4; opacity:.5; }
+.day-hits{ position:absolute; inset:0 0 1.4rem 0; display:flex; }
+.day-hit{ flex:1; position:relative; min-width:0; }
+.day-hit:hover{ background:color-mix(in srgb,var(--primary) 9%,transparent); }
+.day-hit .day-tip{ bottom:auto; top:.25rem; transform:translate(-50%,0); }
+.day-hit:first-child .day-tip{ left:0; transform:none; }
+.day-hit:last-child .day-tip{ left:auto; right:0; transform:none; }
+/* The SVG is stretched with preserveAspectRatio="none", so a circle drawn
+   inside it would come out an ellipse. The markers are HTML instead. */
+.day-dot{
+  position:absolute; left:50%; bottom:var(--dot-y,0); width:9px; height:9px;
+  box-sizing:border-box; margin:0 0 -4.5px -4.5px; border-radius:50%;
+  background:var(--primary); border:2px solid var(--dash-surface,var(--surface));
+}
+.day-dot.is-future{ background:var(--muted); }
+
+/* ---- Ranked horizontal bars ---------------------------------------------- */
+.rankbar{
+  display:grid; grid-template-columns:minmax(6rem,11rem) minmax(0,1fr) 2.6rem;
+  align-items:center; gap:.7rem; font-size:.82rem; position:relative;
+  margin-bottom:.55rem;
+}
+.rankbar:last-child{ margin-bottom:0; }
+.rankbar-name{
+  color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.rankbar-track{
+  height:.85rem; border-radius:3px; overflow:hidden;
+  background:color-mix(in srgb,var(--text) 6%,transparent);
+}
+.rankbar-fill{
+  display:block; height:100%; background:var(--primary); border-radius:0 4px 4px 0;
+}
+.rankbar.is-muted .rankbar-fill{ background:var(--muted); }
+.rankbar:hover .rankbar-fill{ filter:brightness(1.1); }
+.rankbar-value{
+  text-align:right; font-weight:600; font-variant-numeric:tabular-nums;
+}
+.rankbar .day-tip{ left:auto; right:0; transform:translate(0,-.3rem); }
+
+/* ---- "Show the numbers": the table view every chart carries -------------- */
+.bo-numbers{ margin-top:1rem; }
+.bo-numbers summary{
+  cursor:pointer; font-size:.76rem; color:var(--muted); list-style:none;
+  display:inline-flex; align-items:center; gap:.35rem;
+}
+.bo-numbers summary::-webkit-details-marker{ display:none; }
+.bo-numbers summary::before{ content:"\25B8"; font-size:.7rem; }
+.bo-numbers[open] summary::before{ content:"\25BE"; }
+.bo-numbers .table-responsive{ margin-top:.6rem; }
+
+/* ---- Layout helpers ------------------------------------------------------ */
+.dash-row2{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
+@media (max-width:992px){ .dash-row2{ grid-template-columns:minmax(0,1fr); } }
+.dash-row2 .dash-frame{ display:flex; flex-direction:column; }
+.dash-row2 .dash-body{ flex:1; }
+.trio-4{ grid-template-columns:repeat(4,minmax(0,1fr)); }
+@media (max-width:700px){ .trio-4{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+/* ---- Print --------------------------------------------------------------- */
+@media print{
+  /* Only one pane of a switch is on screen; on paper show them all, since
+     nobody can click a radio on a printout. */
+  .bo-pane{ display:block !important; }
+  .bo-switch,.day-tip{ display:none !important; }
+  .bo-numbers[open] summary,.bo-numbers{ display:block; }
+  .dash-frame{ break-inside:avoid; page-break-inside:avoid; }
+}

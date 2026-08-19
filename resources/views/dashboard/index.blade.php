@@ -3,217 +3,372 @@
 @section('content')
 
 {{--
-  Dashboard laid out to match the reference block: a connected KPI strip, a
-  full-bleed trend chart, a three-panel row, then a data table with status
-  pills. Rebuilt in Blade against the project stylesheet — the original block
-  is React and cannot run here.
+  The dashboard serves three audiences out of one page, each gated on what it
+  is allowed to see:
 
-  Only leave-management figures appear. Everything comes from DashboardService
-  scoped to the authenticated user; nothing is hardcoded.
+    · back office  — anyone holding leave.requests.view-all: HR, the Mayor, the
+                     Vice Mayor. They decide leave, so they get the numbers
+                     about leave. Before this they landed on the employee
+                     dashboard and saw none of it.
+    · system row   — users.manage / security.dashboard: accounts and devices,
+                     which belong to whoever runs the installation.
+    · own records  — leave.view-own: credits, applications, credit history.
+
+  Somebody with two of those sees both halves. Everything comes from
+  DashboardService scoped to the authenticated user; nothing is hardcoded.
+
+  The charts here are HTML, CSS and inline SVG — no canvas, no script. They
+  print, and they cannot repeat the runaway-canvas bug.
 --}}
 
 <div class="dash">
 
 @php
     $isEmployee = isset($my_balances);
+    $backOffice = ! empty($back_office);
+
     $vl = $isEmployee ? $my_balances->first(fn ($b) => $b->leaveType->code === 'VL') : null;
     $sl = $isEmployee ? $my_balances->first(fn ($b) => $b->leaveType->code === 'SL') : null;
-
-    $pct = function ($balance) {
-        if (! $balance || (float) $balance->earned <= 0) {
-            return null;
-        }
-
-        return round((float) $balance->used / (float) $balance->earned * 100, 1);
-    };
-
-    // Four KPIs. For an employee these are the states of their own
-    // applications; administrators keep their organisation-wide counters.
-    $kpis = [];
-    if ($isEmployee) {
-        $kpis = [
-            ['icon' => 'bi-hourglass-split', 'label' => 'Pending',    'value' => $cards['my_pending'] ?? 0,
-             'hint' => 'awaiting an approver'],
-            ['icon' => 'bi-check2-circle',   'label' => 'Approved',   'value' => $cards['my_approved'] ?? 0,
-             'hint' => 'applications granted'],
-            ['icon' => 'bi-x-circle',        'label' => 'Rejected',   'value' => $cards['my_rejected'] ?? 0,
-             'hint' => 'applications disapproved'],
-        ];
-    } else {
-        $map = [
-            'pending_leaves' => ['Pending approvals', 'bi-hourglass-split'],
-            'total_requests' => ['Applications', 'bi-collection'],
-            'approved' => ['Approved', 'bi-check2-circle'],
-            'employees' => ['Employees', 'bi-people'],
-            'departments' => ['Departments', 'bi-diagram-3'],
-        ];
-        foreach ($map as $key => [$label, $icon]) {
-            if (! isset($cards[$key]) || count($kpis) >= 4) {
-                continue;
-            }
-            $kpis[] = ['icon' => $icon, 'label' => $label, 'value' => $cards[$key], 'hint' => ''];
-        }
-    }
-
-    // Charts are an administrator view. The employee dashboard shows counters,
-    // the credit summary and their own records — no graphs.
-    $series = $isEmployee ? null : ($chartsLeavesMonth ?? null);
-    $mix = $isEmployee ? null : ($chartsLeavesType ?? null);
 @endphp
 
-{{-- ---------- KPI cards ---------- --}}
-{{-- Separate framed cards with a gap between them, rather than one connected
-     strip divided by hairlines. --}}
-@if ($kpis)
+{{-- ==================================================================== --}}
+{{-- Back office                                                          --}}
+{{-- ==================================================================== --}}
+@if ($backOffice)
+    @php
+        $months = $bo_outcome['months'];
+        $totals = $bo_outcome['totals'];
+        $thisMonth = $months[now()->month - 1];
+        $ceiling = max(2, max(array_column($months, 'total')));
+
+        $onLeave = $bo_on_leave;
+    @endphp
+
     <div class="kpi-grid">
-        @foreach ($kpis as $k)
+        <div class="kpi-card">
+            <div class="kpi-label"><i class="bi bi-people"></i>Registered users</div>
+            <div class="kpi-value">{{ $bo_users['total'] }}</div>
+            <div class="splitbar mt-2">
+                <span class="split-a" style="width:{{ $bo_users['total'] ? round($bo_users['employees'] / $bo_users['total'] * 100, 1) : 0 }}%"></span>
+                <span class="split-b" style="width:{{ $bo_users['total'] ? round($bo_users['officers'] / $bo_users['total'] * 100, 1) : 0 }}%"></span>
+            </div>
+            <div class="kpi-hint">
+                {{ $bo_users['employees'] }} with an employee record &middot;
+                {{ $bo_users['officers'] }} without
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-label"><i class="bi bi-person-walking"></i>On leave today</div>
+            <div class="kpi-value">{{ $onLeave['today'] }}</div>
+            <div class="kpi-hint">approved, and today falls inside the dates</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-label"><i class="bi bi-calendar-check"></i>Filed this month</div>
+            <div class="kpi-value">{{ $thisMonth['total'] }}</div>
+            <div class="kpi-hint">{{ now()->format('F Y') }}</div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-label"><i class="bi bi-hourglass-split"></i>Awaiting a decision</div>
+            <div class="kpi-value">{{ $totals['pending'] }}</div>
+            <div class="kpi-hint">across every month of {{ now()->year }}</div>
+        </div>
+    </div>
+
+    {{-- ---------- Applications by outcome ---------- --}}
+    {{-- One stacked column per month. A column is the applications *filed* in
+         that month, split by how they ended up, so the columns add up to the
+         year and to the "filed this month" card above — one definition, not
+         three. Bars rather than a line because these are discrete events
+         counted per bucket: an empty month should read as an absent bar, not
+         as a line dipping to the floor and back. --}}
+    <div class="dash-frame">
+        <div class="dash-head">
+            <p class="dash-title"><i class="bi bi-bar-chart"></i>Applications by outcome</p>
+            <span class="dash-link">filed in {{ now()->year }}</span>
+        </div>
+        <div class="dash-body">
+            <div class="bo-legend">
+                <span><i class="key-approved"></i>Approved <b>{{ $totals['approved'] }}</b></span>
+                <span><i class="key-rejected"></i>Rejected <b>{{ $totals['rejected'] }}</b></span>
+                <span><i class="key-pending"></i>Awaiting <b>{{ $totals['pending'] }}</b></span>
+            </div>
+
+            <div class="stackplot" style="--plot-h:230px">
+                <div class="day-axis">
+                    <span>{{ $ceiling }}</span>
+                    <span>{{ intdiv($ceiling, 2) }}</span>
+                    <span>0</span>
+                </div>
+                <div class="stack-cols">
+                    @foreach ($months as $month)
+                        <div class="stack-col {{ $month['total'] === 0 ? 'is-empty' : '' }} {{ $month['month'] === now()->month ? 'is-now' : '' }}">
+                            @if ($month['total'] > 0)
+                                <span class="day-tip">
+                                    <b>{{ $month['label'] }}</b> &middot; {{ $month['total'] }} filed<br>
+                                    {{ $month['approved'] }} approved &middot;
+                                    {{ $month['rejected'] }} rejected &middot;
+                                    {{ $month['pending'] }} awaiting
+                                </span>
+                                <div class="stack-bar" style="height:{{ round($month['total'] / $ceiling * 100, 1) }}%">
+                                    @foreach (['pending', 'rejected', 'approved'] as $bucket)
+                                        @if ($month[$bucket] > 0)
+                                            <span class="stack-seg key-{{ $bucket }}" style="flex:{{ $month[$bucket] }}"></span>
+                                        @endif
+                                    @endforeach
+                                </div>
+                            @endif
+                            <span class="day-label">{{ $month['label'] }}</span>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+
+            <details class="bo-numbers">
+                <summary>Show the numbers</summary>
+                <div class="table-responsive">
+                    <table class="dash-table">
+                        <thead><tr>
+                            <th>Month</th><th class="num">Approved</th><th class="num">Rejected</th>
+                            <th class="num">Awaiting</th><th class="num">Filed</th>
+                        </tr></thead>
+                        <tbody>
+                        @foreach ($months as $month)
+                            @continue($month['total'] === 0)
+                            <tr>
+                                <td>{{ $month['label'] }}</td>
+                                <td class="num">{{ $month['approved'] }}</td>
+                                <td class="num">{{ $month['rejected'] }}</td>
+                                <td class="num">{{ $month['pending'] }}</td>
+                                <td class="num">{{ $month['total'] }}</td>
+                            </tr>
+                        @endforeach
+                        <tr>
+                            <td><strong>{{ now()->year }}</strong></td>
+                            <td class="num"><strong>{{ $totals['approved'] }}</strong></td>
+                            <td class="num"><strong>{{ $totals['rejected'] }}</strong></td>
+                            <td class="num"><strong>{{ $totals['pending'] }}</strong></td>
+                            <td class="num"><strong>{{ $totals['total'] }}</strong></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </details>
+        </div>
+    </div>
+
+    {{-- ---------- Employees on leave ---------- --}}
+    {{-- The three windows are not the same measure and the card says so under
+         every number: today is a headcount, week and month are *distinct*
+         employees. One person off for five days is one employee, not five. --}}
+    <div class="dash-frame" id="bo-onleave">
+        <div class="dash-head">
+            <p class="dash-title"><i class="bi bi-person-walking"></i>Employees on leave</p>
+            <div class="bo-switch">
+                <label><input type="radio" name="onleave-window" id="onleave-today" checked>Today</label>
+                <label><input type="radio" name="onleave-window" id="onleave-week">This week</label>
+                <label><input type="radio" name="onleave-window" id="onleave-month">This month</label>
+            </div>
+        </div>
+        <div class="dash-body">
+            <div class="bo-pane pane-today">
+                <div class="big-figure">{{ $onLeave['today'] }}</div>
+                <div class="big-sub">
+                    on approved leave right now &mdash; a headcount, not a total
+                </div>
+                @include('dashboard._day_line', ['days' => $onLeave['week']['days'], 'height' => 150])
+            </div>
+
+            <div class="bo-pane pane-week">
+                <div class="big-figure">{{ $onLeave['week']['distinct'] }}</div>
+                <div class="big-sub">
+                    distinct employees out on at least one day this week &middot;
+                    peak {{ $onLeave['week']['peak'] }} in a day
+                </div>
+                @include('dashboard._day_line', ['days' => $onLeave['week']['days'], 'height' => 170])
+            </div>
+
+            <div class="bo-pane pane-month">
+                <div class="big-figure">{{ $onLeave['month']['distinct'] }}</div>
+                <div class="big-sub">
+                    distinct employees out on at least one day in {{ now()->format('F') }} &middot;
+                    peak {{ $onLeave['month']['peak'] }} in a day
+                </div>
+                @include('dashboard._day_line', ['days' => $onLeave['month']['days'], 'height' => 170, 'labelEvery' => 5])
+            </div>
+
+            <p class="big-sub mt-3 mb-0">
+                Solid is leave already taken. Dashed is approved leave still to come &mdash;
+                the half you can still plan around.
+            </p>
+        </div>
+    </div>
+
+    <div class="dash-row2">
+        {{-- ---------- Most applied leave type ---------- --}}
+        {{-- Horizontal, because "Special Privilege Leave" does not fit under a
+             column. One colour: length already carries the magnitude, so a
+             second encoding in colour would imply a difference that is not
+             there. --}}
+        <div class="dash-frame" id="bo-types">
+            <div class="dash-head">
+                <p class="dash-title"><i class="bi bi-list-ol"></i>Most applied leave type</p>
+                <div class="bo-switch">
+                    <label><input type="radio" name="types-window" id="types-month" checked>This month</label>
+                    <label><input type="radio" name="types-window" id="types-year">This year</label>
+                </div>
+            </div>
+            <div class="dash-body">
+                @foreach (['month' => $bo_types_month, 'year' => $bo_types_year] as $window => $rows)
+                    <div class="bo-pane pane-{{ $window }}">
+                        @forelse ($rows as $row)
+                            <div class="rankbar">
+                                <span class="rankbar-name" title="{{ $row['name'] }}">{{ $row['name'] }}</span>
+                                <span class="rankbar-track">
+                                    <span class="rankbar-fill" style="width:{{ $row['width'] }}%"></span>
+                                </span>
+                                <span class="rankbar-value">{{ $row['total'] }}</span>
+                                <span class="day-tip">{{ $row['share'] }}% of applications {{ $window === 'month' ? 'this month' : 'this year' }}</span>
+                            </div>
+                        @empty
+                            <div class="dash-empty">Nothing filed {{ $window === 'month' ? 'this month' : 'this year' }} yet.</div>
+                        @endforelse
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
+        {{-- ---------- By department ---------- --}}
+        {{-- Per head sits beside the count on purpose: the raw count only says
+             which department is biggest. --}}
+        <div class="dash-frame">
+            <div class="dash-head">
+                <p class="dash-title"><i class="bi bi-diagram-3"></i>Applications by department</p>
+                <span class="dash-link">{{ now()->year }} to date</span>
+            </div>
+            <div class="dash-body">
+                @forelse ($bo_departments as $row)
+                    <div class="rankbar {{ $row['unassigned'] ? 'is-muted' : '' }}">
+                        <span class="rankbar-name" title="{{ $row['name'] }}">{{ $row['name'] }}</span>
+                        <span class="rankbar-track">
+                            <span class="rankbar-fill" style="width:{{ $row['width'] }}%"></span>
+                        </span>
+                        <span class="rankbar-value">{{ $row['total'] }}</span>
+                        <span class="day-tip">
+                            {{ $row['total'] }} filed &middot; {{ $row['staff'] }} staff
+                            @if ($row['per_head'] !== null) &middot; {{ $row['per_head'] }} per head @endif
+                            @if ($row['unassigned']) <br>Employees with no department set @endif
+                        </span>
+                    </div>
+                @empty
+                    <div class="dash-empty">No applications on record for {{ now()->year }}.</div>
+                @endforelse
+            </div>
+        </div>
+    </div>
+@endif
+
+{{-- ==================================================================== --}}
+{{-- System row — accounts and devices, not leave                         --}}
+{{-- ==================================================================== --}}
+@if (! empty($system_row))
+    <div class="dash-frame">
+        <div class="dash-head">
+            <p class="dash-title"><i class="bi bi-hdd-network"></i>System</p>
+            @can('security.dashboard')
+                <a href="{{ route('security.dashboard') }}" class="dash-link">Security dashboard &rarr;</a>
+            @endcan
+        </div>
+        <div class="dash-body">
+            <div class="trio trio-4">
+                <div>
+                    <div class="trio-label">Employee records</div>
+                    <div class="trio-value">{{ $cards['employees'] ?? 0 }}</div>
+                </div>
+                <div>
+                    <div class="trio-label">Devices online</div>
+                    <div class="trio-value">{{ $cards['devices_online'] ?? 0 }}</div>
+                </div>
+                <div>
+                    <div class="trio-label">Devices offline</div>
+                    <div class="trio-value">{{ $cards['devices_offline'] ?? 0 }}</div>
+                </div>
+                <div>
+                    <div class="trio-label">Intrusions today</div>
+                    <div class="trio-value">{{ $cards['intrusions_today'] ?? 0 }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+@endif
+
+{{-- ==================================================================== --}}
+{{-- Own records                                                          --}}
+{{-- ==================================================================== --}}
+@if ($isEmployee)
+    @php
+        $earned = (float) (($vl->earned ?? 0) + ($sl->earned ?? 0));
+        $used = (float) (($vl->used ?? 0) + ($sl->used ?? 0));
+        $left = (float) (($vl->balance ?? 0) + ($sl->balance ?? 0));
+        $usedPct = $earned > 0 ? round($used / $earned * 100) : 0;
+    @endphp
+
+    <div class="kpi-grid">
+        @foreach ([
+            ['bi-hourglass-split', 'My pending', $cards['my_pending'] ?? 0, 'awaiting an approver'],
+            ['bi-check2-circle', 'My approved', $cards['my_approved'] ?? 0, 'applications granted'],
+            ['bi-x-circle', 'My rejected', $cards['my_rejected'] ?? 0, 'applications disapproved'],
+        ] as [$icon, $label, $value, $hint])
             <div class="kpi-card">
-                <div class="kpi-label"><i class="bi {{ $k['icon'] }}"></i>{{ $k['label'] }}</div>
-                <div class="kpi-value">{{ $k['value'] }}</div>
-                @if (!empty($k['hint']))
-                    <div class="kpi-hint">{{ $k['hint'] }}</div>
-                @endif
+                <div class="kpi-label"><i class="bi {{ $icon }}"></i>{{ $label }}</div>
+                <div class="kpi-value">{{ $value }}</div>
+                <div class="kpi-hint">{{ $hint }}</div>
             </div>
         @endforeach
     </div>
+
+    <div class="dash-frame">
+        <div class="dash-head">
+            <p class="dash-title"><i class="bi bi-wallet2"></i>Credit summary</p>
+        </div>
+        <div class="dash-body">
+            <div class="trio">
+                <div>
+                    <div class="trio-label">Earned</div>
+                    <div class="trio-value">{{ number_format($earned, 2) }}</div>
+                </div>
+                <div>
+                    <div class="trio-label">Used</div>
+                    <div class="trio-value">{{ number_format($used, 2) }}</div>
+                </div>
+                <div>
+                    <div class="trio-label">Remaining</div>
+                    <div class="trio-value">{{ number_format($left, 2) }}</div>
+                </div>
+            </div>
+            <div class="dash-head" style="border:0;padding:.85rem 0 0">
+                <span class="big-sub">Used vs remaining</span>
+                <span class="big-sub">{{ $usedPct }}% / {{ 100 - $usedPct }}%</span>
+            </div>
+            <div class="splitbar">
+                <span class="split-a" style="width:{{ $usedPct }}%"></span>
+                <span class="split-b" style="width:{{ 100 - $usedPct }}%"></span>
+            </div>
+            <div class="split-key">
+                <div>
+                    <div class="big-sub"><span class="dot split-a"></span>Used</div>
+                    <div class="trio-value">{{ number_format($used, 2) }}</div>
+                </div>
+                <div>
+                    <div class="big-sub"><span class="dot split-b"></span>Remaining</div>
+                    <div class="trio-value">{{ number_format($left, 2) }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
 @endif
-
-{{-- ---------- Full-bleed trend chart ---------- --}}
-@if (!empty($series))
-    <div class="dash-frame">
-        <div class="dash-head">
-            <p class="dash-title">
-                <i class="bi bi-graph-up"></i>{{ $isEmployee ? 'Leave days taken' : 'Leave applications' }}
-            </p>
-            <span class="dash-link">Last 6 months</span>
-        </div>
-        <div class="dash-body"><div style="height:250px"><canvas id="chartMain"></canvas></div></div>
-    </div>
-@endif
-
-{{-- ---------- Panel row ---------- --}}
-{{-- Employees get the credit summary only: the leave-type breakdown and the
-     days-taken graph were noise on a personal dashboard. Administrators keep
-     all three. --}}
-<div class="dash-row3 {{ $isEmployee ? 'dash-row1' : '' }}">
-    @unless ($isEmployee)
-    {{-- 1. Breakdown by leave type --}}
-    <div class="dash-frame">
-        <div class="dash-head">
-            <p class="dash-title"><i class="bi bi-pie-chart"></i>Leave type breakdown</p>
-            <a href="{{ route('leave.all') }}" class="dash-link">More details &rarr;</a>
-        </div>
-        <div class="dash-body">
-            @if (!empty($mix['data']) && array_sum($mix['data']) > 0)
-                <div class="mix">
-                    <div class="mix-chart">
-                        <canvas id="chartMix"></canvas>
-                        <div class="mix-centre">
-                            <div class="mix-total">{{ rtrim(rtrim(number_format(array_sum($mix['data']), 1), '0'), '.') }}</div>
-                            <div class="mix-total-label">applications</div>
-                        </div>
-                    </div>
-                    <div class="mix-legend">
-                        @foreach (array_slice($mix['items'] ?? [], 0, 4) as $item)
-                            <div class="mix-item">
-                                <span class="name">{{ $item['name'] }}</span>
-                                <span class="val">{{ rtrim(rtrim(number_format($item['days'], 1), '0'), '.') }}</span>
-                            </div>
-                        @endforeach
-                        @if (empty($mix['items']))
-                            @foreach ($mix['labels'] as $i => $label)
-                                @continue($i > 3)
-                                <div class="mix-item">
-                                    <span class="name">{{ $label }}</span>
-                                    <span class="val">{{ $mix['data'][$i] }}</span>
-                                </div>
-                            @endforeach
-                        @endif
-                    </div>
-                </div>
-            @else
-                <div class="dash-empty">No approved leave yet.</div>
-            @endif
-        </div>
-    </div>
-
-    {{-- 2. Headline figure + sparkline. Administrator-only, so no employee
-         branch is needed here. --}}
-    <div class="dash-frame">
-        <div class="dash-head">
-            <p class="dash-title"><i class="bi bi-calendar-check"></i>Applications filed</p>
-            <a href="{{ route('leave.all') }}" class="dash-link">View all &rarr;</a>
-        </div>
-        <div class="dash-body">
-            <div class="big-figure">{{ $cards['total_requests'] ?? 0 }}</div>
-            <div class="big-sub">applications on record</div>
-            @if (!empty($series))
-                <div style="height:110px;margin-top:.75rem"><canvas id="chartSpark"></canvas></div>
-            @endif
-        </div>
-    </div>
-    @endunless
-
-    {{-- 3. Credit summary --}}
-    <div class="dash-frame">
-        <div class="dash-head">
-            <p class="dash-title"><i class="bi bi-wallet2"></i>{{ $isEmployee ? 'Credit summary' : 'At a glance' }}</p>
-        </div>
-        <div class="dash-body">
-            @if ($isEmployee)
-                @php
-                    $earned = (float) (($vl->earned ?? 0) + ($sl->earned ?? 0));
-                    $used = (float) (($vl->used ?? 0) + ($sl->used ?? 0));
-                    $left = (float) (($vl->balance ?? 0) + ($sl->balance ?? 0));
-                    $usedPct = $earned > 0 ? round($used / $earned * 100) : 0;
-                @endphp
-                <div class="trio">
-                    <div>
-                        <div class="trio-label">Earned</div>
-                        <div class="trio-value">{{ number_format($earned, 2) }}</div>
-                    </div>
-                    <div>
-                        <div class="trio-label">Used</div>
-                        <div class="trio-value">{{ number_format($used, 2) }}</div>
-                    </div>
-                    <div>
-                        <div class="trio-label">Remaining</div>
-                        <div class="trio-value">{{ number_format($left, 2) }}</div>
-                    </div>
-                </div>
-                <div class="dash-head" style="border:0;padding:.85rem 0 0">
-                    <span class="big-sub">Used vs remaining</span>
-                    <span class="big-sub">{{ $usedPct }}% / {{ 100 - $usedPct }}%</span>
-                </div>
-                <div class="splitbar">
-                    <span class="split-a" style="width:{{ $usedPct }}%"></span>
-                    <span class="split-b" style="width:{{ 100 - $usedPct }}%"></span>
-                </div>
-                <div class="split-key">
-                    <div>
-                        <div class="big-sub"><span class="dot split-a"></span>Used</div>
-                        <div class="trio-value">{{ number_format($used, 2) }}</div>
-                    </div>
-                    <div>
-                        <div class="big-sub"><span class="dot split-b"></span>Remaining</div>
-                        <div class="trio-value">{{ number_format($left, 2) }}</div>
-                    </div>
-                </div>
-            @else
-                <div class="trio">
-                    @foreach (['pending_leaves' => 'Pending', 'approved' => 'Approved', 'employees' => 'Employees'] as $k => $label)
-                        @isset($cards[$k])
-                            <div>
-                                <div class="trio-label">{{ $label }}</div>
-                                <div class="trio-value">{{ $cards[$k] }}</div>
-                            </div>
-                        @endisset
-                    @endforeach
-                </div>
-            @endif
-        </div>
-    </div>
-</div>
 
 {{-- ---------- Data table ---------- --}}
 @isset($my_requests)
@@ -288,73 +443,5 @@
     </div>
 @endisset
 
-{{-- ---------- Security (admins only, unchanged data) ---------- --}}
-@if (!empty($chartsIntrusions))
-    <div class="dash-frame">
-        <div class="dash-head">
-            <p class="dash-title"><i class="bi bi-shield-exclamation"></i>Intrusion attempts</p>
-            <span class="dash-link">Last 7 days</span>
-        </div>
-        <div class="dash-body"><div style="height:220px"><canvas id="chartIntrusions"></canvas></div></div>
-    </div>
-@endif
-
 </div>{{-- /.dash --}}
-
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const P = window.lmsChartPalette;
-    const line = getComputedStyle(document.body).getPropertyValue('--muted-2').trim() || '#9aa';
-    const grid = getComputedStyle(document.body).getPropertyValue('--border').trim() || '#eee';
-    const axis = { grid:{ color:grid, drawTicks:false }, border:{ display:false },
-                   ticks:{ color:getComputedStyle(document.body).getPropertyValue('--muted').trim(), font:{ size:11 } } };
-
-    @if (!empty($series))
-    (function(){
-        const d = @json($series);
-        const ctx = document.getElementById('chartMain');
-        const g = ctx.getContext('2d').createLinearGradient(0,0,0,250);
-        g.addColorStop(0,'rgba(140,140,150,.22)'); g.addColorStop(1,'rgba(140,140,150,0)');
-        new Chart(ctx,{type:'line',data:{labels:d.labels,datasets:[{data:d.data,borderColor:line,
-            backgroundColor:g,fill:true,tension:.25,borderWidth:1.6,pointRadius:0,pointHoverRadius:4}]},
-            options:{plugins:{legend:{display:false}},
-            scales:{y:{beginAtZero:true,ticks:{precision:0,...axis.ticks},grid:{color:grid,drawTicks:false},border:{display:false}},
-                    x:{...axis,grid:{display:false}}}}});
-    })();
-
-    (function(){
-        const el = document.getElementById('chartSpark'); if (!el) return;
-        const d = @json($series);
-        const g = el.getContext('2d').createLinearGradient(0,0,0,110);
-        g.addColorStop(0,'rgba(140,140,150,.28)'); g.addColorStop(1,'rgba(140,140,150,0)');
-        new Chart(el,{type:'line',data:{labels:d.labels,datasets:[{data:d.data,borderColor:line,
-            backgroundColor:g,fill:true,tension:.3,borderWidth:1.4,pointRadius:0}]},
-            options:{plugins:{legend:{display:false}},scales:{x:{display:false},y:{display:false}}}});
-    })();
-    @endif
-
-    @if (!empty($mix['data']))
-    (function(){
-        const el = document.getElementById('chartMix'); if (!el) return;
-        const d = @json($mix);
-        new Chart(el,{type:'doughnut',data:{labels:d.labels,datasets:[{data:d.data,backgroundColor:P,
-            borderWidth:0,spacing:2}]},
-            options:{cutout:'72%',plugins:{legend:{display:false}}}});
-    })();
-    @endif
-
-    @if (!empty($chartsIntrusions))
-    (function(){
-        const d = @json($chartsIntrusions);
-        new Chart(document.getElementById('chartIntrusions'),{type:'bar',data:{labels:d.labels,
-            datasets:[{data:d.data,backgroundColor:'#be123c',borderRadius:4,maxBarThickness:28}]},
-            options:{plugins:{legend:{display:false}},
-            scales:{y:{beginAtZero:true,ticks:{precision:0,...axis.ticks},grid:{color:grid,drawTicks:false},border:{display:false}},
-                    x:{...axis,grid:{display:false}}}}});
-    })();
-    @endif
-});
-</script>
-@endpush
 @endsection
