@@ -3,7 +3,7 @@
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div><h1 class="h4 mb-0">{{ $data['title'] }}</h1>
-        <div class="text-muted small">Generated {{ $data['generated_at'] }} · {{ count($data['rows']) }} row(s)</div></div>
+        <div class="text-muted small">{{ $data['period'] }} · {{ count($data['rows']) }} row(s) · generated {{ $data['generated_at'] }}</div></div>
     <div class="btn-group btn-group-sm">
         <a href="{{ route('reports.generate', $data['key']) }}?{{ http_build_query(array_merge($data['filters'], ['format'=>'pdf'])) }}" target="_blank" class="btn btn-outline-danger">PDF</a>
         <a href="{{ route('reports.generate', $data['key']) }}?{{ http_build_query(array_merge($data['filters'], ['format'=>'xlsx'])) }}" class="btn btn-outline-success">Excel</a>

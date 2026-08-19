@@ -44,6 +44,14 @@ class ReportService
         'user-activity' => ['title' => 'User Activity Report', 'permission' => 'reports.security', 'group' => 'security'],
     ];
 
+    public const PERIOD_MONTHLY = 'monthly';
+    public const PERIOD_ANNUAL = 'annual';
+
+    public const PERIODS = [
+        self::PERIOD_MONTHLY => 'Monthly',
+        self::PERIOD_ANNUAL => 'Yearly',
+    ];
+
     public const GROUPS = [
         'security' => 'Security',
         'leave' => 'Leave',
@@ -94,6 +102,7 @@ class ReportService
         return [
             'key' => $report,
             'title' => self::CATALOGUE[$report]['title'] ?? $report,
+            'period' => $this->periodLabel($filters),
             'columns' => $columns,
             'rows' => $rows,
             'generated_at' => now()->format('F d, Y H:i'),
@@ -101,12 +110,54 @@ class ReportService
         ];
     }
 
+    /**
+     * Every report covers either one month or one year.
+     *
+     * A free from/to pair let somebody produce a report of "the fourteenth to
+     * the twenty-second", which is not a period anybody reconciles against
+     * anything — and two people asking the same question got two different
+     * ranges. A month or a year is a period the office already works in, it is
+     * the same period twice running, and it prints as a caption a reader can
+     * check the file against.
+     */
     private function dateRange(array $f): array
     {
-        $from = ! empty($f['from']) ? Carbon::parse($f['from'])->startOfDay() : now()->startOfYear();
-        $to = ! empty($f['to']) ? Carbon::parse($f['to'])->endOfDay() : now()->endOfDay();
+        $year = $this->year($f);
 
-        return [$from, $to];
+        if (($f['period'] ?? self::PERIOD_MONTHLY) === self::PERIOD_ANNUAL) {
+            $start = Carbon::create($year, 1, 1)->startOfDay();
+
+            return [$start, $start->copy()->endOfYear()];
+        }
+
+        $start = Carbon::create($year, $this->month($f), 1)->startOfDay();
+
+        return [$start, $start->copy()->endOfMonth()];
+    }
+
+    /** A caption naming the period, so a downloaded file says what it covers. */
+    public function periodLabel(array $f): string
+    {
+        $year = $this->year($f);
+
+        return ($f['period'] ?? self::PERIOD_MONTHLY) === self::PERIOD_ANNUAL
+            ? 'Year '.$year
+            : Carbon::create($year, $this->month($f), 1)->format('F Y');
+    }
+
+    /** Clamped, because the year arrives from a query string. */
+    private function year(array $f): int
+    {
+        $year = (int) ($f['year'] ?? now()->year);
+
+        return max(2000, min((int) now()->year + 1, $year ?: (int) now()->year));
+    }
+
+    private function month(array $f): int
+    {
+        $month = (int) ($f['month'] ?? now()->month);
+
+        return max(1, min(12, $month ?: (int) now()->month));
     }
 
     private function employeeLeave(array $f): array
@@ -145,9 +196,7 @@ class ReportService
 
     private function monthly(array $f): array
     {
-        $year = (int) ($f['year'] ?? now()->year);
-        $month = (int) ($f['month'] ?? now()->month);
-        $start = Carbon::create($year, $month, 1)->startOfMonth();
+        $start = Carbon::create($this->year($f), $this->month($f), 1)->startOfMonth();
         $end = (clone $start)->endOfMonth();
 
         $rows = LeaveRequest::with('user', 'leaveType')
@@ -163,7 +212,7 @@ class ReportService
 
     private function annual(array $f): array
     {
-        $year = (int) ($f['year'] ?? now()->year);
+        $year = $this->year($f);
         $rows = [];
         foreach (\App\Models\LeaveType::orderBy('name')->get() as $type) {
             $q = LeaveRequest::where('leave_type_id', $type->id)->whereYear('start_date', $year);

@@ -21,9 +21,17 @@ class GenericReportExport implements FromArray, WithHeadings, WithTitle, WithSty
         return $this->report['rows'];
     }
 
+    /**
+     * Two heading rows: what the report is and which period it covers, then the
+     * column names. A downloaded file that does not say its own period is
+     * indistinguishable from any other month's once it is sitting in a folder.
+     */
     public function headings(): array
     {
-        return $this->report['columns'];
+        return [
+            [$this->report['title'].' — '.($this->report['period'] ?? '')],
+            $this->report['columns'],
+        ];
     }
 
     public function title(): string
@@ -33,6 +41,9 @@ class GenericReportExport implements FromArray, WithHeadings, WithTitle, WithSty
 
     public function styles(Worksheet $sheet): array
     {
-        return [1 => ['font' => ['bold' => true]]];
+        return [
+            1 => ['font' => ['bold' => true, 'size' => 12]],
+            2 => ['font' => ['bold' => true]],
+        ];
     }
 }

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Reports;
 
+use App\Exports\GenericReportExport;
 use App\Models\Department;
 use App\Models\EmployeeProfile;
 use App\Models\LeaveType;
@@ -130,6 +131,60 @@ class ReportTest extends TestCase
     {
         $this->signIn('system-admin');
         $this->get('/reports/does-not-exist')->assertNotFound();
+    }
+
+    /**
+     * Every report covers one month or one year — never a free date range. Two
+     * people asking the same question then get the same period, and the file
+     * carries a caption a reader can check it against.
+     */
+    public function test_a_report_covers_a_month_or_a_year_and_says_which(): void
+    {
+        $service = app(ReportService::class);
+
+        $month = $service->build('intrusion', ['period' => 'monthly', 'year' => 2026, 'month' => 3]);
+        $this->assertSame('March 2026', $month['period']);
+
+        $year = $service->build('intrusion', ['period' => 'annual', 'year' => 2026]);
+        $this->assertSame('Year 2026', $year['period']);
+
+        // No period at all still resolves to something nameable.
+        $this->assertSame(now()->format('F Y'), $service->build('intrusion', [])['period']);
+    }
+
+    /** The year arrives from a query string, so it cannot be trusted raw. */
+    public function test_a_nonsense_period_is_clamped_rather_than_obeyed(): void
+    {
+        $service = app(ReportService::class);
+
+        $this->assertSame('Year '.now()->year, $service->build('audit', ['period' => 'annual', 'year' => 0])['period']);
+        $this->assertSame('Year 2000', $service->build('audit', ['period' => 'annual', 'year' => 1066])['period']);
+        $this->assertSame('December 2026', $service->build('audit', ['year' => 2026, 'month' => 99])['period']);
+    }
+
+    /**
+     * The download says which period it is — in the filename and on the first
+     * line of the sheet. A file that does not carry its own period is
+     * indistinguishable from any other month's once it is in a folder.
+     */
+    public function test_the_period_reaches_the_downloaded_file(): void
+    {
+        $data = app(ReportService::class)
+            ->build('audit', ['period' => 'monthly', 'year' => 2026, 'month' => 3]);
+
+        $headings = (new GenericReportExport($data))->headings();
+        $this->assertSame(['Audit Report — March 2026'], $headings[0]);
+        $this->assertSame($data['columns'], $headings[1], 'the column names keep a row of their own');
+
+        $this->signIn('system-admin');
+
+        $this->assertStringContainsString('audit-march-2026',
+            $this->get('/reports/audit?format=csv&period=monthly&year=2026&month=3')
+                ->assertOk()->headers->get('content-disposition'));
+
+        $this->assertStringContainsString('audit-year-2026',
+            $this->get('/reports/audit?format=csv&period=annual&year=2026')
+                ->assertOk()->headers->get('content-disposition'));
     }
 
     /** Every security report downloads in all three formats. */

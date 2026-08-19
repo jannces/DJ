@@ -1949,3 +1949,20 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   .an-switch,.chart-tip{ display:none !important; }
   .dash-frame{ break-inside:avoid; page-break-inside:avoid; }
 }
+
+
+/* ============================================================================
+   REPORTS — period picker
+   ----------------------------------------------------------------------------
+   Every report covers one month or one year. Choosing Yearly hides the month
+   field rather than leaving a control that does nothing — :has() on the select,
+   so no script is involved. Without :has() the field stays visible and the
+   server ignores it, which is the harmless failure.
+   ========================================================================== */
+.report-period:has(select[name="period"] option[value="annual"]:checked) .period-month{
+  display:none;
+}
+.reports-group{
+  font-size:.72rem; font-weight:600; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--muted); margin:0 0 .6rem;
+}

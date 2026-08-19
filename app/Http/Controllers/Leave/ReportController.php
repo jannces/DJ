@@ -26,6 +26,7 @@ class ReportController extends Controller
         return view('reports.index', [
             'groups' => ReportService::visibleTo($request->user()),
             'labels' => ReportService::GROUPS,
+            'periods' => ReportService::PERIODS,
             'departments' => Department::orderBy('name')->get(),
             'types' => LeaveType::orderBy('name')->get(),
         ]);
@@ -42,13 +43,17 @@ class ReportController extends Controller
         // page — the URL is guessable and the export formats are the same route.
         abort_unless($request->user()->hasPermission($permission), 403);
 
-        $filters = $request->only(['from', 'to', 'department', 'status', 'type', 'category', 'year', 'month', 'user']);
+        // Period first: every report covers one month or one year, so the
+        // filters that survive are the ones that name it plus the report's own.
+        $filters = $request->only(['period', 'year', 'month', 'department', 'status', 'type', 'category', 'user']);
         $data = $this->reports->build($report, array_filter($filters));
         $format = $request->query('format', 'html');
 
         $this->audit->log('report_generated', null, [], ['report' => $report, 'format' => $format, 'filters' => $filters]);
 
-        $filename = $report.'-'.now()->format('Ymd_His');
+        // The period belongs in the filename: a folder of "audit-20260819.pdf"
+        // says nothing about which month each one covers.
+        $filename = $report.'-'.str_replace(' ', '-', strtolower($data['period'])).'-'.now()->format('Ymd');
 
         return match ($format) {
             'pdf' => Pdf::loadView('reports.pdf', ['data' => $data])->setPaper('a4', 'landscape')->download($filename.'.pdf'),
