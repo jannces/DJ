@@ -538,8 +538,15 @@ class EmployeeInterfaceTest extends TestCase
         $response->assertDontSee('type="checkbox" name="leave_type_id[]"', false);
         // Nothing is preselected on a new application: the placeholder is.
         $response->assertSee('<option value="">Select a leave type', false);
-        // No leave type is preselected on a new application.
-        $this->assertStringNotContainsString('selected', $response->getContent());
+
+        // Scoped to the dropdown itself — "selected" appears elsewhere in the
+        // page chrome, so scanning the whole document proves nothing.
+        $html = $response->getContent();
+        $start = strpos($html, '<select id="lf-type"');
+        $this->assertNotFalse($start, 'the leave-type dropdown is missing');
+        $select = substr($html, $start, strpos($html, '</select>', $start) - $start);
+        $this->assertStringNotContainsString('selected', $select,
+            'a leave type is preselected on a new application');
     }
 
     public function test_selecting_two_leave_types_is_refused(): void
