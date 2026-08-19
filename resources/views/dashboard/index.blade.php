@@ -72,140 +72,152 @@
         </div>
     </div>
 
-    {{-- ---------- Applications by outcome ---------- --}}
-    {{-- Part-to-whole with three slices, which is the one job a pie does well:
-         "what proportion of this year's applications ended up approved". A
-         slice counts the applications *filed* this year, grouped by how they
-         ended up, so the pie adds up to the "filed this year" figure — one
-         definition, not two. Cancelled applications are left out; a withdrawal
-         is not an outcome anybody decided.
+    {{-- Two columns: the summary panels on the left, the long leave-type list
+         on the right, where its height has somewhere to go. Both collapse to a
+         single column below 992px. --}}
+    <div class="dash-split">
+        <div class="dash-col">
+            {{-- ---------- Applications by outcome ---------- --}}
+            {{-- Part-to-whole with three slices, which is the one job a pie does well:
+                 "what proportion of this year's applications ended up approved". A
+                 slice counts the applications *filed* this year, grouped by how they
+                 ended up, so the pie adds up to the "filed this year" figure — one
+                 definition, not two. Cancelled applications are left out; a withdrawal
+                 is not an outcome anybody decided.
 
-         The pie carries no second dimension on purpose. The month-by-month
-         detail is in the table underneath, where a reader can compare numbers
-         instead of squinting at wedge sizes. --}}
-    <div class="dash-frame">
-        <div class="dash-head">
-            <p class="dash-title"><i class="bi bi-pie-chart"></i>Applications by outcome</p>
-            <span class="dash-link">filed in {{ now()->year }}</span>
-        </div>
-        <div class="dash-body">
-            @include('dashboard._pie_chart', [
-                'slices' => [
-                    ['key' => 'approved', 'label' => 'Approved', 'value' => $totals['approved']],
-                    ['key' => 'rejected', 'label' => 'Rejected', 'value' => $totals['rejected']],
-                    ['key' => 'pending', 'label' => 'Awaiting a decision', 'value' => $totals['pending']],
-                ],
-                'total' => $totals['total'],
-            ])
-
-            <details class="an-numbers">
-                <summary>Show the numbers</summary>
-                <div class="table-responsive">
-                    <table class="dash-table">
-                        <thead><tr>
-                            <th>Month</th><th class="num">Approved</th><th class="num">Rejected</th>
-                            <th class="num">Awaiting</th><th class="num">Filed</th>
-                        </tr></thead>
-                        <tbody>
-                        @foreach ($months as $month)
-                            @continue($month['total'] === 0)
-                            <tr>
-                                <td>{{ $month['label'] }}</td>
-                                <td class="num">{{ $month['approved'] }}</td>
-                                <td class="num">{{ $month['rejected'] }}</td>
-                                <td class="num">{{ $month['pending'] }}</td>
-                                <td class="num">{{ $month['total'] }}</td>
-                            </tr>
-                        @endforeach
-                        <tr>
-                            <td><strong>{{ now()->year }}</strong></td>
-                            <td class="num"><strong>{{ $totals['approved'] }}</strong></td>
-                            <td class="num"><strong>{{ $totals['rejected'] }}</strong></td>
-                            <td class="num"><strong>{{ $totals['pending'] }}</strong></td>
-                            <td class="num"><strong>{{ $totals['total'] }}</strong></td>
-                        </tr>
-                        </tbody>
-                    </table>
+                 The pie carries no second dimension on purpose. The month-by-month
+                 detail is in the table underneath, where a reader can compare numbers
+                 instead of squinting at wedge sizes. --}}
+            <div class="dash-frame">
+                <div class="dash-head">
+                    <p class="dash-title"><i class="bi bi-pie-chart"></i>Applications by outcome</p>
+                    <span class="dash-link">filed in {{ now()->year }}</span>
                 </div>
-            </details>
-        </div>
-    </div>
+                <div class="dash-body">
+                    @include('dashboard._pie_chart', [
+                        'slices' => [
+                            ['key' => 'approved', 'label' => 'Approved', 'value' => $totals['approved']],
+                            ['key' => 'rejected', 'label' => 'Rejected', 'value' => $totals['rejected']],
+                            ['key' => 'pending', 'label' => 'Awaiting a decision', 'value' => $totals['pending']],
+                        ],
+                        'total' => $totals['total'],
+                    ])
 
-    {{-- ---------- Employees on leave ---------- --}}
-    {{-- The three windows are not the same measure and the card says so under
-         every number: today is a headcount, week and month are *distinct*
-         employees. One person off for five days is one employee, not five, so
-         these cannot be added to each other or compared. --}}
-    <div class="dash-frame" id="an-onleave">
-        <div class="dash-head">
-            <p class="dash-title"><i class="bi bi-person-walking"></i>Employees on leave</p>
-            <div class="an-switch">
-                <label><input type="radio" name="onleave-window" id="onleave-today" checked>Today</label>
-                <label><input type="radio" name="onleave-window" id="onleave-week">This week</label>
-                <label><input type="radio" name="onleave-window" id="onleave-month">This month</label>
-            </div>
-        </div>
-        <div class="dash-body">
-            <div class="an-pane pane-today">
-                <div class="big-figure">{{ $onLeave['today'] }}</div>
-                <div class="big-sub">on approved leave right now &mdash; a headcount, not a total</div>
-            </div>
-
-            <div class="an-pane pane-week">
-                <div class="big-figure">{{ $onLeave['week']['distinct'] }}</div>
-                <div class="big-sub">
-                    distinct employees out on at least one day this week &middot;
-                    peak {{ $onLeave['week']['peak'] }} in a day
+                    <details class="an-numbers">
+                        <summary>Show the numbers</summary>
+                        <div class="table-responsive">
+                            <table class="dash-table">
+                                <thead><tr>
+                                    <th>Month</th><th class="num">Approved</th><th class="num">Rejected</th>
+                                    <th class="num">Awaiting</th><th class="num">Filed</th>
+                                </tr></thead>
+                                <tbody>
+                                @foreach ($months as $month)
+                                    @continue($month['total'] === 0)
+                                    <tr>
+                                        <td>{{ $month['label'] }}</td>
+                                        <td class="num">{{ $month['approved'] }}</td>
+                                        <td class="num">{{ $month['rejected'] }}</td>
+                                        <td class="num">{{ $month['pending'] }}</td>
+                                        <td class="num">{{ $month['total'] }}</td>
+                                    </tr>
+                                @endforeach
+                                <tr>
+                                    <td><strong>{{ now()->year }}</strong></td>
+                                    <td class="num"><strong>{{ $totals['approved'] }}</strong></td>
+                                    <td class="num"><strong>{{ $totals['rejected'] }}</strong></td>
+                                    <td class="num"><strong>{{ $totals['pending'] }}</strong></td>
+                                    <td class="num"><strong>{{ $totals['total'] }}</strong></td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
                 </div>
             </div>
 
-            <div class="an-pane pane-month">
-                <div class="big-figure">{{ $onLeave['month']['distinct'] }}</div>
-                <div class="big-sub">
-                    distinct employees out on at least one day in {{ now()->format('F') }} &middot;
-                    peak {{ $onLeave['month']['peak'] }} in a day
+            {{-- ---------- Employees on leave ---------- --}}
+            {{-- The three windows are not the same measure and the card says so under
+                 every number: today is a headcount, week and month are *distinct*
+                 employees. One person off for five days is one employee, not five, so
+                 these cannot be added to each other or compared. --}}
+            <div class="dash-frame" id="an-onleave">
+                <div class="dash-head">
+                    <p class="dash-title"><i class="bi bi-person-walking"></i>Employees on leave</p>
+                    <div class="an-switch">
+                        <label><input type="radio" name="onleave-window" id="onleave-today" checked>Today</label>
+                        <label><input type="radio" name="onleave-window" id="onleave-week">This week</label>
+                        <label><input type="radio" name="onleave-window" id="onleave-month">This month</label>
+                    </div>
+                </div>
+                <div class="dash-body">
+                    <div class="an-pane pane-today">
+                        <div class="big-figure">{{ $onLeave['today'] }}</div>
+                        <div class="big-sub">on approved leave right now &mdash; a headcount, not a total</div>
+                    </div>
+
+                    <div class="an-pane pane-week">
+                        <div class="big-figure">{{ $onLeave['week']['distinct'] }}</div>
+                        <div class="big-sub">
+                            distinct employees out on at least one day this week &middot;
+                            peak {{ $onLeave['week']['peak'] }} in a day
+                        </div>
+                    </div>
+
+                    <div class="an-pane pane-month">
+                        <div class="big-figure">{{ $onLeave['month']['distinct'] }}</div>
+                        <div class="big-sub">
+                            distinct employees out on at least one day in {{ now()->format('F') }} &middot;
+                            peak {{ $onLeave['month']['peak'] }} in a day
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- ---------- By department ---------- --}}
+            {{-- Per head is in the readout on purpose: the raw count only says which
+                 department is biggest, not whether its people file more often than
+                 anybody else's. --}}
+            <div class="dash-frame">
+                <div class="dash-head">
+                    <p class="dash-title"><i class="bi bi-diagram-3"></i>Applications by department</p>
+                    <span class="dash-link">{{ now()->year }} to date</span>
+                </div>
+                <div class="dash-body">
+                    @include('dashboard._bar_chart', ['rows' => $an_departments])
+                    <p class="chart-foot">Hover a column for the headcount and the per-head rate.</p>
                 </div>
             </div>
         </div>
-    </div>
 
-    {{-- ---------- Most applied leave type ---------- --}}
-    {{-- Every active leave type gets a column, including the ones nobody used:
-         a type with no applications is a real answer to "what do people apply
-         for", and a chart that silently omits it cannot be told apart from one
-         where the type does not exist. That is also why these two panels take
-         the full width rather than sharing a row. --}}
-    <div class="dash-frame" id="an-types">
-        <div class="dash-head">
-            <p class="dash-title"><i class="bi bi-bar-chart-line"></i>Most applied leave type</p>
-            <div class="an-switch">
-                <label><input type="radio" name="types-window" id="types-month" checked>This month</label>
-                <label><input type="radio" name="types-window" id="types-year">This year</label>
-            </div>
-        </div>
-        <div class="dash-body">
-            <div class="an-pane pane-month">
-                @include('dashboard._bar_chart', ['rows' => $an_types_month])
-            </div>
-            <div class="an-pane pane-year">
-                @include('dashboard._bar_chart', ['rows' => $an_types_year])
-            </div>
-            <p class="chart-foot">Codes are the CSC leave types &mdash; hover a column for the full name and its share.</p>
-        </div>
-    </div>
+        <div class="dash-col">
+            {{-- ---------- Most applied leave type ---------- --}}
+            {{-- Sideways, because sixteen leave types under sixteen columns leaves room
+                 for a three-letter code and nothing else. As rows each one gets its
+                 full name, and the list grows downward instead of squeezing.
 
-    {{-- ---------- By department ---------- --}}
-    {{-- Per head is in the readout on purpose: the raw count only says which
-         department is biggest, not whether its people file more often than
-         anybody else's. --}}
-    <div class="dash-frame">
-        <div class="dash-head">
-            <p class="dash-title"><i class="bi bi-diagram-3"></i>Applications by department</p>
-            <span class="dash-link">{{ now()->year }} to date</span>
-        </div>
-        <div class="dash-body">
-            @include('dashboard._bar_chart', ['rows' => $an_departments])
-            <p class="chart-foot">Hover a column for the headcount and the per-head rate.</p>
+                 Every active type is here, including the ones nobody used: a type with
+                 no applications is a real answer to "what do people apply for", and a
+                 chart that silently omits it cannot be told apart from one where the
+                 type does not exist. --}}
+            <div class="dash-frame" id="an-types">
+                <div class="dash-head">
+                    <p class="dash-title"><i class="bi bi-bar-chart-line"></i>Most applied leave type</p>
+                    <div class="an-switch">
+                        <label><input type="radio" name="types-window" id="types-month" checked>This month</label>
+                        <label><input type="radio" name="types-window" id="types-year">This year</label>
+                    </div>
+                </div>
+                <div class="dash-body">
+                    <div class="an-pane pane-month">
+                        @include('dashboard._bar_chart_rows', ['rows' => $an_types_month])
+                    </div>
+                    <div class="an-pane pane-year">
+                        @include('dashboard._bar_chart_rows', ['rows' => $an_types_year])
+                    </div>
+                    <p class="chart-foot">Every CSC leave type, busiest first &mdash; hover a row for its share of the period.</p>
+                </div>
+            </div>
         </div>
     </div>
 @endif

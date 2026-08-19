@@ -341,9 +341,11 @@ class AdminDashboardTest extends TestCase
         $html = $this->visit('system-admin')->assertOk()->getContent();
 
         $this->assertStringNotContainsString('<canvas', $html);
-        // Outcome is a pie; leave types and departments are bar charts.
+        // Outcome is a pie, leave types are sideways bars, departments are
+        // columns — three forms, no canvas between them.
         $this->assertStringContainsString('<svg class="pie"', $html);
         $this->assertStringContainsString('class="pie-slice', $html);
+        $this->assertStringContainsString('class="hbar-fill"', $html);
         $this->assertStringContainsString('class="bar-fill"', $html);
         // Every chart carries a table, so none of it is readable by colour alone.
         $this->assertStringContainsString('Show the numbers', $html);

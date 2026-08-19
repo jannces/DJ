@@ -1858,6 +1858,66 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .pie-value{ font-weight:700; font-variant-numeric:tabular-nums; }
 .pie-share{ text-align:right; color:var(--muted); font-variant-numeric:tabular-nums; }
 
+/* ---- Sideways bars ------------------------------------------------------- */
+/* The same chart turned ninety degrees, for the case columns cannot serve: a
+   long list of long names. Sixteen leave types under sixteen columns leaves
+   room for a code and nothing else. */
+.hbar{
+  display:grid; grid-template-columns:minmax(6rem,12rem) minmax(0,1fr) 2.4rem;
+  align-items:center; gap:.75rem; position:relative;
+  padding:.3rem 0; font-size:.82rem;
+}
+.hbar-name{
+  display:flex; align-items:baseline; gap:.45rem; min-width:0;
+  color:var(--text-2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.hbar-name b{
+  font-size:.66rem; font-weight:700; letter-spacing:.04em; flex:none;
+  color:var(--tone,var(--muted)); font-variant-numeric:tabular-nums;
+}
+/* The gridlines live on the track, so they line up with the bars exactly
+   without a second element having to guess where the scale starts. */
+.hbar-track{
+  position:relative; height:1.05rem; border-radius:3px; overflow:hidden;
+  background-image:repeating-linear-gradient(
+    to right, transparent 0 calc(25% - 1px), var(--border) calc(25% - 1px) 25%);
+}
+.hbar-fill{
+  display:block; height:100%; min-width:2px; border-radius:0 4px 4px 0;
+  background:linear-gradient(90deg,
+    var(--tone,var(--primary)) 0%,
+    color-mix(in srgb,var(--tone,var(--primary)) 68%,transparent) 100%);
+  transition:filter .15s;
+}
+.hbar:hover .hbar-fill{ filter:brightness(1.12) saturate(1.1); }
+.hbar-value{
+  text-align:right; font-weight:700; font-variant-numeric:tabular-nums;
+  color:var(--text-2);
+}
+.hbar.is-muted .hbar-fill{ background:var(--muted); }
+.hbar.is-zero .hbar-fill{ background:var(--border-strong); }
+.hbar.is-zero .hbar-value,.hbar.is-zero .hbar-name{ color:var(--muted-2); }
+.hbar:hover > .chart-tip{ opacity:1; }
+.hbar .chart-tip{ left:auto; right:0; transform:translate(0,-.35rem); }
+/* The scale sits in the same grid as the rows, so its ticks land on the
+   gridlines rather than near them. */
+.hbar-scale{ padding-top:.35rem; }
+.hbar-ticks{
+  display:flex; justify-content:space-between;
+  font-size:.66rem; color:var(--muted-2); font-variant-numeric:tabular-nums;
+}
+
+/* ---- Two-column arrangement ---------------------------------------------- */
+/* Summary panels left, the long leave-type list right, where its height has
+   somewhere to go instead of pushing everything else down the page. */
+.dash-split{
+  display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:1rem; align-items:start;
+}
+@media (max-width:992px){ .dash-split{ grid-template-columns:minmax(0,1fr); } }
+.dash-col{ display:flex; flex-direction:column; gap:1rem; min-width:0; }
+.dash-col .dash-frame{ margin-bottom:0; }
+
 /* ---- "Show the numbers": the table view every chart carries -------------- */
 .an-numbers{ margin-top:1rem; }
 .an-numbers summary{
