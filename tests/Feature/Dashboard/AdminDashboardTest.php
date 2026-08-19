@@ -346,6 +346,92 @@ class AdminDashboardTest extends TestCase
         $this->assertStringContainsString('Show the numbers', $html);
     }
 
+    /**
+     * Every colour class the charts reach for must actually be defined.
+     *
+     * This has now bitten twice: a class named in Blade with no rule behind it
+     * fails silently — an SVG fill falls back to black, a bar falls back to the
+     * default — and nothing in the test suite noticed either time. The charts
+     * are the one place where a missing rule is invisible to a page that still
+     * renders "correctly".
+     */
+    public function test_every_chart_colour_class_is_defined_in_the_stylesheet(): void
+    {
+        $employee = $this->makeUser('employee');
+        foreach (['approved', 'rejected', 'pending'] as $status) {
+            $this->file($employee, $status, now()->toDateString(), now()->toDateString());
+        }
+
+        $html = $this->visit('system-admin')->assertOk()->getContent();
+        $css = file_get_contents(public_path('css/app.css'));
+
+        preg_match_all('/\b(?:slice|tone|key)-[a-z0-9]+/', $html, $matches);
+        $used = array_unique($matches[0]);
+        $this->assertNotEmpty($used, 'the charts should be painting something');
+
+        foreach ($used as $class) {
+            $this->assertMatchesRegularExpression(
+                '/\.'.preg_quote($class, '/').'\s*\{[^}]*(fill|background|--tone)\s*:/',
+                $css,
+                ".{$class} is used by a chart but the stylesheet gives it no colour"
+            );
+        }
+    }
+
+    /**
+     * A leave request filed by somebody with no employee record must not fall
+     * out of the department chart. An inner join dropped those rows entirely,
+     * so the columns added up to less than the applications on record with
+     * nothing on screen to say why.
+     */
+    public function test_an_employee_with_no_profile_still_reaches_the_department_chart(): void
+    {
+        $department = Department::create(['name' => 'Engineering', 'code' => 'ENG']);
+        $placed = $this->makeUser('employee');
+        EmployeeProfile::factory()->create(['user_id' => $placed->id, 'department_id' => $department->id]);
+        $this->file($placed, 'approved', now()->toDateString(), now()->toDateString());
+
+        // No employee_profiles row at all — not the same gap as a profile with
+        // no department, but just as invisible before this.
+        $this->file($this->makeUser('employee'), 'approved', now()->toDateString(), now()->toDateString());
+
+        $rows = app(DashboardService::class)
+            ->applicationsByDepartment(now()->startOfYear(), now()->endOfYear());
+
+        $this->assertSame(2, array_sum(array_column($rows, 'value')),
+            'every application on record belongs to some column');
+        $this->assertSame('Unassigned', collect($rows)->firstWhere('muted', true)['name']);
+    }
+
+    /**
+     * Retiring a leave type must not delete its history from the chart, or the
+     * bars would add up to less than the pie above them.
+     */
+    public function test_a_retired_leave_type_keeps_its_history(): void
+    {
+        $employee = $this->makeUser('employee');
+        $sl = LeaveType::where('code', 'SL')->firstOrFail();
+        $this->file($employee, 'approved', now()->toDateString(), now()->toDateString());
+        LeaveRequest::factory()->create([
+            'user_id' => $employee->id, 'leave_type_id' => $sl->id, 'status' => 'approved',
+            'date_filed' => now()->toDateString(),
+            'start_date' => now()->toDateString(), 'end_date' => now()->toDateString(),
+        ]);
+
+        $sl->update(['active' => false]);
+
+        $rows = app(DashboardService::class)
+            ->mostAppliedTypes(now()->startOfMonth(), now()->endOfMonth(), 'this month');
+        $retired = collect($rows)->firstWhere('label', 'SL');
+
+        $this->assertNotNull($retired, 'a retired type with applications stays on the chart');
+        $this->assertSame(1, $retired['value']);
+        $this->assertTrue($retired['muted']);
+        $this->assertStringContainsString('retired', $retired['name']);
+        $this->assertSame(2, array_sum(array_column($rows, 'value')),
+            'the columns must still add up to every application filed');
+    }
+
     /** The period switches are radios revealed with :has(), not scripted tabs. */
     public function test_the_period_switches_are_plain_radio_inputs(): void
     {

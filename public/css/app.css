@@ -1712,6 +1712,26 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 :root[data-bs-theme="dark"] .tone-6{ --tone:#a68330; }
 :root[data-bs-theme="dark"] .tone-7{ --tone:#3963c6; }
 
+/* Outcome series — the pie. These are status colours, not categorical slots:
+   approved is green, rejected is red, awaiting is amber, because that is what
+   those words mean everywhere else in the system. The obvious dark trio
+   (#34d399 / #fbbf24 / #fb7185) puts green and red 4.6 ΔE apart under a
+   deuteranopia simulation, which is indistinguishable; these clear 8 ΔE on
+   every pair in both themes. Solid fills — a gradient on a wedge reads as a
+   lighting effect and makes two slices of the same colour look different. */
+:root{
+  --seg-approved:#0f9d58; --seg-rejected:#c02222; --seg-pending:#d4a017;
+}
+:root[data-bs-theme="dark"]{
+  --seg-approved:#30a689; --seg-rejected:#cc3347; --seg-pending:#bc882f;
+}
+.key-approved{ background:var(--seg-approved); }
+.key-rejected{ background:var(--seg-rejected); }
+.key-pending{ background:var(--seg-pending); }
+.slice-approved{ fill:var(--seg-approved); }
+.slice-rejected{ fill:var(--seg-rejected); }
+.slice-pending{ fill:var(--seg-pending); }
+
 /* The on-leave line keeps the brand hue: it is one series, so a categorical
    slot would be saying something about a distinction that does not exist. */
 .accent-violet{ --accent:#5341b8; }

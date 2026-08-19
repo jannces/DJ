@@ -24,8 +24,10 @@ class DashboardService
 
     /**
      * How many distinct chart colours the stylesheet defines. Slots are keyed
-     * to a row's own identity rather than to its rank, so a leave type keeps
-     * its colour when the ranking shifts between the month and the year view.
+     * to a row's own primary key rather than to its rank or its position in the
+     * list, both of which move: a leave type keeps its colour when the ranking
+     * shifts between the month and the year view, or when a retired type enters
+     * or leaves the chart.
      */
     public const TONES = 8;
 
@@ -227,19 +229,26 @@ class DashboardService
     }
 
     /**
-     * Every active leave type, ranked by how many applications name it.
+     * Every leave type, ranked by how many applications name it.
      *
      * Every type, not just the busy ones: a leave nobody filed for is a real
      * answer to "what do people apply for", and a chart that silently omits it
      * cannot be told apart from one where the type does not exist.
      *
+     * A retired type still appears while it has applications in the window.
+     * Filtering on `active` alone would take its history with it, and the bars
+     * would then add up to less than the outcome chart on the same page — two
+     * figures for the same applications, disagreeing, with nothing on screen to
+     * explain why.
+     *
      * Applications, not days: "most applied for" and "most days taken" are
      * different questions and only one of them was asked.
      *
-     * The colour slot is keyed to the type's own id, not to its rank, so a type
-     * keeps its colour when the ranking changes between the month and the year
-     * view. There are more leave types than slots, so two can share a colour —
-     * harmless, because every column is labelled with its code and its count.
+     * The colour slot is keyed to the type's own id — not to its rank, and not
+     * to its position in this list, which shifts as retired types come and go
+     * between windows. So a type keeps its colour whichever view you are on.
+     * There are more leave types than slots, so two can share a colour, which
+     * is harmless: every column is labelled with its code and its count.
      */
     public function mostAppliedTypes(CarbonInterface $from, CarbonInterface $to, string $period = ''): array
     {
@@ -249,22 +258,25 @@ class DashboardService
             ->groupBy('leave_type_id')
             ->pluck('total', 'leave_type_id');
 
-        $types = LeaveType::query()->active()->orderBy('id')->get(['id', 'code', 'name']);
+        $types = LeaveType::query()
+            ->where(fn ($q) => $q->where('active', true)->orWhereIn('id', $counts->keys()))
+            ->orderBy('id')
+            ->get(['id', 'code', 'name', 'active']);
         $overall = (int) $counts->sum();
 
-        $rows = $types->values()->map(function ($type, $slot) use ($counts, $overall, $period) {
+        $rows = $types->map(function ($type) use ($counts, $overall, $period) {
             $value = (int) ($counts[$type->id] ?? 0);
             $share = $overall > 0 ? round($value / $overall * 100) : 0;
 
             return [
                 'label' => $type->code,
-                'name' => $type->name,
+                'name' => $type->name.($type->active ? '' : ' (retired)'),
                 'value' => $value,
                 'note' => $value > 0
                     ? $share.'% of applications '.$period
                     : 'Nothing filed '.$period,
-                'tone' => $slot % self::TONES,
-                'muted' => false,
+                'tone' => $type->id % self::TONES,
+                'muted' => ! $type->active,
             ];
         })->all();
 
@@ -282,14 +294,17 @@ class DashboardService
      * somebody would act on. A department that filed nothing still gets a
      * column — an absent bar is an answer; a missing one is a blank.
      *
-     * Employees with no department are reported as "Unassigned" rather than
-     * dropped, and only when there is something to report: a silent gap looks
-     * like nothing is wrong.
+     * The join is a LEFT join on purpose. An inner one drops every application
+     * filed by somebody with no employee_profiles row at all — not the same
+     * gap as a profile with no department, but just as invisible, and it made
+     * the columns quietly add up to less than the applications on record.
+     * Both cases now land in "Unassigned", which appears only when there is
+     * something to report: a silent gap looks like nothing is wrong.
      */
     public function applicationsByDepartment(CarbonInterface $from, CarbonInterface $to): array
     {
         $filings = LeaveRequest::query()
-            ->join('employee_profiles', 'employee_profiles.user_id', '=', 'leave_requests.user_id')
+            ->leftJoin('employee_profiles', 'employee_profiles.user_id', '=', 'leave_requests.user_id')
             ->whereBetween('leave_requests.date_filed', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
             ->selectRaw('employee_profiles.department_id as department_id, count(*) as total')
             ->groupBy('employee_profiles.department_id')
@@ -302,7 +317,7 @@ class DashboardService
 
         $departments = Department::orderBy('id')->get(['id', 'code', 'name']);
 
-        $rows = $departments->values()->map(function ($department, $slot) use ($filings, $staff) {
+        $rows = $departments->map(function ($department) use ($filings, $staff) {
             $value = (int) ($filings[$department->id] ?? 0);
             $headcount = (int) ($staff[$department->id] ?? 0);
             $perHead = $headcount > 0 ? round($value / $headcount, 1) : null;
@@ -315,7 +330,7 @@ class DashboardService
                 'per_head' => $perHead,
                 'note' => $headcount.($headcount === 1 ? ' employee' : ' employees')
                     .($perHead !== null ? ' · '.$perHead.' per head' : ''),
-                'tone' => $slot % self::TONES,
+                'tone' => $department->id % self::TONES,
                 'muted' => false,
             ];
         })->all();
@@ -330,7 +345,8 @@ class DashboardService
                 'value' => $strayFilings,
                 'staff' => $strayStaff,
                 'per_head' => $strayStaff > 0 ? round($strayFilings / $strayStaff, 1) : null,
-                'note' => $strayStaff.($strayStaff === 1 ? ' employee' : ' employees').' with no department set',
+                'note' => $strayStaff.($strayStaff === 1 ? ' employee' : ' employees')
+                    .' with no department on record',
                 'tone' => null,
                 'muted' => true,
             ];
