@@ -3,30 +3,32 @@
 @section('content')
 
 {{--
-  CSC Form No. 6 (Revised 2020) — recreated in HTML/CSS so it reads like the
-  official sheet while remaining a live form bound to the existing backend.
+  CSC Form No. 6 (Revised 2020) as a modern entry form.
+
+  This page collects exactly the fields the printed sheet carries, under exactly
+  the same names, but presents them as a normal web form built from the system's
+  own design tokens rather than as a facsimile of the paper.
+
+  The facsimile has not gone away. leave/preview-form.blade.php and
+  leave/form6.blade.php still draw the official sheet, so what an employee fills
+  in is modern and what the LGU files is still CSC Form No. 6.
 
   Design notes:
-  • 6.A renders one control per ACTIVE leave type from the database. Nothing is
-    hardcoded — the value posted is the real leave_types.id, and an admin-added
-    type appears automatically (after the CSC-ordered ones).
-  • 6.A uses real checkboxes, as the printed form does, so every option can be
-    ticked AND unticked. Only one leave type may be claimed per application, and
-    that rule is enforced server-side (`size:1`) rather than by using a control
-    the employee cannot clear. Nothing is pre-ticked on a new application.
-  • 6.B renders every "In case of…" block at once, exactly like the paper form.
-    That is why this page needs no JavaScript to inject fields per type. The
-    policy engine validates only the SELECTED type's required fields, so the
-    unrelated blanks are simply ignored.
-  • Section 7 is drawn in full to follow the official sheet, but is entirely
-    read-only — it contains no input element at all, so an applicant cannot
-    fill it. It is completed by the approving officer through the workflow.
+  • 6.A is a <select name="leave_type_id[]">. A non-multiple select posts a
+    one-element array, so the controller's `size:1` rule is unchanged and the
+    "exactly one type" guarantee still comes from the server.
+  • 6.B shows only the block belonging to the chosen type. The reveal is CSS
+    :has() reading the selected <option>'s data-code — no JavaScript. Every
+    input stays in the DOM whatever is visible, so nothing becomes unreachable
+    or unsubmittable, and printing forces all blocks back on.
+  • Section 7 is drawn read-only for fidelity with the official sheet. It
+    contains no input at all; it is completed through the approval workflow.
 --}}
 
 @php
     $user = auth()->user();
-    // Official citations as printed on the CSC form; keyed by the database code
-    // so a custom leave type simply renders without one.
+
+    // Official citations as printed on the CSC form, keyed by database code.
     $citations = [
         'VL' => 'Sec. 51, Rule XVI, Omnibus Rules Implementing E.O. No. 292',
         'FL' => 'Sec. 25, Rule XVI, Omnibus Rules Implementing E.O. No. 292',
@@ -42,514 +44,485 @@
         'SEL' => 'CSC MC No. 2, s. 2012, as amended',
         'AL' => 'R.A. No. 8552',
     ];
+
+    // Codes the sheet prints a 6.B block for. Anything else — an admin-added
+    // type — falls through to the catch-all block, so no field is ever hidden
+    // with no way to reach it.
+    $known = ['VL', 'FL', 'SPL', 'SL', 'SLBW', 'STL', 'ML', 'RL', 'SEL', 'MON', 'TL'];
+    $chosen = (array) old('leave_type_id', []);
 @endphp
 
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 no-print">
-    <h1 class="h4 mb-0">Application for Leave</h1>
-    <div class="d-flex align-items-center gap-2">
-        {{-- Instructions live here now: the applicant needs the documentary
-             requirements while filling the form, not from a menu entry. --}}
-        <a href="{{ route('leave.instructions') }}" class="btn btn-outline-secondary btn-sm">
-            <i class="bi bi-info-circle me-1"></i>Instructions and Requirements
-        </a>
-        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
-            <i class="bi bi-printer me-1"></i>Print
-        </button>
-    </div>
-</div>
-
-{{-- A short banner for orientation; the specific messages render beside the
-     section they belong to, so a long form does not hide where the problem is. --}}
-@if ($errors->any())
-    <div class="alert alert-danger no-print">
-        <i class="bi bi-exclamation-triangle me-1"></i>
-        Your application was not submitted. Check the highlighted sections below.
-    </div>
-@endif
-
-<form method="POST" action="{{ route('leave.store') }}" enctype="multipart/form-data" data-no-loader>
+<form id="lf-form" class="lf" method="POST" action="{{ route('leave.store') }}"
+      enctype="multipart/form-data" data-no-loader>
     @csrf
 
-    <div class="csc-viewport">
-
-    {{-- ================= PART 1 — EMPLOYEE INFORMATION ================= --}}
-    <div class="csc-partlabel no-print">Part 1 of 3 &middot; Employee information</div>
-    <div class="csc-sheet csc-sheet-wide csc-part">
-
-        {{-- ============ FORM HEADER ============ --}}
-        {{-- Three-column grid. The form number and ANNEX A used to be absolutely
-             positioned over this row and overlapped the seals at narrow widths. --}}
-        <div class="csc-topgrid">
-            <div class="csc-formno">
-                <div>Civil Service Form No. 6</div>
-                <div><em>Revised 2020</em></div>
-            </div>
-            <div class="csc-head">
-                <div class="csc-seal" aria-hidden="true"><i class="bi bi-buildings"></i></div>
-                <div class="csc-head-text">
-                    <div>Republic of the Philippines</div>
-                    <div><em>Province of Isabela</em></div>
-                    <div class="csc-lgu">{{ \App\Models\SystemSetting::get('general.lgu_name', 'MUNICIPALITY OF ALICIA') }}</div>
-                    <div><em>{{ \App\Models\SystemSetting::get('general.lgu_address', 'Magsaysay, Alicia') }}</em></div>
-                </div>
-                <div class="csc-seal" aria-hidden="true"><i class="bi bi-award"></i></div>
-            </div>
-            <div class="csc-annex">ANNEX A</div>
+    <div class="lf-head no-print">
+        <div>
+            <h1>Application for Leave</h1>
+            <p class="sub">Civil Service Form No. 6 &middot; Revised 2020</p>
         </div>
+        <div class="d-flex gap-2">
+            {{-- Instructions live here: the applicant needs the documentary
+                 requirements while filling the form, not from a menu entry. --}}
+            <a href="{{ route('leave.instructions') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-info-circle me-1"></i>Instructions and Requirements
+            </a>
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+                <i class="bi bi-printer me-1"></i>Print
+            </button>
+        </div>
+    </div>
 
-        <div class="csc-title">APPLICATION FOR LEAVE</div>
+    @if ($errors->any())
+        <div class="alert alert-danger no-print mb-0">
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            Your application was not submitted. Check the highlighted fields below.
+        </div>
+    @endif
 
-        {{-- ============ EMPLOYEE INFORMATION (1–5) ============ --}}
-        <table class="csc-table">
-            <tr>
-                <td style="width:34%">
-                    <span class="csc-num">1. OFFICE/DEPARTMENT</span>
-                    <div class="csc-value">{{ $profile?->department?->name ?? '—' }}</div>
-                </td>
-                <td colspan="2">
-                    <span class="csc-num">2. NAME:</span>
-                    <div class="csc-name-grid">
-                        <div>
-                            <div class="csc-value">{{ $profile?->last_name ?? '—' }}</div>
-                            <div class="csc-sublabel">(Last)</div>
-                        </div>
-                        <div>
-                            <div class="csc-value">{{ $profile?->first_name ?? '—' }}</div>
-                            <div class="csc-sublabel">(First)</div>
-                        </div>
-                        <div>
-                            <div class="csc-value">{{ $profile?->middle_name ?? '—' }}</div>
-                            <div class="csc-sublabel">(Middle)</div>
-                        </div>
-                    </div>
-                </td>
-            </tr>
-            <tr>
-                <td>
-                    <span class="csc-num">3. DATE OF FILING</span>
-                    <input type="date" name="date_filed" class="csc-input"
-                           value="{{ old('date_filed', now()->toDateString()) }}" required>
-                </td>
-                <td style="width:33%">
-                    <span class="csc-num">4. POSITION</span>
-                    <div class="csc-value">{{ $profile?->position?->title ?? '—' }}</div>
-                </td>
-                <td style="width:33%">
-                    <span class="csc-num">5. SALARY</span>
-                    <div class="csc-value">
+    {{-- ================= EMPLOYEE INFORMATION (items 1–5) ================= --}}
+    <div class="card">
+        <div class="card-header">
+            <span class="d-flex align-items-center gap-2">
+                <i class="bi bi-person-badge"></i>Employee information
+            </span>
+            <span class="lf-ref">Items 1&ndash;5</span>
+        </div>
+        <div class="card-body">
+            <div class="lf-g lf-g3">
+                <div class="lf-f">
+                    <label>Office / Department</label>
+                    <div class="lf-fixed">{{ $profile?->department?->name ?? '—' }}</div>
+                </div>
+                <div class="lf-f">
+                    <label>Position</label>
+                    <div class="lf-fixed">{{ $profile?->position?->title ?? '—' }}</div>
+                </div>
+                <div class="lf-f">
+                    <label>Monthly salary</label>
+                    <div class="lf-fixed">
                         @if ($profile?->salary)&#8369;{{ number_format($profile->salary, 2) }}@else—@endif
                     </div>
-                </td>
-            </tr>
-        </table>
+                </div>
+            </div>
+            <div class="lf-g lf-g3 mt-3">
+                <div class="lf-f">
+                    <label>Last name</label>
+                    <div class="lf-fixed">{{ $profile?->last_name ?? '—' }}</div>
+                </div>
+                <div class="lf-f">
+                    <label>First name</label>
+                    <div class="lf-fixed">{{ $profile?->first_name ?? '—' }}</div>
+                </div>
+                <div class="lf-f">
+                    <label>Middle name</label>
+                    <div class="lf-fixed">{{ $profile?->middle_name ?? '—' }}</div>
+                </div>
+            </div>
+            <div class="lf-g lf-g3 mt-3">
+                <div class="lf-f">
+                    <label for="date_filed">Date of filing <span class="req">*</span></label>
+                    <input id="date_filed" type="date" name="date_filed" class="form-control"
+                           value="{{ old('date_filed', now()->toDateString()) }}" required>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    </div>{{-- /part 1 sheet --}}
+    {{-- ================= DETAILS OF APPLICATION (section 6) ================= --}}
+    <div class="card">
+        <div class="card-header">
+            <span class="d-flex align-items-center gap-2">
+                <i class="bi bi-file-earmark-text"></i>Details of application
+            </span>
+            <span class="lf-ref">Section 6</span>
+        </div>
+        <div class="card-body">
 
-    {{-- ================= PART 2 — DETAILS OF APPLICATION ================= --}}
-    <div class="csc-partlabel no-print">Part 2 of 3 &middot; Details of application</div>
-    <div class="csc-sheet csc-sheet-wide csc-part">
-        <div class="csc-section">6. DETAILS OF APPLICATION</div>
+            {{-- ---------- 6.A TYPE OF LEAVE ---------- --}}
+            <div class="lf-sub"><b>Type of leave</b><span class="code">6.A</span></div>
+            @error('leave_type_id')
+                <div class="alert alert-danger py-2 px-3 mb-3">{{ $message }}</div>
+            @enderror
+            @error('leave_type_id.0')
+                <div class="alert alert-danger py-2 px-3 mb-3">{{ $message }}</div>
+            @enderror
+            <div class="lf-g lf-g2">
+                <div class="lf-f">
+                    <label for="lf-type">Leave type <span class="req">*</span></label>
+                    <select id="lf-type" name="leave_type_id[]" class="form-select" required>
+                        <option value="">Select a leave type…</option>
+                        @foreach ($types as $t)
+                            <option value="{{ $t->id }}"
+                                    data-code="{{ $t->code }}"
+                                    @if (in_array($t->code, $known, true)) data-known="1" @endif
+                                    @selected(in_array((string) $t->id, $chosen, true))>{{ $t->name }}</option>
+                        @endforeach
+                    </select>
+                    <span class="hint">One type per application, as the CSC form requires.</span>
+                </div>
+                <div class="lf-f">
+                    <label for="purpose">Others, if not listed</label>
+                    <input id="purpose" type="text" name="purpose" class="form-control"
+                           value="{{ old('purpose') }}" placeholder="Describe the leave">
+                </div>
+            </div>
 
-        {{-- 6.A lists the leave types as printed. Monetization and Terminal
-             Leave are NOT in this column on the official sheet — they are two
-             checkboxes at the foot of 6.B — but they are still leave types, so
-             they post the same leave_type_id[] and the "exactly one" rule is
-             unchanged. --}}
-        @php
-            $inSixB = ['MON', 'TL'];
-            $sixA = $types->reject(fn ($t) => in_array($t->code, $inSixB, true));
-            $sixB = $types->filter(fn ($t) => in_array($t->code, $inSixB, true))
-                          ->sortBy(fn ($t) => array_search($t->code, $inSixB, true));
-            $ticked = (array) old('leave_type_id', []);
-        @endphp
+            {{-- ---------- 6.B DETAILS OF LEAVE ---------- --}}
+            <div class="lf-sub"><b>Details of leave</b><span class="code">6.B</span></div>
+            @if ($errors->has('policy'))
+                <div class="alert alert-danger py-2 px-3 mb-3">
+                    @foreach ($errors->get('policy') as $e)<div>{{ $e }}</div>@endforeach
+                </div>
+            @endif
 
-        <table class="csc-table csc-split">
-            <tr>
-                {{-- ---------- 6.A TYPE OF LEAVE ---------- --}}
-                <td style="width:50%">
-                    <div class="csc-sub">6.A TYPE OF LEAVE TO BE AVAILED OF</div>
-                    @error('leave_type_id')
-                        <div class="csc-field-error no-print">{{ $message }}</div>
-                    @enderror
-                    @foreach ($sixA as $t)
-                        <label class="csc-check">
-                            <input type="checkbox" name="leave_type_id[]" value="{{ $t->id }}"
-                                   @checked(in_array((string) $t->id, $ticked, true))>
-                            <span class="csc-box" aria-hidden="true"></span>
-                            <span class="csc-check-text">
-                                {{ $t->name }}
-                                @if (!empty($citations[$t->code]))
-                                    <span class="csc-cite">({{ $citations[$t->code] }})</span>
-                                @endif
-                            </span>
-                        </label>
-                    @endforeach
-                    <div class="csc-others csc-rowline">
-                        <span class="csc-check-text">Others:</span>
-                        <input type="text" name="purpose" class="csc-fill-input"
-                               value="{{ old('purpose') }}" aria-label="Other leave type">
-                    </div>
-                </td>
+            <div class="lf-grp lf-grp-none">
+                <div class="lf-empty">Choose a leave type above and the details it requires will appear here.</div>
+            </div>
 
-                {{-- ---------- 6.B DETAILS OF LEAVE ---------- --}}
-                {{-- Exactly the blocks printed on CSC Form No. 6: four "In case
-                     of…" groups, then the Monetization and Terminal Leave
-                     checkboxes. Nothing else belongs in this column. --}}
-                <td style="width:50%">
-                    <div class="csc-sub">6.B DETAILS OF LEAVE</div>
-                    @if ($errors->has('policy'))
-                        <div class="csc-field-error no-print">
-                            @foreach ($errors->get('policy') as $e)<div>{{ $e }}</div>@endforeach
-                        </div>
-                    @endif
-
-                    <div class="csc-case"><em>In case of Vacation/Special Privilege Leave:</em></div>
-                    <label class="csc-check csc-rowline">
-                        <input type="radio" name="details[location]" value="within_ph" @checked(old('details.location')==='within_ph')>
-                        <span class="csc-box" aria-hidden="true"></span>
-                        <span class="csc-check-text">Within the Philippines</span>
-                        <span class="csc-fill" aria-hidden="true"></span>
-                    </label>
-                    <label class="csc-check csc-rowline">
-                        <input type="radio" name="details[location]" value="abroad" @checked(old('details.location')==='abroad')>
-                        <span class="csc-box" aria-hidden="true"></span>
-                        <span class="csc-check-text">Abroad (Specify)</span>
-                        <input type="text" name="details[location_specify]" class="csc-fill-input"
-                               value="{{ old('details.location_specify') }}" aria-label="Specify location">
-                    </label>
-
-                    <div class="csc-case"><em>In case of Sick Leave:</em></div>
-                    <label class="csc-check csc-rowline">
-                        <input type="radio" name="details[confinement]" value="hospital" @checked(old('details.confinement')==='hospital')>
-                        <span class="csc-box" aria-hidden="true"></span>
-                        <span class="csc-check-text">In Hospital (Specify Illness)</span>
-                        <input type="text" name="details[illness]" class="csc-fill-input"
-                               value="{{ old('details.illness') }}" aria-label="Specify illness">
-                    </label>
-                    <label class="csc-check csc-rowline">
-                        <input type="radio" name="details[confinement]" value="outpatient" @checked(old('details.confinement')==='outpatient')>
-                        <span class="csc-box" aria-hidden="true"></span>
-                        <span class="csc-check-text">Out Patient (Specify Illness)</span>
-                        <span class="csc-fill" aria-hidden="true"></span>
-                    </label>
-
-                    {{-- Sick Leave and SLBW both store details.illness, so the
-                         input above serves both, as the printed form intends. --}}
-                    <div class="csc-case"><em>In case of Special Leave Benefits for Women:</em></div>
-                    <div class="csc-rowline">
-                        <span class="csc-check-text">(Specify Illness)</span>
-                        <input type="text" name="details[surgery_details]" class="csc-fill-input"
-                               value="{{ old('details.surgery_details') }}" aria-label="Specify gynecological illness">
-                    </div>
-
-                    <div class="csc-case"><em>In case of Study Leave:</em></div>
-                    <label class="csc-check csc-rowline">
-                        <input type="radio" name="details[purpose]" value="masters" @checked(old('details.purpose')==='masters')>
-                        <span class="csc-box" aria-hidden="true"></span>
-                        <span class="csc-check-text">Completion of Master's Degree</span>
-                    </label>
-                    <label class="csc-check csc-rowline">
-                        <input type="radio" name="details[purpose]" value="bar" @checked(old('details.purpose')==='bar')>
-                        <span class="csc-box" aria-hidden="true"></span>
-                        <span class="csc-check-text">BAR/Board Examination Review <em>Other</em></span>
-                    </label>
-                    <div class="csc-rowline">
-                        <span class="csc-check-text"><em>purpose:</em></span>
-                        <input type="text" name="details[purpose_other]" class="csc-fill-input"
-                               value="{{ old('details.purpose_other') }}" aria-label="Other study purpose">
-                    </div>
-
-                    {{-- Printed here on the official sheet, not in 6.A. --}}
-                    @foreach ($sixB as $t)
-                        <label class="csc-check csc-rowline">
-                            <input type="checkbox" name="leave_type_id[]" value="{{ $t->id }}"
-                                   @checked(in_array((string) $t->id, $ticked, true))>
-                            <span class="csc-box" aria-hidden="true"></span>
-                            <span class="csc-check-text">{{ $t->name }}</span>
-                        </label>
-                    @endforeach
-                </td>
-            </tr>
-        </table>
-
-        {{-- ============ 6.C / 6.D ============ --}}
-        <table class="csc-table csc-split">
-            <tr>
-                <td style="width:50%">
-                    <div class="csc-sub">6.C NUMBER OF WORKING DAYS APPLIED FOR</div>
-                    <div class="csc-daysline">
-                        <span class="csc-fill" aria-hidden="true"></span>
-                    </div>
-                    <div class="csc-case"><em>INCLUSIVE DATES</em></div>
-                    <div class="csc-grid-2">
-                        <div>
-                            <label class="csc-sublabel" for="start_date">From</label>
-                            <input id="start_date" type="date" name="start_date" class="csc-input"
-                                   value="{{ old('start_date') }}" required>
-                        </div>
-                        <div>
-                            <label class="csc-sublabel" for="end_date">To</label>
-                            <input id="end_date" type="date" name="end_date" class="csc-input"
-                                   value="{{ old('end_date') }}" required>
+            {{-- Vacation, Mandatory/Forced and Special Privilege share a block. --}}
+            <div class="lf-grp lf-grp-vl">
+                <div class="lf-cite">{{ $citations['VL'] }}</div>
+                <div class="lf-g lf-g2">
+                    <div class="lf-f">
+                        <label>Where will it be spent? <span class="req">*</span></label>
+                        <div class="lf-seg">
+                            <label><input type="radio" name="details[location]" value="within_ph"
+                                @checked(old('details.location')==='within_ph')>Within the Philippines</label>
+                            <label><input type="radio" name="details[location]" value="abroad"
+                                @checked(old('details.location')==='abroad')>Abroad</label>
                         </div>
                     </div>
-                    <div class="csc-inline-note">
-                        Counted automatically on submission; weekends and Philippine
-                        holidays are excluded.
+                    <div class="lf-f">
+                        <label for="location_specify">If abroad, specify</label>
+                        <input id="location_specify" type="text" name="details[location_specify]"
+                               class="form-control" value="{{ old('details.location_specify') }}"
+                               placeholder="Country or city">
+                        <span class="hint">Only required when Abroad is selected.</span>
                     </div>
-                </td>
-                <td style="width:50%">
-                    <div class="csc-sub">6.D COMMUTATION</div>
-                    <label class="csc-check csc-rowline">
-                        <input type="radio" name="commutation" value="0" @checked(old('commutation', '0') !== '1')>
-                        <span class="csc-box" aria-hidden="true"></span>
-                        <span class="csc-check-text">Not Requested</span>
-                    </label>
-                    <label class="csc-check csc-rowline">
-                        <input type="radio" name="commutation" value="1" @checked(old('commutation') === '1')>
-                        <span class="csc-box" aria-hidden="true"></span>
-                        <span class="csc-check-text">Requested</span>
-                    </label>
+                    <div class="lf-f">
+                        <label for="travel_details">Purpose / travel details</label>
+                        <input id="travel_details" type="text" name="details[travel_details]"
+                               class="form-control" value="{{ old('details.travel_details') }}"
+                               placeholder="Reason for the leave">
+                        <span class="hint">Required for Special Privilege Leave.</span>
+                    </div>
+                </div>
+            </div>
 
-                    <div class="csc-sign">
-                        <input type="text" name="applicant_signature" class="csc-line csc-sign-input"
-                               value="{{ old('applicant_signature', $user->name) }}" required
-                               aria-label="Signature of applicant">
-                        <div class="csc-sublabel">(Signature of Applicant)</div>
-                    </div>
-                </td>
-            </tr>
-        </table>
-
-        {{-- ============ OFFICE-SPECIFIC DETAILS ============ --}}
-        {{-- These are NOT on CSC Form No. 6. The printed sheet leaves them to the
-             attached documents, but this office's policy engine requires them for
-             the leave types named below, so removing the rows would make those
-             types impossible to file. Kept clearly separate from the official
-             sheet above, and left off the printed copy. --}}
-        <table class="csc-table no-print">
-            <tr>
-                <td>
-                    <div class="csc-sub">ADDITIONAL DETAILS REQUIRED BY THIS OFFICE</div>
-                    <div class="csc-inline-note">
-                        Complete only the block matching the leave type you ticked in
-                        6.A or 6.B. These fields do not appear on the printed form.
-                    </div>
-
-                    <div class="csc-case"><em>Terminal Leave:</em></div>
-                    <label class="csc-check csc-rowline">
-                        <input type="radio" name="details[separation_type]" value="retirement" @checked(old('details.separation_type')==='retirement')>
-                        <span class="csc-box" aria-hidden="true"></span>
-                        <span class="csc-check-text">Retirement</span>
-                    </label>
-                    <label class="csc-check csc-rowline">
-                        <input type="radio" name="details[separation_type]" value="resignation" @checked(old('details.separation_type')==='resignation')>
-                        <span class="csc-box" aria-hidden="true"></span>
-                        <span class="csc-check-text">Resignation</span>
-                    </label>
-
-                    <div class="csc-case"><em>Monetization of Leave Credits:</em></div>
-                    <div class="csc-rowline">
-                        <span class="csc-check-text">Reason</span>
-                        <input type="text" name="details[reason]" class="csc-fill-input"
-                               value="{{ old('details.reason') }}" aria-label="Reason for monetization">
-                    </div>
-                    <div class="csc-rowline">
-                        <span class="csc-check-text">Days to monetize</span>
-                        <input type="number" step="0.5" min="0" name="details[days_to_monetize]" class="csc-fill-input"
-                               value="{{ old('details.days_to_monetize') }}" aria-label="Days to monetize">
-                    </div>
-
-                    <div class="csc-case"><em>Maternity Leave:</em></div>
-                    <div class="csc-rowline">
-                        <span class="csc-check-text">Expected/actual delivery</span>
-                        <input type="date" name="details[expected_delivery]" class="csc-fill-input"
-                               value="{{ old('details.expected_delivery') }}" aria-label="Expected date of delivery">
-                    </div>
-                    <label class="csc-check csc-rowline">
-                        <input type="checkbox" name="details[extension]" value="1" @checked(old('details.extension'))>
-                        <span class="csc-box" aria-hidden="true"></span>
-                        <span class="csc-check-text">Availing additional extension (R.A. 11210)</span>
-                    </label>
-
-                    <div class="csc-case"><em>Special Privilege Leave:</em></div>
-                    <div class="csc-rowline">
-                        <span class="csc-check-text">Purpose / travel details</span>
-                        <input type="text" name="details[travel_details]" class="csc-fill-input"
-                               value="{{ old('details.travel_details') }}" aria-label="Purpose or travel details">
-                    </div>
-
-                    <div class="csc-case"><em>Rehabilitation Privilege:</em></div>
-                    <div class="csc-rowline">
-                        <span class="csc-check-text">Details of work-related accident</span>
-                        <input type="text" name="details[accident_details]" class="csc-fill-input"
-                               value="{{ old('details.accident_details') }}" aria-label="Details of work-related accident">
-                    </div>
-
-                    <div class="csc-case"><em>Special Emergency (Calamity) Leave:</em></div>
-                    <div class="csc-rowline">
-                        <span class="csc-check-text">Declared calamity</span>
-                        <input type="text" name="details[calamity]" class="csc-fill-input"
-                               value="{{ old('details.calamity') }}" aria-label="Declared calamity">
-                    </div>
-                    <div class="csc-rowline">
-                        <span class="csc-check-text">Affected area</span>
-                        <input type="text" name="details[calamity_area]" class="csc-fill-input"
-                               value="{{ old('details.calamity_area') }}" aria-label="Affected area">
-                    </div>
-
-                    <div class="csc-case"><em>Sick Leave filed after returning to work:</em></div>
-                    <div class="csc-rowline">
-                        <span class="csc-check-text">Reason for late filing</span>
-                        <input type="text" name="late_filing_reason" class="csc-fill-input"
-                               value="{{ old('late_filing_reason') }}" aria-label="Late filing reason">
-                    </div>
-                </td>
-            </tr>
-        </table>
-
-        {{-- Applicant input, so it belongs with Part 2 rather than the official-use
-             section. Hidden when printing: a paper form carries its attachments
-             physically. --}}
-        <table class="csc-table no-print">
-            <tr>
-                <td>
-                    <div class="csc-sub">SUPPORTING DOCUMENTS</div>
-                    <div class="csc-inline-note">
-                        Attach what your chosen leave type requires — see
-                        <a href="{{ route('leave.instructions') }}">Instructions and Requirements</a>.
-                    </div>
-                    <div class="csc-grid-2">
-                        <div>
-                            <label class="csc-sublabel" for="doc_primary">Primary supporting document</label>
-                            <input id="doc_primary" type="file" name="documents[supporting_document]"
-                                   class="csc-file" accept=".pdf,.jpg,.jpeg,.png">
-                        </div>
-                        <div>
-                            <label class="csc-sublabel" for="doc_medical">Medical certificate (if applicable)</label>
-                            <input id="doc_medical" type="file" name="documents[medical_certificate]"
-                                   class="csc-file" accept=".pdf,.jpg,.jpeg,.png">
+            <div class="lf-grp lf-grp-sl">
+                <div class="lf-cite">{{ $citations['SL'] }}</div>
+                <div class="lf-g lf-g2">
+                    <div class="lf-f">
+                        <label>Where <span class="req">*</span></label>
+                        <div class="lf-seg">
+                            <label><input type="radio" name="details[confinement]" value="hospital"
+                                @checked(old('details.confinement')==='hospital')>In hospital</label>
+                            <label><input type="radio" name="details[confinement]" value="outpatient"
+                                @checked(old('details.confinement')==='outpatient')>Out patient</label>
                         </div>
                     </div>
-                </td>
-            </tr>
-        </table>
-
-    </div>{{-- /part 2 sheet --}}
-
-    {{-- ================= PART 3 — ACTION ON APPLICATION ================= --}}
-    <div class="csc-partlabel no-print">Part 3 of 3 &middot; Action on application &mdash; for official use</div>
-
-        {{-- ============ 7. DETAILS OF ACTION ON APPLICATION ============ --}}
-        {{-- Drawn in full to follow the official sheet, but READ-ONLY: it is
-             completed by the approving officer. There is not a single input in
-             this section, so an applicant cannot touch it. 7.A shows live
-             balances from LeaveCreditService. --}}
-    <div class="csc-sheet csc-sheet-wide csc-part">
-        <div class="csc-section">7. DETAILS OF ACTION ON APPLICATION</div>
-
-        <table class="csc-table csc-split csc-readonly">
-            <tr>
-                <td style="width:50%">
-                    <div class="csc-sub">7.A CERTIFICATION OF LEAVE CREDITS</div>
-                    <div class="csc-rowline">
-                        <span class="csc-sublabel">As of</span>
-                        <span class="csc-fill" aria-hidden="true"></span>
+                    <div class="lf-f">
+                        <label for="late_filing_reason">If filed after returning to work, why?</label>
+                        <input id="late_filing_reason" type="text" name="late_filing_reason"
+                               class="form-control" value="{{ old('late_filing_reason') }}"
+                               placeholder="Reason for late filing">
                     </div>
-                    <table class="csc-credits">
-                        <tr><th></th><th>Vacation Leave</th><th>Sick Leave</th></tr>
-                        <tr>
-                            <td>Total Earned</td>
+                </div>
+            </div>
+
+            {{-- Sick Leave and SLBW both store details.illness; this block has its
+                 own field so the two are never confused with one another. --}}
+            {{-- Sick Leave and SLBW both store details.illness. ONE input serves
+                 both — a second control with the same name would post last and
+                 overwrite the filled one with a blank. --}}
+            <div class="lf-grp lf-grp-illness">
+                <div class="lf-g lf-g2">
+                    <div class="lf-f">
+                        <label for="illness">Specify illness <span class="req">*</span></label>
+                        <input id="illness" type="text" name="details[illness]" class="form-control"
+                               value="{{ old('details.illness') }}"
+                               placeholder="e.g. Influenza, dengue, post-operative recovery">
+                        <span class="hint">Required whether in hospital or out patient.</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lf-grp lf-grp-slbw">
+                <div class="lf-cite">{{ $citations['SLBW'] }}</div>
+                <div class="lf-g lf-g2">
+                    <div class="lf-f">
+                        <label for="surgery_details">Surgery details <span class="req">*</span></label>
+                        <input id="surgery_details" type="text" name="details[surgery_details]"
+                               class="form-control" value="{{ old('details.surgery_details') }}"
+                               placeholder="Procedure and date">
+                    </div>
+                </div>
+            </div>
+
+            <div class="lf-grp lf-grp-stl">
+                <div class="lf-cite">{{ $citations['STL'] }}</div>
+                <div class="lf-g lf-g2">
+                    <div class="lf-f">
+                        <label>Purpose <span class="req">*</span></label>
+                        <div class="lf-seg">
+                            <label><input type="radio" name="details[purpose]" value="masters"
+                                @checked(old('details.purpose')==='masters')>Master's degree</label>
+                            <label><input type="radio" name="details[purpose]" value="bar"
+                                @checked(old('details.purpose')==='bar')>BAR / Board review</label>
+                            <label><input type="radio" name="details[purpose]" value="other"
+                                @checked(old('details.purpose')==='other')>Other</label>
+                        </div>
+                    </div>
+                    <div class="lf-f">
+                        <label for="purpose_other">If other, specify</label>
+                        <input id="purpose_other" type="text" name="details[purpose_other]"
+                               class="form-control" value="{{ old('details.purpose_other') }}"
+                               placeholder="Purpose of study leave">
+                    </div>
+                </div>
+            </div>
+
+            <div class="lf-grp lf-grp-ml">
+                <div class="lf-cite">{{ $citations['ML'] }}</div>
+                <div class="lf-g lf-g2">
+                    <div class="lf-f">
+                        <label for="expected_delivery">Expected / actual date of delivery <span class="req">*</span></label>
+                        <input id="expected_delivery" type="date" name="details[expected_delivery]"
+                               class="form-control" value="{{ old('details.expected_delivery') }}">
+                    </div>
+                    <div class="lf-f">
+                        <label>Additional extension</label>
+                        <div class="lf-seg">
+                            <label><input type="checkbox" name="details[extension]" value="1"
+                                @checked(old('details.extension'))>Availing extension (R.A. 11210)</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lf-grp lf-grp-rl">
+                <div class="lf-cite">{{ $citations['RL'] }}</div>
+                <div class="lf-g lf-g2">
+                    <div class="lf-f">
+                        <label for="accident_details">Details of work-related accident <span class="req">*</span></label>
+                        <input id="accident_details" type="text" name="details[accident_details]"
+                               class="form-control" value="{{ old('details.accident_details') }}"
+                               placeholder="What happened, and when">
+                    </div>
+                </div>
+            </div>
+
+            <div class="lf-grp lf-grp-sel">
+                <div class="lf-cite">{{ $citations['SEL'] }}</div>
+                <div class="lf-g lf-g2">
+                    <div class="lf-f">
+                        <label for="calamity">Declared calamity <span class="req">*</span></label>
+                        <input id="calamity" type="text" name="details[calamity]" class="form-control"
+                               value="{{ old('details.calamity') }}" placeholder="e.g. Typhoon Egay">
+                    </div>
+                    <div class="lf-f">
+                        <label for="calamity_area">Affected area <span class="req">*</span></label>
+                        <input id="calamity_area" type="text" name="details[calamity_area]"
+                               class="form-control" value="{{ old('details.calamity_area') }}"
+                               placeholder="Must match your residence">
+                    </div>
+                </div>
+            </div>
+
+            <div class="lf-grp lf-grp-mon">
+                <div class="lf-cite">Monetization of leave credits</div>
+                <div class="lf-g lf-g2">
+                    <div class="lf-f">
+                        <label for="reason">Reason for monetization <span class="req">*</span></label>
+                        <input id="reason" type="text" name="details[reason]" class="form-control"
+                               value="{{ old('details.reason') }}" placeholder="Purpose of the request">
+                    </div>
+                    <div class="lf-f">
+                        <label for="days_to_monetize">Number of days to monetize <span class="req">*</span></label>
+                        <input id="days_to_monetize" type="number" step="0.5" min="0"
+                               name="details[days_to_monetize]" class="form-control"
+                               value="{{ old('details.days_to_monetize') }}" placeholder="0">
+                    </div>
+                </div>
+            </div>
+
+            <div class="lf-grp lf-grp-tl">
+                <div class="lf-cite">Terminal leave</div>
+                <div class="lf-g lf-g2">
+                    <div class="lf-f">
+                        <label>Separation <span class="req">*</span></label>
+                        <div class="lf-seg">
+                            <label><input type="radio" name="details[separation_type]" value="retirement"
+                                @checked(old('details.separation_type')==='retirement')>Retirement</label>
+                            <label><input type="radio" name="details[separation_type]" value="resignation"
+                                @checked(old('details.separation_type')==='resignation')>Resignation</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Catch-all for a leave type the CSC sheet has no block for. --}}
+            <div class="lf-grp lf-grp-other">
+                <div class="lf-empty">
+                    This leave type has no additional details on CSC Form No. 6.
+                    Attach any supporting document it requires below.
+                </div>
+            </div>
+
+            {{-- ---------- 6.C WORKING DAYS ---------- --}}
+            <div class="lf-sub"><b>Number of working days applied for</b><span class="code">6.C</span></div>
+            <div class="lf-g lf-g3">
+                <div class="lf-f">
+                    <label for="start_date">From <span class="req">*</span></label>
+                    <input id="start_date" type="date" name="start_date" class="form-control"
+                           value="{{ old('start_date') }}" required>
+                </div>
+                <div class="lf-f">
+                    <label for="end_date">To <span class="req">*</span></label>
+                    <input id="end_date" type="date" name="end_date" class="form-control"
+                           value="{{ old('end_date') }}" required>
+                </div>
+                <div class="lf-f">
+                    <label>Working days</label>
+                    <div class="lf-fixed">Counted on submission</div>
+                    <span class="hint">Weekends and Philippine holidays are excluded.</span>
+                </div>
+            </div>
+
+            {{-- ---------- 6.D COMMUTATION ---------- --}}
+            <div class="lf-sub"><b>Commutation</b><span class="code">6.D</span></div>
+            <div class="lf-g lf-g2">
+                <div class="lf-f">
+                    <label>Commutation</label>
+                    <div class="lf-seg">
+                        <label><input type="radio" name="commutation" value="0"
+                            @checked(old('commutation', '0') !== '1')>Not requested</label>
+                        <label><input type="radio" name="commutation" value="1"
+                            @checked(old('commutation') === '1')>Requested</label>
+                    </div>
+                </div>
+                <div class="lf-f">
+                    <label for="applicant_signature">Signature of applicant <span class="req">*</span></label>
+                    <input id="applicant_signature" type="text" name="applicant_signature"
+                           class="form-control" value="{{ old('applicant_signature', $user->name) }}" required>
+                    <span class="hint">Your typed name stands as your signature.</span>
+                </div>
+            </div>
+
+            {{-- ---------- SUPPORTING DOCUMENTS ---------- --}}
+            <div class="lf-sub no-print"><b>Supporting documents</b></div>
+            <div class="lf-g lf-g2 no-print">
+                <div class="lf-f">
+                    <label for="doc_primary">Primary supporting document</label>
+                    <input id="doc_primary" type="file" name="documents[supporting_document]"
+                           class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+                    <span class="hint">
+                        See <a href="{{ route('leave.instructions') }}">Instructions and Requirements</a>
+                        for what your chosen type needs.
+                    </span>
+                </div>
+                <div class="lf-f">
+                    <label for="doc_medical">Medical certificate (if applicable)</label>
+                    <input id="doc_medical" type="file" name="documents[medical_certificate]"
+                           class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+                    <span class="hint">Required for sick leave of more than five days.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ================= ACTION ON APPLICATION (section 7) ================= --}}
+    {{-- Drawn in full to follow the official sheet, but READ-ONLY: there is not
+         a single input in this card, so an applicant cannot fill it. --}}
+    <div class="card">
+        <div class="card-header">
+            <span class="d-flex align-items-center gap-2">
+                <i class="bi bi-patch-check"></i>Action on application
+            </span>
+            <span class="lf-ref">Section 7</span>
+        </div>
+        <div class="card-body">
+            <div class="lf-official">
+                <i class="bi bi-info-circle"></i>
+                <span>All four subsections are completed by the Municipal Mayor, the Vice Mayor
+                    or the HR Office &mdash; whichever acts first. They are shown here so the
+                    form matches the official sheet, and carry no field you can edit.</span>
+            </div>
+
+            <div class="lf-sub"><b>Certification of leave credits</b><span class="code">7.A</span></div>
+            <div class="lf-g lf-g2" style="align-items:start">
+                <div class="table-responsive">
+                    <table class="lf-credits">
+                        <tr><th>As of {{ now()->format('F d, Y') }}</th><th>Vacation Leave</th><th>Sick Leave</th></tr>
+                        <tr><td>Total earned</td>
                             <td>{{ number_format($vlBalance, 3) }}</td>
-                            <td>{{ number_format($slBalance, 3) }}</td>
-                        </tr>
-                        <tr><td>Less this application</td><td></td><td></td></tr>
-                        <tr><td>Balance</td><td></td><td></td></tr>
+                            <td>{{ number_format($slBalance, 3) }}</td></tr>
+                        <tr><td>Less this application</td><td>&mdash;</td><td>&mdash;</td></tr>
+                        <tr><td>Balance</td><td>&mdash;</td><td>&mdash;</td></tr>
                     </table>
-                    <div class="csc-signatory">
-                        <div class="csc-signatory-name">
-                            {{ \App\Models\SystemSetting::get('general.hr_officer_name', 'ATTY. MARIAH LEAH D. VALEROZO-GARCIA') }}
-                        </div>
-                        <div class="csc-sublabel">
-                            {{ \App\Models\SystemSetting::get('general.hr_officer_title', 'Municipal General Services Officer / OIC-HRM OFFICE') }}
-                        </div>
+                </div>
+                <div class="lf-f">
+                    <label>Certified by</label>
+                    <div class="lf-fixed">
+                        {{ \App\Models\SystemSetting::get('general.hr_officer_name', 'ATTY. MARIAH LEAH D. VALEROZO-GARCIA') }}
                     </div>
-                </td>
-                <td style="width:50%">
-                    <div class="csc-sub">7.B RECOMMENDATION</div>
-                    <div class="csc-check csc-rowline">
-                        <span class="csc-box" aria-hidden="true"></span>
-                        <span class="csc-check-text">For approval</span>
-                    </div>
-                    <div class="csc-check csc-rowline">
-                        <span class="csc-box" aria-hidden="true"></span>
-                        <span class="csc-check-text">For disapproval due to</span>
-                        <span class="csc-fill" aria-hidden="true"></span>
-                    </div>
-                    <div class="csc-ruleline"></div>
-                    <div class="csc-ruleline"></div>
-                    <div class="csc-signatory">
-                        <div class="csc-rule"></div>
-                        <div class="csc-sublabel">Authorized Officer</div>
-                    </div>
-                </td>
-            </tr>
-            <tr>
-                <td>
-                    <div class="csc-sub">7.C APPROVED FOR:</div>
-                    <div class="csc-approved">
-                        <span class="csc-blank-short" aria-hidden="true"></span>
-                        <span class="csc-check-text">days with pay</span>
-                    </div>
-                    <div class="csc-approved">
-                        <span class="csc-blank-short" aria-hidden="true"></span>
-                        <span class="csc-check-text">days without pay</span>
-                    </div>
-                    <div class="csc-approved">
-                        <span class="csc-blank-short" aria-hidden="true"></span>
-                        <span class="csc-check-text">others (Specify)</span>
-                    </div>
-                </td>
-                <td>
-                    <div class="csc-sub">7.D DISAPPROVED DUE TO:</div>
-                    <div class="csc-ruleline"></div>
-                    <div class="csc-ruleline"></div>
-                    <div class="csc-ruleline"></div>
-                </td>
-            </tr>
-            <tr>
-                <td colspan="2">
-                    <div class="csc-signatory csc-signatory-wide">
-                        <div class="csc-signatory-name">
-                            {{ \App\Models\SystemSetting::get('general.mayor_name', 'ATTY. JOEL AMOS P. ALEJANDRO, CPA') }}
-                        </div>
-                        <div class="csc-sublabel">
-                            {{ \App\Models\SystemSetting::get('general.mayor_title', 'Municipal Mayor') }}
-                        </div>
-                    </div>
-                </td>
-            </tr>
-        </table>
+                    <span class="hint">
+                        {{ \App\Models\SystemSetting::get('general.hr_officer_title', 'Municipal General Services Officer / OIC-HRM OFFICE') }}
+                    </span>
+                </div>
+            </div>
 
-        <p class="csc-foot">
-            Section 7 is completed by the approving officer &mdash; any one of the
-            Municipal Mayor, the Vice Mayor or the HR Office. Your credits as of
-            {{ now()->format('F d, Y') }}: Vacation <strong>{{ number_format($vlBalance, 2) }}</strong>,
+            <div class="lf-sub"><b>Recommendation</b><span class="code">7.B</span></div>
+            <div class="lf-g lf-g2">
+                <div class="lf-f">
+                    <label>Decision</label>
+                    <div class="lf-seg is-locked">
+                        <label>For approval</label>
+                        <label>For disapproval due to</label>
+                    </div>
+                </div>
+                <div class="lf-f">
+                    <label>Authorized officer</label>
+                    <div class="lf-fixed">&mdash;</div>
+                    <span class="hint">Mayor, Vice Mayor or HR &mdash; whoever decides.</span>
+                </div>
+            </div>
+
+            <div class="lf-sub"><b>Approved for</b><span class="code">7.C</span></div>
+            <div class="lf-g lf-g3">
+                <div class="lf-f"><label>Days with pay</label><div class="lf-fixed">&mdash;</div></div>
+                <div class="lf-f"><label>Days without pay</label><div class="lf-fixed">&mdash;</div></div>
+                <div class="lf-f"><label>Others (specify)</label><div class="lf-fixed">&mdash;</div></div>
+            </div>
+
+            <div class="lf-sub"><b>Disapproved due to</b><span class="code">7.D</span></div>
+            <div class="lf-g">
+                <div class="lf-f"><label>Reason for disapproval</label><div class="lf-fixed">&mdash;</div></div>
+            </div>
+
+            <div class="lf-g lf-g2 mt-4">
+                <div class="lf-f">
+                    <label>Approving authority</label>
+                    <div class="lf-fixed">
+                        {{ \App\Models\SystemSetting::get('general.mayor_name', 'ATTY. JOEL AMOS P. ALEJANDRO, CPA') }}
+                    </div>
+                    <span class="hint">
+                        {{ \App\Models\SystemSetting::get('general.mayor_title', 'Municipal Mayor') }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="lf-foot no-print">
+        <span class="note">
+            Employee information and Section 7 are filled in for you. Your credits:
+            Vacation <strong>{{ number_format($vlBalance, 2) }}</strong>,
             Sick <strong>{{ number_format($slBalance, 2) }}</strong>.
-        </p>
-
-    </div>{{-- /part 3 sheet --}}
-
-    {{-- One submission for all three parts. --}}
-    <div class="csc-submit no-print">
-        <span class="csc-inline-note mb-0">
-            Parts 1 and 3 are filled in for you. Weekends and Philippine holidays
-            are excluded from the working-day count.
         </span>
         <button class="btn btn-lgu" type="submit"><i class="bi bi-send me-1"></i>Submit application</button>
     </div>
-
-    </div>{{-- /viewport --}}
 </form>
 
 @endsection

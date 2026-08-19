@@ -202,103 +202,92 @@ class EmployeeInterfaceTest extends TestCase
 
     // ------------------------------------------------------- application form
 
-    public function test_apply_page_renders_the_official_form_from_database_leave_types(): void
+    public function test_apply_page_collects_every_part_of_the_form(): void
     {
         $this->asEmployee()->get('/leave/apply')
             ->assertOk()
-            ->assertSee('APPLICATION FOR LEAVE')
-            ->assertSee('6.A TYPE OF LEAVE TO BE AVAILED OF')
-            ->assertSee('6.D COMMUTATION')
-            // The instructions sheet is a separate page reached from the header
-            // button; it is not appended to the form as a second printed page.
-            ->assertDontSee('INSTRUCTIONS AND REQUIREMENTS')
+            ->assertSee('Application for Leave')
+            ->assertSee('Civil Service Form No. 6')
+            // The CSC section numbers survive as labels, so the form stays
+            // auditable against the paper original.
+            ->assertSee('6.A')->assertSee('6.B')->assertSee('6.C')->assertSee('6.D')
+            ->assertSee('7.A')->assertSee('7.B')->assertSee('7.C')->assertSee('7.D')
             // Types come from the database, not a hardcoded list.
             ->assertSee('Vacation Leave')
             ->assertSee('Special Leave Benefits for Women')
-            // Section 7 is drawn in full to follow the official sheet.
-            ->assertSee('7. DETAILS OF ACTION ON APPLICATION')
-            ->assertSee('7.A CERTIFICATION OF LEAVE CREDITS')
-            ->assertSee('7.B RECOMMENDATION')
-            ->assertSee('7.C APPROVED FOR:')
-            ->assertSee('7.D DISAPPROVED DUE TO:');
+            // The instructions sheet is a separate page reached from the header
+            // button; it is not appended to the form as a second printed page.
+            ->assertDontSee('INSTRUCTIONS AND REQUIREMENTS');
     }
 
     /**
-     * The sheet is presented as three parts — employee information, details of
-     * application, action on application — but nothing from the official form
-     * may be lost in the division, and each landmark must land in its own part.
+     * The entry form is no longer a facsimile, but it must still collect every
+     * value the official sheet carries. Each field is checked by the NAME it
+     * posts under, which is what the controller and the policy engine read —
+     * markup can be restyled freely, these cannot go missing.
      */
-    public function test_the_form_is_split_into_three_parts_without_losing_content(): void
+    public function test_the_form_still_collects_every_field_the_sheet_carries(): void
     {
         $html = $this->asEmployee()->get('/leave/apply')->assertOk()->getContent();
 
-        foreach (['Part 1 of 3', 'Part 2 of 3', 'Part 3 of 3'] as $label) {
-            $this->assertStringContainsString($label, $html);
-        }
-
-        // Every field the official sheet carries.
         foreach ([
-            '1. OFFICE/DEPARTMENT', '2. NAME:', '(Last)', '(First)', '(Middle)',
-            '3. DATE OF FILING', '4. POSITION', '5. SALARY',
-            '6.A TYPE OF LEAVE TO BE AVAILED OF', '6.B DETAILS OF LEAVE',
-            'Within the Philippines', 'Abroad (Specify)',
-            'In Hospital (Specify Illness)', 'Out Patient (Specify Illness)',
-            "Completion of Master's Degree", 'BAR/Board Examination Review',
-            'Monetization of Leave Credits', 'Terminal Leave',
-            '6.C NUMBER OF WORKING DAYS APPLIED FOR', 'INCLUSIVE DATES',
-            '6.D COMMUTATION', 'Not Requested', 'Requested', '(Signature of Applicant)',
-            '7.A CERTIFICATION OF LEAVE CREDITS', 'Total Earned', 'Less this application',
-            '7.B RECOMMENDATION', 'For approval', 'For disapproval due to', 'Authorized Officer',
-            '7.C APPROVED FOR:', 'days with pay', 'days without pay', 'others (Specify)',
-            '7.D DISAPPROVED DUE TO:',
+            'leave_type_id[]', 'purpose', 'date_filed', 'start_date', 'end_date',
+            'commutation', 'applicant_signature', 'late_filing_reason',
+            'details[location]', 'details[location_specify]', 'details[travel_details]',
+            'details[confinement]', 'details[illness]', 'details[surgery_details]',
+            'details[purpose]', 'details[purpose_other]', 'details[expected_delivery]',
+            'details[extension]', 'details[accident_details]',
+            'details[calamity]', 'details[calamity_area]',
+            'details[reason]', 'details[days_to_monetize]', 'details[separation_type]',
+            'documents[supporting_document]', 'documents[medical_certificate]',
         ] as $field) {
-            $this->assertStringContainsString($field, $html, "Missing from the form: {$field}");
+            $this->assertStringContainsString('name="'.$field.'"', $html,
+                "the form no longer collects: {$field}");
         }
-
-        // Each landmark sits in the part it belongs to: 1–5, then 6.A–6.D,
-        // then 7.A–7.D.
-        $p2 = strpos($html, 'Part 2 of 3');
-        $p3 = strpos($html, 'Part 3 of 3');
-        $this->assertLessThan($p2, strpos($html, '1. OFFICE/DEPARTMENT'));
-        $this->assertGreaterThan($p2, strpos($html, '6.A TYPE OF LEAVE TO BE AVAILED OF'));
-        $this->assertLessThan($p3, strpos($html, '6.D COMMUTATION'));
-        $this->assertGreaterThan($p3, strpos($html, '7.A CERTIFICATION OF LEAVE CREDITS'));
-
-        // On the printed CSC form, Monetization and Terminal Leave are the last
-        // two checkboxes of 6.B — they are NOT in the 6.A list. They had drifted
-        // into 6.A because both are leave types in the database.
-        $sixB = strpos($html, '6.B DETAILS OF LEAVE');
-        $this->assertGreaterThan($sixB, strpos($html, 'Monetization of Leave Credits'),
-            'Monetization of Leave Credits is printed in 6.B, not 6.A');
-        $this->assertGreaterThan($sixB, strpos($html, 'Terminal Leave'),
-            'Terminal Leave is printed in 6.B, not 6.A');
-
-        // 6.B carries exactly the four "In case of…" groups the sheet prints.
-        $this->assertSame(4, substr_count($html, 'In case of '),
-            '6.B has drifted from the official sheet: it must carry exactly four '
-            .'"In case of…" groups — Vacation/SPL, Sick, SLBW and Study Leave');
     }
 
     /**
-     * Fields this office needs but the CSC sheet does not carry are collected
-     * below the form, not smuggled into 6.B. Without them six leave types would
-     * be impossible to file, because the policy engine requires them.
+     * Every detail field a leave type marks REQUIRED must have an input on the
+     * form. Special Privilege Leave was once impossible to file because its
+     * required `travel_details` had no control anywhere — this fails if that
+     * class of defect returns, for any type, including one an admin adds.
      */
-    public function test_office_specific_fields_sit_outside_the_official_sheet(): void
+    public function test_every_required_policy_field_has_an_input(): void
     {
         $html = $this->asEmployee()->get('/leave/apply')->assertOk()->getContent();
 
-        $officialSheetEnds = strpos($html, 'ADDITIONAL DETAILS REQUIRED BY THIS OFFICE');
-        $this->assertNotFalse($officialSheetEnds, 'the office-specific block is missing');
-
-        foreach (['details[separation_type]', 'details[reason]', 'details[days_to_monetize]',
-            'details[expected_delivery]', 'details[travel_details]', 'details[accident_details]',
-            'details[calamity]', 'details[calamity_area]', 'late_filing_reason'] as $field) {
-            $at = strpos($html, 'name="'.$field.'"');
-            $this->assertNotFalse($at, "no input for the required field: {$field}");
-            $this->assertGreaterThan($officialSheetEnds, $at,
-                "{$field} is not on the CSC sheet and must sit in the office block");
+        foreach (LeaveType::active()->get() as $type) {
+            foreach ($type->detail_schema ?? [] as $field) {
+                if (! ($field['required'] ?? false)) {
+                    continue;
+                }
+                $this->assertStringContainsString('name="details['.$field['name'].']"', $html,
+                    "{$type->name} requires '{$field['name']}' but the form has no input for it");
+            }
         }
+    }
+
+    /**
+     * 6.B shows only the block belonging to the chosen leave type. The reveal
+     * is CSS, so every control stays in the DOM — hiding is a screen
+     * convenience and must never mean "not submitted". This asserts the wiring
+     * the CSS depends on: each option carries the code the rules match against.
+     */
+    public function test_each_leave_type_option_carries_the_code_the_reveal_matches(): void
+    {
+        $html = $this->asEmployee()->get('/leave/apply')->assertOk()->getContent();
+
+        foreach (LeaveType::active()->get() as $type) {
+            $this->assertMatchesRegularExpression(
+                '/<option value="'.$type->id.'"\s+data-code="'.preg_quote($type->code, '/').'"/',
+                $html,
+                "{$type->name} has no data-code, so 6.B cannot reveal its block"
+            );
+        }
+
+        // A type the sheet prints no block for still resolves — to the catch-all,
+        // never to nothing.
+        $this->assertStringContainsString('lf-grp-other', $html);
     }
 
     /**
@@ -309,12 +298,14 @@ class EmployeeInterfaceTest extends TestCase
     {
         $html = $this->asEmployee()->get('/leave/apply')->assertOk()->getContent();
 
-        $section = substr(
-            $html,
-            $start = strpos($html, '7. DETAILS OF ACTION ON APPLICATION'),
-            strpos($html, 'SUPPORTING DOCUMENTS') - $start,
-        );
+        // Section 7 is the last card on the page, so it runs from its header to
+        // the submit footer.
+        $start = strpos($html, 'Action on application');
+        $this->assertNotFalse($start, 'section 7 is missing from the entry form');
+        $section = substr($html, $start, strpos($html, 'lf-foot') - $start);
 
+        $this->assertStringContainsString('7.A', $section);
+        $this->assertStringContainsString('7.D', $section);
         $this->assertStringNotContainsString('<input', $section);
         $this->assertStringNotContainsString('<select', $section);
         $this->assertStringNotContainsString('<textarea', $section);
@@ -347,43 +338,36 @@ class EmployeeInterfaceTest extends TestCase
     }
 
     /**
-     * The preview is the SAME document as the entry form: same three parts,
-     * same 6.A list in the same CSC order. If someone edits one sheet without
-     * the other, the two orderings diverge and this fails.
+     * The entry form and the preview are deliberately no longer the same
+     * artefact: filling in is a modern form, filing produces the official
+     * facsimile. What must hold is that the preview still draws the CSC sheet,
+     * and that the entry form can supply everything the sheet displays.
      */
-    public function test_the_preview_renders_the_same_sheet_as_the_entry_form(): void
+    public function test_the_preview_still_draws_the_official_sheet(): void
     {
         $request = $this->fileVacationLeave();
 
-        $form = $this->asEmployee()->get('/leave/apply')->assertOk()->getContent();
         $preview = $this->asEmployee()->get("/leave/{$request->id}/preview")->assertOk()->getContent();
+        $form = $this->asEmployee()->get('/leave/apply')->assertOk()->getContent();
 
-        foreach (['Part 1 of 3', 'Part 2 of 3', 'Part 3 of 3',
-            'APPLICATION FOR LEAVE', 'ANNEX A',
+        // The preview keeps the printed sheet, verbatim.
+        foreach (['APPLICATION FOR LEAVE', 'ANNEX A', 'Civil Service Form No. 6',
             '6.A TYPE OF LEAVE TO BE AVAILED OF', '6.B DETAILS OF LEAVE',
             '6.C NUMBER OF WORKING DAYS APPLIED FOR', '6.D COMMUTATION',
-            '7. DETAILS OF ACTION ON APPLICATION'] as $marker) {
-            $this->assertStringContainsString($marker, $form, "entry form is missing: {$marker}");
+            '7. DETAILS OF ACTION ON APPLICATION', '(Signature of Applicant)'] as $marker) {
             $this->assertStringContainsString($marker, $preview, "preview is missing: {$marker}");
         }
 
-        // The leave-type names, in the order each sheet happens to print them.
-        $printedOrder = function (string $html): array {
-            $at = [];
-            foreach (LeaveType::active()->pluck('name') as $name) {
-                $position = strpos($html, (string) $name);
-                if ($position !== false) {
-                    $at[$name] = $position;
-                }
-            }
-            asort($at);
+        // The entry form is NOT the facsimile — that is the point of the change.
+        $this->assertStringNotContainsString('csc-sheet', $form);
 
-            return array_keys($at);
-        };
-
-        $this->assertNotEmpty($printedOrder($form));
-        $this->assertSame($printedOrder($form), $printedOrder($preview),
-            '6.A lists the leave types in a different order on the two sheets');
+        // Every leave type the preview can tick, the entry form can choose.
+        foreach (LeaveType::active()->pluck('name') as $name) {
+            $this->assertStringContainsString((string) $name, $form,
+                "the entry form cannot select: {$name}");
+            $this->assertStringContainsString((string) $name, $preview,
+                "the preview cannot show: {$name}");
+        }
     }
 
     /**
@@ -538,15 +522,24 @@ class EmployeeInterfaceTest extends TestCase
         );
     }
 
-    public function test_leave_types_are_uncheckable_checkboxes_not_locked_controls(): void
+    /**
+     * 6.A is a dropdown on the entry form. It still posts an array, because a
+     * single <select name="…[]"> yields one element — so the controller's
+     * `size:1` rule is untouched and "exactly one type" is still a server
+     * guarantee, not a property of the control.
+     */
+    public function test_leave_type_is_a_dropdown_that_still_posts_an_array(): void
     {
         $response = $this->asEmployee()->get('/leave/apply');
 
         $response->assertOk();
-        // Real checkboxes, so any option can be cleared again...
-        $response->assertSee('type="checkbox" name="leave_type_id[]"', false);
-        // ...and nothing is pre-ticked on a new application.
-        $response->assertDontSee('name="leave_type_id[]" value="'.LeaveType::where('code', 'VL')->value('id').'" checked', false);
+        $response->assertSee('name="leave_type_id[]"', false);
+        // Not a checkbox list any more.
+        $response->assertDontSee('type="checkbox" name="leave_type_id[]"', false);
+        // Nothing is preselected on a new application: the placeholder is.
+        $response->assertSee('<option value="">Select a leave type', false);
+        // No leave type is preselected on a new application.
+        $this->assertStringNotContainsString('selected', $response->getContent());
     }
 
     public function test_selecting_two_leave_types_is_refused(): void

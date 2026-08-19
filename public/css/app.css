@@ -1477,3 +1477,165 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 
 /* Empty-state cells match the dashboard's. */
 .card .table td.text-center.text-muted{ padding:2.5rem 1rem; font-size:.85rem; }
+
+/* ============================================================================
+   APPLY FOR LEAVE — modern entry form
+   ----------------------------------------------------------------------------
+   The application form is now a normal web form built from the system's own
+   tokens, instead of a facsimile of the printed sheet. It collects exactly the
+   same fields under exactly the same names, so nothing server-side changes.
+
+   The facsimile has NOT gone away: `.csc-*` still renders the form preview,
+   the downloaded PDF and the instructions page. What an employee fills in is
+   modern; what the LGU files is still CSC Form No. 6.
+
+   6.B reveals only the block belonging to the selected leave type, driven by
+   CSS :has() reading which <option> is chosen — no JavaScript. Every input
+   stays in the DOM either way, so validation and posting are unaffected by
+   what happens to be visible.
+   ========================================================================== */
+
+.lf{ display:flex; flex-direction:column; gap:1rem; }
+
+.lf-head{
+  display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-start;
+  gap:.8rem;
+}
+.lf-head h1{ margin:0; font-size:1.35rem; font-weight:700; letter-spacing:-.02em; }
+.lf-head .sub{ margin:.15rem 0 0; font-size:.84rem; color:var(--muted); }
+
+.lf .card{ margin-bottom:0; }
+.lf .card-header i{ color:var(--primary); }
+.lf-ref{
+  font-family:var(--mono, ui-monospace, monospace); font-size:.66rem; letter-spacing:.08em;
+  color:var(--muted-2); background:var(--surface-2); padding:.2rem .45rem;
+  border-radius:.35rem; font-weight:500;
+}
+
+/* ---- Field grids -------------------------------------------------------- */
+.lf-g{ display:grid; gap:.9rem; }
+.lf-g2{ grid-template-columns:repeat(auto-fit,minmax(13rem,1fr)); }
+.lf-g3{ grid-template-columns:repeat(auto-fit,minmax(9.5rem,1fr)); }
+
+.lf-f{ display:flex; flex-direction:column; gap:.3rem; min-width:0; }
+.lf-f > label{ font-size:.76rem; font-weight:600; color:var(--muted); margin:0; }
+.lf-f .req{ color:var(--primary); }
+.lf-f .hint{ font-size:.74rem; color:var(--muted-2); }
+/* A value the employee cannot change — office, position, salary, name. */
+.lf-fixed{
+  font-size:.92rem; font-weight:600; color:var(--text-2);
+  background:var(--surface-2); border:1px solid var(--border);
+  border-radius:.5rem; padding:.52rem .7rem;
+}
+
+/* ---- Sub-section rule --------------------------------------------------- */
+.lf-sub{ display:flex; align-items:center; gap:.6rem; margin:1.35rem 0 .85rem; }
+.lf-sub:first-child{ margin-top:0; }
+.lf-sub b{
+  font-size:.72rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--text-2); white-space:nowrap;
+}
+.lf-sub .code{
+  font-family:var(--mono, ui-monospace, monospace); font-size:.68rem;
+  color:var(--primary); background:var(--primary-soft);
+  padding:.15rem .4rem; border-radius:.3rem; font-weight:600;
+}
+.lf-sub::after{ content:""; height:1px; background:var(--border); flex:1; }
+
+/* ---- Segmented radio groups --------------------------------------------- */
+.lf-seg{ display:flex; gap:.4rem; flex-wrap:wrap; }
+.lf-seg label{
+  cursor:pointer; font-size:.85rem; padding:.45rem .85rem; border-radius:.5rem;
+  border:1px solid var(--border-strong); background:var(--surface-2);
+  color:var(--text-2); margin:0;
+}
+.lf-seg input{ position:absolute; opacity:0; pointer-events:none; }
+.lf-seg label:has(input:checked){
+  border-color:var(--primary); background:var(--primary-soft);
+  color:var(--primary); font-weight:600;
+}
+.lf-seg label:focus-within{ outline:2px solid var(--primary); outline-offset:2px; }
+
+/* ---- The legal citation for the chosen type ----------------------------- */
+.lf-cite{
+  font-size:.75rem; color:var(--muted); background:var(--surface-2);
+  border-left:2px solid var(--border-strong); padding:.45rem .65rem;
+  border-radius:0 .35rem .35rem 0; margin-bottom:.85rem;
+}
+
+/* ---- Conditional 6.B blocks: CSS only ----------------------------------- */
+/* Hidden means "not relevant to the chosen type" — never "not submitted".
+   Every control remains in the DOM and posts normally if it holds a value. */
+.lf-grp{ display:none; }
+.lf-empty{
+  font-size:.86rem; color:var(--muted); background:var(--surface-2);
+  border:1px dashed var(--border-strong); border-radius:.5rem;
+  padding:1.1rem; text-align:center;
+}
+
+#lf-form:has(#lf-type option[data-code="VL"]:checked)   .lf-grp-vl,
+#lf-form:has(#lf-type option[data-code="FL"]:checked)   .lf-grp-vl,
+#lf-form:has(#lf-type option[data-code="SPL"]:checked)  .lf-grp-vl,
+#lf-form:has(#lf-type option[data-code="SL"]:checked)   .lf-grp-sl,
+#lf-form:has(#lf-type option[data-code="SL"]:checked)   .lf-grp-illness,
+#lf-form:has(#lf-type option[data-code="SLBW"]:checked) .lf-grp-illness,
+#lf-form:has(#lf-type option[data-code="SLBW"]:checked) .lf-grp-slbw,
+#lf-form:has(#lf-type option[data-code="STL"]:checked)  .lf-grp-stl,
+#lf-form:has(#lf-type option[data-code="ML"]:checked)   .lf-grp-ml,
+#lf-form:has(#lf-type option[data-code="RL"]:checked)   .lf-grp-rl,
+#lf-form:has(#lf-type option[data-code="SEL"]:checked)  .lf-grp-sel,
+#lf-form:has(#lf-type option[data-code="MON"]:checked)  .lf-grp-mon,
+#lf-form:has(#lf-type option[data-code="TL"]:checked)   .lf-grp-tl,
+#lf-form:has(#lf-type option[value=""]:checked)         .lf-grp-none,
+/* A leave type the CSC sheet has no block for — an admin-added one, or one
+   with no detail schema. Everything stays reachable rather than disappearing. */
+#lf-form:has(#lf-type option:checked:not([data-known]):not([value=""])) .lf-grp-other{
+  display:block;
+}
+
+/* Browsers without :has() (pre-2023) cannot do the reveal. Showing every block
+   is the safe failure: the form is longer, but nothing is unreachable. */
+@supports not selector(:has(*)){
+  .lf-grp{ display:block; }
+  .lf-grp-none{ display:none; }
+}
+
+/* ---- Footer ------------------------------------------------------------- */
+.lf-foot{
+  display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center;
+  gap:.8rem; background:var(--surface); border:1px solid var(--border);
+  border-radius:.75rem; padding:.9rem 1.15rem;
+}
+.lf-foot .note{ font-size:.8rem; color:var(--muted); }
+
+/* ---- Read-only section 7 ------------------------------------------------ */
+.lf-official{
+  display:flex; align-items:flex-start; gap:.6rem; font-size:.84rem; color:var(--muted);
+  background:var(--surface-2); border:1px solid var(--border);
+  border-radius:.6rem; padding:.8rem .95rem; margin-bottom:1.1rem;
+}
+.lf-official i{ color:var(--primary); flex:none; margin-top:.1rem; }
+.lf-credits{ width:100%; border-collapse:collapse; font-size:.84rem; }
+.lf-credits th,.lf-credits td{
+  border-bottom:1px solid var(--border); padding:.45rem .7rem; text-align:left;
+  color:var(--text-2);
+}
+.lf-credits th{
+  background:var(--surface-2); font-size:.7rem; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--muted); font-weight:600;
+}
+.lf-credits th:not(:first-child),.lf-credits td:not(:first-child){
+  text-align:right; font-variant-numeric:tabular-nums;
+}
+.lf-credits tr:last-child td{ border-bottom:0; font-weight:600; color:var(--text); }
+.lf-seg.is-locked label{ opacity:.6; cursor:not-allowed; }
+
+/* ---- Print: the entry form still prints every block --------------------- */
+@media print{
+  /* Hiding is a screen convenience. On paper the form carries every "In case
+     of…" block, exactly as the printed CSC sheet does. */
+  .lf-grp{ display:block !important; }
+  .lf-grp-none{ display:none !important; }
+  .lf-foot,.lf-head .btn{ display:none !important; }
+  .lf .card{ break-inside:avoid; page-break-inside:avoid; border-color:#000; }
+}

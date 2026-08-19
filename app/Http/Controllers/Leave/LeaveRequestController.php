@@ -109,9 +109,10 @@ class LeaveRequestController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        // 6.A is a checkbox list on the official form, so it posts an array. The
-        // employee can tick and untick freely; the rule that exactly one type may
-        // be claimed is enforced here rather than by making a control unclearable.
+        // 6.A posts an array: the entry form uses a single <select name="…[]">,
+        // which yields a one-element array, and the printed sheet is a checkbox
+        // list. Either way the "exactly one type" rule is enforced here, on the
+        // server, rather than by the shape of the control.
         $data = $request->validate([
             'leave_type_id' => ['required', 'array', 'size:1'],
             'leave_type_id.*' => ['required', 'integer', 'exists:leave_types,id'],
@@ -125,8 +126,10 @@ class LeaveRequestController extends Controller
             'details' => ['array'],
             'documents.*' => ['file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
         ], [
-            'leave_type_id.required' => 'Tick the type of leave you are applying for in section 6.A.',
-            'leave_type_id.size' => 'Tick exactly one type of leave in section 6.A.',
+            'leave_type_id.required' => 'Choose the type of leave you are applying for in section 6.A.',
+            'leave_type_id.size' => 'Choose exactly one type of leave in section 6.A.',
+            'leave_type_id.*.required' => 'Choose the type of leave you are applying for in section 6.A.',
+            'leave_type_id.*.exists' => 'That leave type is not available. Choose one from the list.',
         ]);
 
         $data['leave_type_id'] = (int) $data['leave_type_id'][0];
