@@ -217,6 +217,10 @@ class AdminDashboardTest extends TestCase
         $engineering = collect($rows)->firstWhere('name', 'Engineering');
         $this->assertSame(1, $engineering['staff']);
         $this->assertSame(1.0, $engineering['per_head']);
+        $this->assertFalse($engineering['muted']);
+
+        $stray = collect($rows)->firstWhere('name', 'Unassigned');
+        $this->assertTrue($stray['muted'], 'the unassigned bar is drawn as a data gap, not a department');
     }
 
     public function test_the_ranked_leave_types_count_applications_not_days(): void
@@ -242,9 +246,9 @@ class AdminDashboardTest extends TestCase
         $rows = app(DashboardService::class)
             ->mostAppliedTypes(now()->startOfMonth(), now()->endOfMonth());
 
-        $this->assertSame('SL', $rows[0]['code']);
-        $this->assertSame(2, $rows[0]['total']);
-        $this->assertSame(100.0, $rows[0]['width'], 'the leader sets the bar width');
+        $this->assertSame('SL', $rows[0]['label'], 'the axis label is the CSC code');
+        $this->assertSame('Sick Leave', $rows[0]['name'], 'the full name is the hover readout');
+        $this->assertSame(2, $rows[0]['value']);
     }
 
     /**
@@ -258,6 +262,9 @@ class AdminDashboardTest extends TestCase
 
         $this->assertStringNotContainsString('<canvas', $html);
         $this->assertStringContainsString('<svg class="day-svg"', $html);
+        // Leave types and departments are bar charts; on leave is a line.
+        $this->assertStringContainsString('class="bar-fill"', $html);
+        $this->assertStringContainsString('class="day-stroke"', $html);
         // Every chart carries a table, so none of it is readable by colour alone.
         $this->assertStringContainsString('Show the numbers', $html);
     }

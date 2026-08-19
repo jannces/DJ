@@ -4,9 +4,9 @@
      *
      * A line rather than columns because this is a *level* that persists — the
      * space between Monday and Tuesday is real, so a line is entitled to cross
-     * it, and it still reads at thirty-one points where thirty-one bars become a
-     * comb. Days already past are a solid line; approved leave still to come is
-     * dashed, because that half is the only part anyone can still act on.
+     * it, and it still reads at thirty-one points where thirty-one bars become
+     * a comb. Days already past are a solid line; approved leave still to come
+     * is dashed, because that half is the only part anyone can still act on.
      *
      * No canvas and no script: the hover layer is plain HTML over the SVG, so
      * this cannot repeat the runaway-canvas bug and it survives printing.
@@ -18,20 +18,30 @@
      */
     $days = array_values($days);
     $count = count($days);
-    $height = $height ?? 170;
+    $height = $height ?? 200;
     $labelEvery = $labelEvery ?? 1;
 
     $peak = $count ? max(array_column($days, 'count')) : 0;
-    $ceiling = max(2, $peak + 1);
-    $step = $count ? 700 / $count : 700;
+
+    // Four equal bands ending on a round number, same rule as the bar charts.
+    $step = 1;
+    foreach ([1, 2, 5, 10, 20, 25, 50] as $candidate) {
+        $step = $candidate;
+        if ($candidate * 4 >= $peak) {
+            break;
+        }
+    }
+    $ceiling = max(4, $step * 4);
+
+    $span = $count ? 700 / $count : 700;
     $today = now()->toDateString();
 
     // The viewBox is stretched to the box with preserveAspectRatio="none", so
     // every stroke carries vector-effect and every dot is drawn in HTML — an
     // SVG circle would come out an ellipse.
-    $point = function (int $i) use ($days, $step, $ceiling) {
+    $point = function (int $i) use ($days, $span, $ceiling) {
         return [
-            round(($i + 0.5) * $step, 1),
+            round(($i + 0.5) * $span, 1),
             round(200 - ($days[$i]['count'] / $ceiling) * 200, 1),
         ];
     };
@@ -66,23 +76,34 @@
     }
     $past = $lastPast >= 0 ? range(0, $lastPast) : [];
     $future = $lastPast < $count - 1 ? range(max(0, $lastPast), $count - 1) : [];
+
+    // A dot on every point is right for a week and a thicket for a month, so
+    // dense series keep only the ones worth naming.
+    $dense = $count > 10;
+    $gradient = 'onleave-fade-'.($id ?? 'a');
 @endphp
 
-<div class="day-plot" style="--plot-h:{{ $height }}px">
+<div class="day-plot accent-violet" style="--plot-h:{{ $height }}px">
     <div class="day-axis">
-        <span>{{ $ceiling }}</span>
-        <span>{{ intdiv($ceiling, 2) }}</span>
-        <span>0</span>
+        @for ($i = 4; $i >= 0; $i--)
+            <span>{{ (int) ($ceiling / 4 * $i) }}</span>
+        @endfor
     </div>
 
     <div class="day-line">
         <svg class="day-svg" viewBox="0 0 700 200" preserveAspectRatio="none" aria-hidden="true">
-            <line class="day-grid" x1="0" y1="100" x2="700" y2="100"/>
+            <defs>
+                <linearGradient id="{{ $gradient }}" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="currentColor" stop-opacity=".28"/>
+                    <stop offset="100%" stop-color="currentColor" stop-opacity="0"/>
+                </linearGradient>
+            </defs>
+
             @if ($past)
-                <path class="day-fill" d="{{ $area($past) }}"/>
+                <path class="day-fill" fill="url(#{{ $gradient }})" d="{{ $area($past) }}"/>
             @endif
             @if ($future)
-                <path class="day-fill is-future" d="{{ $area($future) }}"/>
+                <path class="day-fill is-future" fill="url(#{{ $gradient }})" d="{{ $area($future) }}"/>
             @endif
             @if ($past)
                 <path class="day-stroke" d="{{ $line($past) }}"/>
@@ -97,12 +118,13 @@
                 @php
                     $isToday = $day['date']->toDateString() === $today;
                     $isPeak = $peak > 0 && $day['count'] === $peak;
+                    $showDot = ! $dense || $isToday || $isPeak;
                     $label = $isToday ? 'Today'
                         : ($count <= 7 ? $day['date']->format('D') : $day['date']->format('j'));
                 @endphp
                 <span class="day-hit {{ $isToday ? 'is-today' : '' }}">
-                    @if ($isToday || $isPeak)
-                        <b class="day-dot {{ $day['future'] ? 'is-future' : '' }}"
+                    @if ($showDot)
+                        <b class="day-dot {{ $day['future'] ? 'is-future' : '' }} {{ $isToday ? 'is-now' : '' }}"
                            style="--dot-y:{{ round($day['count'] / $ceiling * 100, 1) }}%"></b>
                     @endif
                     <span class="day-tip">

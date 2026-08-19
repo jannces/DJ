@@ -74,8 +74,8 @@ class DashboardService
             $data['an_users'] = $this->registeredUsers();
             $data['an_outcome'] = $this->applicationsByOutcome((int) now()->year);
             $data['an_on_leave'] = $this->onLeaveWindows();
-            $data['an_types_month'] = $this->mostAppliedTypes(now()->startOfMonth(), now()->endOfMonth());
-            $data['an_types_year'] = $this->mostAppliedTypes(now()->startOfYear(), now()->endOfYear());
+            $data['an_types_month'] = $this->mostAppliedTypes(now()->startOfMonth(), now()->endOfMonth(), 'this month');
+            $data['an_types_year'] = $this->mostAppliedTypes(now()->startOfYear(), now()->endOfYear(), 'this year');
             $data['an_departments'] = $this->applicationsByDepartment(now()->startOfYear(), now()->endOfYear());
         }
 
@@ -251,8 +251,11 @@ class DashboardService
      *
      * Applications, not days: "most applied for" and "most days taken" are
      * different questions and only one of them was asked.
+     *
+     * Shaped for the bar-chart partial — the code is the axis label, the full
+     * name and the share are the hover readout.
      */
-    public function mostAppliedTypes(CarbonInterface $from, CarbonInterface $to, int $limit = 6): array
+    public function mostAppliedTypes(CarbonInterface $from, CarbonInterface $to, string $period = '', int $limit = 6): array
     {
         $rows = LeaveRequest::query()
             ->whereBetween('date_filed', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
@@ -264,24 +267,28 @@ class DashboardService
             ->get();
 
         $overall = (int) $rows->sum('total');
-        $top = (int) ($rows->first()->total ?? 0);
 
-        return $rows->map(fn ($row) => [
-            'name' => $row->leaveType?->name ?? 'Unknown',
-            'code' => $row->leaveType?->code ?? '—',
-            'total' => (int) $row->total,
-            'width' => $top > 0 ? round((int) $row->total / $top * 100, 1) : 0,
-            'share' => $overall > 0 ? round((int) $row->total / $overall * 100) : 0,
-        ])->all();
+        return $rows->map(function ($row) use ($overall, $period) {
+            $share = $overall > 0 ? round((int) $row->total / $overall * 100) : 0;
+
+            return [
+                'label' => $row->leaveType?->code ?? '—',
+                'name' => $row->leaveType?->name ?? 'Unknown leave type',
+                'value' => (int) $row->total,
+                'note' => $share.'% of applications '.$period,
+                'muted' => false,
+            ];
+        })->all();
     }
 
     /**
-     * Applications per department, with a per-head figure beside the count.
+     * Applications per department, with a per-head figure in the readout.
      *
-     * The raw count only says which department is biggest. Per head says whether
-     * its people actually file more often, which is the question somebody would
-     * act on. Employees with no department are reported as "Unassigned" rather
-     * than dropped — a silent gap looks like nothing is wrong.
+     * The raw count only says which department is biggest. Per head says
+     * whether its people actually file more often, which is the question
+     * somebody would act on. Employees with no department are reported as
+     * "Unassigned" rather than dropped — a silent gap looks like nothing is
+     * wrong.
      */
     public function applicationsByDepartment(CarbonInterface $from, CarbonInterface $to): array
     {
@@ -302,22 +309,27 @@ class DashboardService
             ->pluck('total', 'department_id');
 
         $names = Department::pluck('name', 'id');
-        $top = (int) $filings->max();
+        $codes = Department::pluck('code', 'id');
 
-        $rows = $filings->map(function ($total, $departmentId) use ($names, $staff, $top) {
+        $rows = $filings->map(function ($total, $departmentId) use ($names, $codes, $staff) {
+            $known = isset($names[$departmentId]);
             $headcount = (int) ($staff[$departmentId] ?? 0);
+            $perHead = $headcount > 0 ? round((int) $total / $headcount, 1) : null;
 
             return [
-                'name' => $names[$departmentId] ?? 'Unassigned',
-                'unassigned' => ! isset($names[$departmentId]),
-                'total' => (int) $total,
+                'label' => $known ? ($codes[$departmentId] ?: $names[$departmentId]) : 'None',
+                'name' => $known ? $names[$departmentId] : 'Unassigned',
+                'value' => (int) $total,
                 'staff' => $headcount,
-                'per_head' => $headcount > 0 ? round((int) $total / $headcount, 1) : null,
-                'width' => $top > 0 ? round((int) $total / $top * 100, 1) : 0,
+                'per_head' => $perHead,
+                'note' => $known
+                    ? $headcount.' staff'.($perHead !== null ? ' · '.$perHead.' per head' : '')
+                    : 'Employees with no department set',
+                'muted' => ! $known,
             ];
         })->values()->all();
 
-        usort($rows, fn ($a, $b) => $b['total'] <=> $a['total']);
+        usort($rows, fn ($a, $b) => $b['value'] <=> $a['value']);
 
         return $rows;
     }

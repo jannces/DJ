@@ -35,7 +35,16 @@
         $months = $an_outcome['months'];
         $totals = $an_outcome['totals'];
         $thisMonth = $months[now()->month - 1];
-        $ceiling = max(2, max(array_column($months, 'total')));
+        // Four equal bands ending on a round number, matching the bar charts.
+        $peak = max(array_column($months, 'total'));
+        $step = 1;
+        foreach ([1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500] as $candidate) {
+            $step = $candidate;
+            if ($candidate * 4 >= $peak) {
+                break;
+            }
+        }
+        $ceiling = max(4, $step * 4);
 
         $onLeave = $an_on_leave;
     @endphp
@@ -94,9 +103,9 @@
 
             <div class="stackplot" style="--plot-h:230px">
                 <div class="day-axis">
-                    <span>{{ $ceiling }}</span>
-                    <span>{{ intdiv($ceiling, 2) }}</span>
-                    <span>0</span>
+                    @for ($i = 4; $i >= 0; $i--)
+                        <span>{{ (int) ($ceiling / 4 * $i) }}</span>
+                    @endfor
                 </div>
                 <div class="stack-cols">
                     @foreach ($months as $month)
@@ -174,7 +183,7 @@
                 <div class="big-sub">
                     on approved leave right now &mdash; a headcount, not a total
                 </div>
-                @include('dashboard._day_line', ['days' => $onLeave['week']['days'], 'height' => 150])
+                @include('dashboard._day_line', ['days' => $onLeave['week']['days'], 'height' => 180, 'id' => 'today'])
             </div>
 
             <div class="an-pane pane-week">
@@ -183,7 +192,7 @@
                     distinct employees out on at least one day this week &middot;
                     peak {{ $onLeave['week']['peak'] }} in a day
                 </div>
-                @include('dashboard._day_line', ['days' => $onLeave['week']['days'], 'height' => 170])
+                @include('dashboard._day_line', ['days' => $onLeave['week']['days'], 'height' => 200, 'id' => 'week'])
             </div>
 
             <div class="an-pane pane-month">
@@ -192,7 +201,7 @@
                     distinct employees out on at least one day in {{ now()->format('F') }} &middot;
                     peak {{ $onLeave['month']['peak'] }} in a day
                 </div>
-                @include('dashboard._day_line', ['days' => $onLeave['month']['days'], 'height' => 170, 'labelEvery' => 5])
+                @include('dashboard._day_line', ['days' => $onLeave['month']['days'], 'height' => 200, 'labelEvery' => 5, 'id' => 'month'])
             </div>
 
             <p class="big-sub mt-3 mb-0">
@@ -204,63 +213,37 @@
 
     <div class="dash-row2">
         {{-- ---------- Most applied leave type ---------- --}}
-        {{-- Horizontal, because "Special Privilege Leave" does not fit under a
-             column. One colour: length already carries the magnitude, so a
-             second encoding in colour would imply a difference that is not
-             there. --}}
         <div class="dash-frame" id="an-types">
             <div class="dash-head">
-                <p class="dash-title"><i class="bi bi-list-ol"></i>Most applied leave type</p>
+                <p class="dash-title"><i class="bi bi-bar-chart-line"></i>Most applied leave type</p>
                 <div class="an-switch">
                     <label><input type="radio" name="types-window" id="types-month" checked>This month</label>
                     <label><input type="radio" name="types-window" id="types-year">This year</label>
                 </div>
             </div>
             <div class="dash-body">
-                @foreach (['month' => $an_types_month, 'year' => $an_types_year] as $window => $rows)
-                    <div class="an-pane pane-{{ $window }}">
-                        @forelse ($rows as $row)
-                            <div class="rankbar">
-                                <span class="rankbar-name" title="{{ $row['name'] }}">{{ $row['name'] }}</span>
-                                <span class="rankbar-track">
-                                    <span class="rankbar-fill" style="width:{{ $row['width'] }}%"></span>
-                                </span>
-                                <span class="rankbar-value">{{ $row['total'] }}</span>
-                                <span class="day-tip">{{ $row['share'] }}% of applications {{ $window === 'month' ? 'this month' : 'this year' }}</span>
-                            </div>
-                        @empty
-                            <div class="dash-empty">Nothing filed {{ $window === 'month' ? 'this month' : 'this year' }} yet.</div>
-                        @endforelse
-                    </div>
-                @endforeach
+                <div class="an-pane pane-month">
+                    @include('dashboard._bar_chart', ['rows' => $an_types_month, 'accent' => 'cyan'])
+                </div>
+                <div class="an-pane pane-year">
+                    @include('dashboard._bar_chart', ['rows' => $an_types_year, 'accent' => 'cyan'])
+                </div>
+                <p class="chart-foot">Codes are the CSC leave types &mdash; hover a column for the full name and its share.</p>
             </div>
         </div>
 
         {{-- ---------- By department ---------- --}}
-        {{-- Per head sits beside the count on purpose: the raw count only says
-             which department is biggest. --}}
+        {{-- Per head is in the readout on purpose: the raw count only says
+             which department is biggest, not whether its people file more
+             often than anybody else's. --}}
         <div class="dash-frame">
             <div class="dash-head">
                 <p class="dash-title"><i class="bi bi-diagram-3"></i>Applications by department</p>
                 <span class="dash-link">{{ now()->year }} to date</span>
             </div>
             <div class="dash-body">
-                @forelse ($an_departments as $row)
-                    <div class="rankbar {{ $row['unassigned'] ? 'is-muted' : '' }}">
-                        <span class="rankbar-name" title="{{ $row['name'] }}">{{ $row['name'] }}</span>
-                        <span class="rankbar-track">
-                            <span class="rankbar-fill" style="width:{{ $row['width'] }}%"></span>
-                        </span>
-                        <span class="rankbar-value">{{ $row['total'] }}</span>
-                        <span class="day-tip">
-                            {{ $row['total'] }} filed &middot; {{ $row['staff'] }} staff
-                            @if ($row['per_head'] !== null) &middot; {{ $row['per_head'] }} per head @endif
-                            @if ($row['unassigned']) <br>Employees with no department set @endif
-                        </span>
-                    </div>
-                @empty
-                    <div class="dash-empty">No applications on record for {{ now()->year }}.</div>
-                @endforelse
+                @include('dashboard._bar_chart', ['rows' => $an_departments, 'accent' => 'amber'])
+                <p class="chart-foot">Hover a column for the headcount and the per-head rate.</p>
             </div>
         </div>
     </div>
