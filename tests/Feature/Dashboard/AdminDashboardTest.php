@@ -95,6 +95,27 @@ class AdminDashboardTest extends TestCase
         }
     }
 
+    /**
+     * The pie is part-to-whole, so a slice that renders as a wedge of the wrong
+     * size is a lie the reader cannot check. The shares must add up.
+     */
+    public function test_the_outcome_slices_add_up_to_the_whole(): void
+    {
+        $employee = $this->makeUser('employee');
+        foreach (['approved', 'approved', 'approved', 'rejected'] as $status) {
+            $this->file($employee, $status, now()->toDateString(), now()->toDateString());
+        }
+
+        $html = $this->visit('system-admin')->assertOk()->getContent();
+
+        // Three approved of four filed, one rejected.
+        $this->assertStringContainsString('>75%<', $html);
+        $this->assertStringContainsString('>25%<', $html);
+
+        preg_match_all('/class="pie-slice [^"]*"/', $html, $matches);
+        $this->assertCount(2, $matches[0], 'a bucket with nothing in it gets no slice');
+    }
+
     public function test_the_outcome_chart_columns_add_up_to_the_year(): void
     {
         $employee = $this->makeUser('employee');
@@ -262,7 +283,9 @@ class AdminDashboardTest extends TestCase
 
         $this->assertStringNotContainsString('<canvas', $html);
         $this->assertStringContainsString('<svg class="day-svg"', $html);
-        // Leave types and departments are bar charts; on leave is a line.
+        // Outcome is a pie; leave types and departments are bar charts; on
+        // leave is a line.
+        $this->assertStringContainsString('class="pie-slice', $html);
         $this->assertStringContainsString('class="bar-fill"', $html);
         $this->assertStringContainsString('class="day-stroke"', $html);
         // Every chart carries a table, so none of it is readable by colour alone.

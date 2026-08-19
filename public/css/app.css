@@ -1703,12 +1703,16 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
    indistinguishable; these clear 8 ΔE on every pair in both themes. Every
    chart also carries a "Show the numbers" table, so nothing on the page is
    readable by colour alone. */
-.key-approved{ background:#0f9d58; }
-.key-rejected{ background:#c02222; }
-.key-pending{ background:#d4a017; }
-:root[data-bs-theme="dark"] .key-approved{ background:#30a689; }
-:root[data-bs-theme="dark"] .key-rejected{ background:#cc3347; }
-:root[data-bs-theme="dark"] .key-pending{ background:#bc882f; }
+:root{ --seg-approved:#0f9d58; --seg-rejected:#c02222; --seg-pending:#d4a017; }
+:root[data-bs-theme="dark"]{
+  --seg-approved:#30a689; --seg-rejected:#cc3347; --seg-pending:#bc882f;
+}
+.key-approved{ background:var(--seg-approved); }
+.key-rejected{ background:var(--seg-rejected); }
+.key-pending{ background:var(--seg-pending); }
+.slice-approved{ fill:var(--seg-approved); }
+.slice-rejected{ fill:var(--seg-rejected); }
+.slice-pending{ fill:var(--seg-pending); }
 
 /* ---- Period switch: a radio group, revealed with :has() ------------------ */
 .an-switch{ display:flex; gap:.3rem; flex-wrap:wrap; }
@@ -1738,18 +1742,11 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   #an-types .pane-month{ display:block; }
 }
 
-/* ---- Legend & captions --------------------------------------------------- */
-.an-legend{
-  display:flex; gap:1.1rem; flex-wrap:wrap; font-size:.76rem;
-  color:var(--muted); margin-bottom:1rem;
-}
-.an-legend span{ display:flex; align-items:center; gap:.4rem; }
-.an-legend b{ color:var(--text); font-variant-numeric:tabular-nums; }
-.an-legend i{ width:.7rem; height:.7rem; border-radius:2px; flex:none; }
+/* ---- Captions ------------------------------------------------------------ */
 .chart-foot{ font-size:.72rem; color:var(--muted); margin:.9rem 0 0; }
 
 /* ---- Shared plot frame --------------------------------------------------- */
-.stackplot,.bar-plot,.day-plot{
+.bar-plot,.day-plot{
   display:grid; grid-template-columns:2.4rem minmax(0,1fr); gap:.55rem;
 }
 .day-axis{
@@ -1758,7 +1755,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   font-size:.66rem; color:var(--muted-2); font-variant-numeric:tabular-nums;
 }
 /* The plot area itself: four bands of hairline, and a firmer baseline. */
-.stack-cols,.bar-cols,.day-line{
+.bar-cols,.day-line{
   position:relative; height:var(--plot-h,220px); padding-bottom:1.5rem;
   border-bottom:1px solid var(--border-strong); min-width:0;
   background-image:repeating-linear-gradient(
@@ -1771,7 +1768,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   font-size:.67rem; color:var(--muted); white-space:nowrap; overflow:hidden;
   text-overflow:ellipsis;
 }
-.is-now > .day-label,.is-today > .day-label{ color:var(--primary); font-weight:700; }
+.is-today > .day-label{ color:var(--primary); font-weight:700; }
 
 /* Hover readout. Positioned over the plot, so it outranks the marks. */
 .day-tip{
@@ -1781,7 +1778,6 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   white-space:nowrap; opacity:0; pointer-events:none; transition:opacity .12s;
   z-index:5; box-shadow:0 6px 18px rgb(0 0 0 / .18);
 }
-.stack-col:hover > .day-tip,
 .bar-col:hover > .day-tip,
 .day-hit:hover > .day-tip{ opacity:1; }
 
@@ -1809,23 +1805,38 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 }
 .bar-col.is-muted .bar-value{ color:var(--muted); }
 
-/* ---- Stacked columns (applications by outcome) --------------------------- */
-.stack-cols{ display:flex; align-items:flex-end; gap:.5rem; }
-.stack-col{
-  flex:1; min-width:0; height:100%; position:relative;
-  display:flex; flex-direction:column; justify-content:flex-end;
+/* ---- Pie (applications by outcome) --------------------------------------- */
+.pie-wrap{ display:flex; align-items:center; gap:1.75rem; flex-wrap:wrap; }
+.pie{ flex:none; max-width:100%; overflow:visible; }
+/* A hairline of the card's own surface between slices, so two adjacent wedges
+   never touch and read as one. */
+.pie-slice{
+  stroke:var(--dash-surface,var(--surface)); stroke-width:1.2;
+  transition:opacity .15s;
 }
-.stack-col.is-empty{ opacity:.3; }
-.stack-col:hover .stack-bar{ filter:brightness(1.1); }
-.stack-bar{
-  display:flex; flex-direction:column; gap:2px; border-radius:5px 5px 0 0;
-  min-height:3px;
+.pie:hover .pie-slice{ opacity:.55; }
+.pie .pie-slice:hover{ opacity:1; }
+.pie-label{
+  font-size:8px; font-weight:700; fill:var(--text-2);
+  pointer-events:none; letter-spacing:-.02em;
 }
-/* A 2px gap of the card's own background separates the segments; a lone
-   segment fills the bar, which the stacked ones override with an explicit
-   flex value per series. */
-.stack-seg{ display:block; flex:1 1 0; min-height:2px; }
-.stack-bar .stack-seg:first-child{ border-radius:5px 5px 0 0; }
+.pie-key{ flex:1; min-width:11rem; display:flex; flex-direction:column; gap:.1rem; }
+.pie-total{ margin-bottom:.65rem; }
+.pie-total-value{
+  display:block; font-size:1.6rem; font-weight:700; letter-spacing:-.03em;
+  line-height:1.1; font-variant-numeric:tabular-nums; color:var(--text);
+}
+.pie-total-label{ font-size:.74rem; color:var(--muted); }
+.pie-row{
+  display:grid; grid-template-columns:.7rem minmax(0,1fr) auto 2.6rem;
+  align-items:center; gap:.6rem; padding:.32rem 0; font-size:.82rem;
+  border-bottom:1px solid var(--border);
+}
+.pie-row:last-child{ border-bottom:0; }
+.pie-dot{ width:.7rem; height:.7rem; border-radius:3px; }
+.pie-name{ color:var(--text-2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pie-value{ font-weight:700; font-variant-numeric:tabular-nums; }
+.pie-share{ text-align:right; color:var(--muted); font-variant-numeric:tabular-nums; }
 
 /* ---- Day line ------------------------------------------------------------ */
 .day-line{ color:var(--accent); }

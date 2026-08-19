@@ -35,16 +35,6 @@
         $months = $an_outcome['months'];
         $totals = $an_outcome['totals'];
         $thisMonth = $months[now()->month - 1];
-        // Four equal bands ending on a round number, matching the bar charts.
-        $peak = max(array_column($months, 'total'));
-        $step = 1;
-        foreach ([1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500] as $candidate) {
-            $step = $candidate;
-            if ($candidate * 4 >= $peak) {
-                break;
-            }
-        }
-        $ceiling = max(4, $step * 4);
 
         $onLeave = $an_on_leave;
     @endphp
@@ -83,53 +73,30 @@
     </div>
 
     {{-- ---------- Applications by outcome ---------- --}}
-    {{-- One stacked column per month. A column is the applications *filed* in
-         that month, split by how they ended up, so the columns add up to the
-         year and to the "filed this month" card above — one definition, not
-         three. Bars rather than a line because these are discrete events
-         counted per bucket: an empty month should read as an absent bar, not
-         as a line dipping to the floor and back. --}}
+    {{-- Part-to-whole with three slices, which is the one job a pie does well:
+         "what proportion of this year's applications ended up approved". A
+         slice counts the applications *filed* this year, grouped by how they
+         ended up, so the pie adds up to the "filed this year" figure — one
+         definition, not two. Cancelled applications are left out; a withdrawal
+         is not an outcome anybody decided.
+
+         The pie carries no second dimension on purpose. The month-by-month
+         detail is in the table underneath, where a reader can compare numbers
+         instead of squinting at wedge sizes. --}}
     <div class="dash-frame">
         <div class="dash-head">
-            <p class="dash-title"><i class="bi bi-bar-chart"></i>Applications by outcome</p>
+            <p class="dash-title"><i class="bi bi-pie-chart"></i>Applications by outcome</p>
             <span class="dash-link">filed in {{ now()->year }}</span>
         </div>
         <div class="dash-body">
-            <div class="an-legend">
-                <span><i class="key-approved"></i>Approved <b>{{ $totals['approved'] }}</b></span>
-                <span><i class="key-rejected"></i>Rejected <b>{{ $totals['rejected'] }}</b></span>
-                <span><i class="key-pending"></i>Awaiting <b>{{ $totals['pending'] }}</b></span>
-            </div>
-
-            <div class="stackplot" style="--plot-h:230px">
-                <div class="day-axis">
-                    @for ($i = 4; $i >= 0; $i--)
-                        <span>{{ (int) ($ceiling / 4 * $i) }}</span>
-                    @endfor
-                </div>
-                <div class="stack-cols">
-                    @foreach ($months as $month)
-                        <div class="stack-col {{ $month['total'] === 0 ? 'is-empty' : '' }} {{ $month['month'] === now()->month ? 'is-now' : '' }}">
-                            @if ($month['total'] > 0)
-                                <span class="day-tip">
-                                    <b>{{ $month['label'] }}</b> &middot; {{ $month['total'] }} filed<br>
-                                    {{ $month['approved'] }} approved &middot;
-                                    {{ $month['rejected'] }} rejected &middot;
-                                    {{ $month['pending'] }} awaiting
-                                </span>
-                                <div class="stack-bar" style="height:{{ round($month['total'] / $ceiling * 100, 1) }}%">
-                                    @foreach (['pending', 'rejected', 'approved'] as $bucket)
-                                        @if ($month[$bucket] > 0)
-                                            <span class="stack-seg key-{{ $bucket }}" style="flex:{{ $month[$bucket] }}"></span>
-                                        @endif
-                                    @endforeach
-                                </div>
-                            @endif
-                            <span class="day-label">{{ $month['label'] }}</span>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
+            @include('dashboard._pie_chart', [
+                'slices' => [
+                    ['key' => 'approved', 'label' => 'Approved', 'value' => $totals['approved']],
+                    ['key' => 'rejected', 'label' => 'Rejected', 'value' => $totals['rejected']],
+                    ['key' => 'pending', 'label' => 'Awaiting a decision', 'value' => $totals['pending']],
+                ],
+                'total' => $totals['total'],
+            ])
 
             <details class="an-numbers">
                 <summary>Show the numbers</summary>
