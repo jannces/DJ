@@ -84,7 +84,7 @@
         <div class="pie-key">
             <div class="pie-total">
                 <span class="pie-total-value">{{ number_format($total) }}</span>
-                <span class="pie-total-label">applications filed in {{ now()->year }}</span>
+                <span class="pie-total-label">applications filed</span>
             </div>
             @foreach ($drawn as $slice)
                 <div class="pie-row">

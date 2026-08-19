@@ -48,15 +48,14 @@
                 <span class="split-b" style="width:{{ $an_users['total'] ? round($an_users['officers'] / $an_users['total'] * 100, 1) : 0 }}%"></span>
             </div>
             <div class="kpi-hint">
-                {{ $an_users['employees'] }} with an employee record &middot;
-                {{ $an_users['officers'] }} without
+                {{ $an_users['employees'] }} employees &middot; {{ $an_users['officers'] }} other accounts
             </div>
         </div>
 
         <div class="kpi-card">
             <div class="kpi-label"><i class="bi bi-person-walking"></i>On leave today</div>
             <div class="kpi-value">{{ $onLeave['today'] }}</div>
-            <div class="kpi-hint">approved, and today falls inside the dates</div>
+            <div class="kpi-hint">approved leave only</div>
         </div>
 
         <div class="kpi-card">
@@ -68,7 +67,7 @@
         <div class="kpi-card">
             <div class="kpi-label"><i class="bi bi-hourglass-split"></i>Awaiting a decision</div>
             <div class="kpi-value">{{ $totals['pending'] }}</div>
-            <div class="kpi-hint">across every month of {{ now()->year }}</div>
+            <div class="kpi-hint">all of {{ now()->year }}</div>
         </div>
     </div>
 
@@ -91,7 +90,7 @@
             <div class="dash-frame">
                 <div class="dash-head">
                     <p class="dash-title"><i class="bi bi-pie-chart"></i>Applications by outcome</p>
-                    <span class="dash-link">filed in {{ now()->year }}</span>
+                    <span class="dash-link">{{ now()->year }} to date</span>
                 </div>
                 <div class="dash-body">
                     @include('dashboard._pie_chart', [
@@ -153,22 +152,20 @@
                 <div class="dash-body">
                     <div class="an-pane pane-today">
                         <div class="big-figure">{{ $onLeave['today'] }}</div>
-                        <div class="big-sub">on approved leave right now &mdash; a headcount, not a total</div>
+                        <div class="big-sub">on leave today</div>
                     </div>
 
                     <div class="an-pane pane-week">
                         <div class="big-figure">{{ $onLeave['week']['distinct'] }}</div>
                         <div class="big-sub">
-                            distinct employees out on at least one day this week &middot;
-                            peak {{ $onLeave['week']['peak'] }} in a day
+                            distinct employees this week &middot; peak {{ $onLeave['week']['peak'] }} in a day
                         </div>
                     </div>
 
                     <div class="an-pane pane-month">
                         <div class="big-figure">{{ $onLeave['month']['distinct'] }}</div>
                         <div class="big-sub">
-                            distinct employees out on at least one day in {{ now()->format('F') }} &middot;
-                            peak {{ $onLeave['month']['peak'] }} in a day
+                            distinct employees this month &middot; peak {{ $onLeave['month']['peak'] }} in a day
                         </div>
                     </div>
                 </div>
@@ -185,7 +182,6 @@
                 </div>
                 <div class="dash-body">
                     @include('dashboard._bar_chart', ['rows' => $an_departments])
-                    <p class="chart-foot">Hover a column for the headcount and the per-head rate.</p>
                 </div>
             </div>
         </div>
@@ -215,7 +211,6 @@
                     <div class="an-pane pane-year">
                         @include('dashboard._bar_chart_rows', ['rows' => $an_types_year])
                     </div>
-                    <p class="chart-foot">Every CSC leave type, busiest first &mdash; hover a row for its share of the period.</p>
                 </div>
             </div>
         </div>

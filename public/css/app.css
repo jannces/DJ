@@ -1720,9 +1720,11 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
    lighting effect and makes two slices of the same colour look different. */
 :root{
   --seg-approved:#0f9d58; --seg-rejected:#c02222; --seg-pending:#d4a017;
+  --grid-line:#dcd8e8;
 }
 :root[data-bs-theme="dark"]{
   --seg-approved:#30a689; --seg-rejected:#cc3347; --seg-pending:#bc882f;
+  --grid-line:#3a3154;
 }
 .key-approved{ background:var(--seg-approved); }
 .key-rejected{ background:var(--seg-rejected); }
@@ -1759,9 +1761,6 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   #an-types .pane-month{ display:block; }
 }
 
-/* ---- Captions ------------------------------------------------------------ */
-.chart-foot{ font-size:.72rem; color:var(--muted); margin:.9rem 0 0; }
-
 /* ---- Shared plot frame --------------------------------------------------- */
 .bar-plot{
   display:grid; grid-template-columns:2.4rem minmax(0,1fr); gap:.55rem;
@@ -1771,13 +1770,19 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   align-items:flex-end; padding-bottom:1.5rem; line-height:1;
   font-size:.66rem; color:var(--muted-2); font-variant-numeric:tabular-nums;
 }
-/* The plot area itself: four bands of hairline, and a firmer baseline. */
+/* The plot area itself: one hairline per tick, and a firmer baseline. Four
+   explicit layers rather than a repeating gradient, which drops the line at the
+   axis and rounds another away at some heights. */
 .bar-cols{
   position:relative; height:var(--plot-h,220px); padding-bottom:1.5rem;
   border-bottom:1px solid var(--border-strong); min-width:0;
-  background-image:repeating-linear-gradient(
-    to top, transparent 0 calc(25% - 1px), var(--border) calc(25% - 1px) 25%);
-  background-size:100% calc(100% - 1.5rem);
+  background-image:
+    linear-gradient(var(--grid-line),var(--grid-line)),
+    linear-gradient(var(--grid-line),var(--grid-line)),
+    linear-gradient(var(--grid-line),var(--grid-line)),
+    linear-gradient(var(--grid-line),var(--grid-line));
+  background-size:100% 1px;
+  background-position:0 0, 0 25%, 0 50%, 0 75%;
   background-repeat:no-repeat;
 }
 .chart-label{
@@ -1804,10 +1809,8 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   display:flex; flex-direction:column; justify-content:flex-end;
 }
 .bar-fill{
-  display:block; min-height:3px; border-radius:5px 5px 0 0;
-  background:linear-gradient(180deg,
-    var(--tone,var(--primary)) 0%,
-    color-mix(in srgb,var(--tone,var(--primary)) 68%,transparent) 100%);
+  display:block; min-height:3px; border-radius:4px 4px 0 0;
+  background:var(--tone,var(--primary));
   transition:filter .15s;
 }
 /* A type or department with nothing filed still gets a column, so the empty
@@ -1876,17 +1879,24 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   color:var(--tone,var(--muted)); font-variant-numeric:tabular-nums;
 }
 /* The gridlines live on the track, so they line up with the bars exactly
-   without a second element having to guess where the scale starts. */
+   without a second element having to guess where the scale starts. One 1px
+   layer per tick — a repeating gradient drops the line at the origin and
+   rounds another away on a narrow track. */
 .hbar-track{
   position:relative; height:1.05rem; border-radius:3px; overflow:hidden;
-  background-image:repeating-linear-gradient(
-    to right, transparent 0 calc(25% - 1px), var(--border) calc(25% - 1px) 25%);
+  background-image:
+    linear-gradient(var(--grid-line),var(--grid-line)),
+    linear-gradient(var(--grid-line),var(--grid-line)),
+    linear-gradient(var(--grid-line),var(--grid-line)),
+    linear-gradient(var(--grid-line),var(--grid-line)),
+    linear-gradient(var(--grid-line),var(--grid-line));
+  background-size:1px 100%;
+  background-position:0 0, 25% 0, 50% 0, 75% 0, 100% 0;
+  background-repeat:no-repeat;
 }
 .hbar-fill{
-  display:block; height:100%; min-width:2px; border-radius:0 4px 4px 0;
-  background:linear-gradient(90deg,
-    var(--tone,var(--primary)) 0%,
-    color-mix(in srgb,var(--tone,var(--primary)) 68%,transparent) 100%);
+  display:block; height:100%; min-width:2px; border-radius:0 3px 3px 0;
+  background:var(--tone,var(--primary));
   transition:filter .15s;
 }
 .hbar:hover .hbar-fill{ filter:brightness(1.12) saturate(1.1); }
