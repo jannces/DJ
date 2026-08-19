@@ -178,74 +178,43 @@
         </div>
     </div>
 
-    <div class="dash-row2">
-        {{-- ---------- Most applied leave type ---------- --}}
-        <div class="dash-frame" id="an-types">
-            <div class="dash-head">
-                <p class="dash-title"><i class="bi bi-bar-chart-line"></i>Most applied leave type</p>
-                <div class="an-switch">
-                    <label><input type="radio" name="types-window" id="types-month" checked>This month</label>
-                    <label><input type="radio" name="types-window" id="types-year">This year</label>
-                </div>
-            </div>
-            <div class="dash-body">
-                <div class="an-pane pane-month">
-                    @include('dashboard._bar_chart', ['rows' => $an_types_month, 'accent' => 'cyan'])
-                </div>
-                <div class="an-pane pane-year">
-                    @include('dashboard._bar_chart', ['rows' => $an_types_year, 'accent' => 'cyan'])
-                </div>
-                <p class="chart-foot">Codes are the CSC leave types &mdash; hover a column for the full name and its share.</p>
-            </div>
-        </div>
-
-        {{-- ---------- By department ---------- --}}
-        {{-- Per head is in the readout on purpose: the raw count only says
-             which department is biggest, not whether its people file more
-             often than anybody else's. --}}
-        <div class="dash-frame">
-            <div class="dash-head">
-                <p class="dash-title"><i class="bi bi-diagram-3"></i>Applications by department</p>
-                <span class="dash-link">{{ now()->year }} to date</span>
-            </div>
-            <div class="dash-body">
-                @include('dashboard._bar_chart', ['rows' => $an_departments, 'accent' => 'amber'])
-                <p class="chart-foot">Hover a column for the headcount and the per-head rate.</p>
-            </div>
-        </div>
-    </div>
-@endif
-
-{{-- ==================================================================== --}}
-{{-- System row — devices and alerts                                     --}}
-{{-- ==================================================================== --}}
-@if (! empty($system_row))
-    <div class="dash-frame">
+    {{-- ---------- Most applied leave type ---------- --}}
+    {{-- Every active leave type gets a column, including the ones nobody used:
+         a type with no applications is a real answer to "what do people apply
+         for", and a chart that silently omits it cannot be told apart from one
+         where the type does not exist. That is also why these two panels take
+         the full width rather than sharing a row. --}}
+    <div class="dash-frame" id="an-types">
         <div class="dash-head">
-            <p class="dash-title"><i class="bi bi-hdd-network"></i>System</p>
-            @can('security.dashboard')
-                <a href="{{ route('security.dashboard') }}" class="dash-link">Security dashboard &rarr;</a>
-            @endcan
+            <p class="dash-title"><i class="bi bi-bar-chart-line"></i>Most applied leave type</p>
+            <div class="an-switch">
+                <label><input type="radio" name="types-window" id="types-month" checked>This month</label>
+                <label><input type="radio" name="types-window" id="types-year">This year</label>
+            </div>
         </div>
         <div class="dash-body">
-            {{-- No headcount here: "Registered users" above already splits the
-                 accounts into those with an employee record and those without,
-                 and two counters of the same thing invite the question of why
-                 they disagree. --}}
-            <div class="trio">
-                <div>
-                    <div class="trio-label">Devices online</div>
-                    <div class="trio-value">{{ $cards['devices_online'] ?? 0 }}</div>
-                </div>
-                <div>
-                    <div class="trio-label">Devices offline</div>
-                    <div class="trio-value">{{ $cards['devices_offline'] ?? 0 }}</div>
-                </div>
-                <div>
-                    <div class="trio-label">Intrusions today</div>
-                    <div class="trio-value">{{ $cards['intrusions_today'] ?? 0 }}</div>
-                </div>
+            <div class="an-pane pane-month">
+                @include('dashboard._bar_chart', ['rows' => $an_types_month])
             </div>
+            <div class="an-pane pane-year">
+                @include('dashboard._bar_chart', ['rows' => $an_types_year])
+            </div>
+            <p class="chart-foot">Codes are the CSC leave types &mdash; hover a column for the full name and its share.</p>
+        </div>
+    </div>
+
+    {{-- ---------- By department ---------- --}}
+    {{-- Per head is in the readout on purpose: the raw count only says which
+         department is biggest, not whether its people file more often than
+         anybody else's. --}}
+    <div class="dash-frame">
+        <div class="dash-head">
+            <p class="dash-title"><i class="bi bi-diagram-3"></i>Applications by department</p>
+            <span class="dash-link">{{ now()->year }} to date</span>
+        </div>
+        <div class="dash-body">
+            @include('dashboard._bar_chart', ['rows' => $an_departments])
+            <p class="chart-foot">Hover a column for the headcount and the per-head rate.</p>
         </div>
     </div>
 @endif

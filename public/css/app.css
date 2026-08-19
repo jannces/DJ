@@ -1686,33 +1686,36 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
    views. The hue identifies the panel instead.
    ========================================================================== */
 
-/* ---- Panel accents ------------------------------------------------------- */
-/* Light steps validated against #ffffff, dark steps re-derived against the
-   dark surface rather than lightened from the light ones: all-pairs CVD
-   separation 16.9 ΔE light / 18.2 ΔE dark, every step inside the lightness
-   band and above the chroma floor, all clearing 3:1 on their surface. */
-.accent-violet{ --accent:#5341b8; --accent-soft:#efecfb; }
-.accent-cyan{   --accent:#0891b2; --accent-soft:#e6f6fa; }
-.accent-amber{  --accent:#a9640a; --accent-soft:#fbf1e2; }
-:root[data-bs-theme="dark"] .accent-violet{ --accent:#8574e6; --accent-soft:#241c44; }
-:root[data-bs-theme="dark"] .accent-cyan{   --accent:#29a1c2; --accent-soft:#102a33; }
-:root[data-bs-theme="dark"] .accent-amber{  --accent:#bc832f; --accent-soft:#2c2110; }
+/* ---- Chart colours ------------------------------------------------------- */
+/* Eight slots, computed rather than chosen. Every adjacent pair clears the
+   colour-blindness target — 15.1 ΔE in light, 9.8 ΔE in dark under a
+   deuteranopia simulation — every step sits inside the lightness band and above
+   the chroma floor, and the two lists are the same eight hue families, with the
+   dark steps re-derived against the dark surface rather than lightened from the
+   light ones. One step in each list falls just under 3:1 against its surface;
+   that is allowed only because every column prints its value above it and every
+   chart carries a table, so nothing here is read by colour alone. */
+.tone-0{ --tone:#188daa; }
+.tone-1{ --tone:#aa2718; }
+.tone-2{ --tone:#18aa4e; }
+.tone-3{ --tone:#aa187e; }
+.tone-4{ --tone:#6baa18; }
+.tone-5{ --tone:#5b1bbb; }
+.tone-6{ --tone:#aa7e18; }
+.tone-7{ --tone:#2c4c96; }
+:root[data-bs-theme="dark"] .tone-0{ --tone:#29a3c2; }
+:root[data-bs-theme="dark"] .tone-1{ --tone:#c64739; }
+:root[data-bs-theme="dark"] .tone-2{ --tone:#57a875; }
+:root[data-bs-theme="dark"] .tone-3{ --tone:#c6399c; }
+:root[data-bs-theme="dark"] .tone-4{ --tone:#7ba249; }
+:root[data-bs-theme="dark"] .tone-5{ --tone:#7139c6; }
+:root[data-bs-theme="dark"] .tone-6{ --tone:#a68330; }
+:root[data-bs-theme="dark"] .tone-7{ --tone:#3963c6; }
 
-/* Outcome series. The obvious dark trio (#34d399 / #fbbf24 / #fb7185) puts
-   green and red 4.6 ΔE apart under a deuteranopia simulation, which is
-   indistinguishable; these clear 8 ΔE on every pair in both themes. Every
-   chart also carries a "Show the numbers" table, so nothing on the page is
-   readable by colour alone. */
-:root{ --seg-approved:#0f9d58; --seg-rejected:#c02222; --seg-pending:#d4a017; }
-:root[data-bs-theme="dark"]{
-  --seg-approved:#30a689; --seg-rejected:#cc3347; --seg-pending:#bc882f;
-}
-.key-approved{ background:var(--seg-approved); }
-.key-rejected{ background:var(--seg-rejected); }
-.key-pending{ background:var(--seg-pending); }
-.slice-approved{ fill:var(--seg-approved); }
-.slice-rejected{ fill:var(--seg-rejected); }
-.slice-pending{ fill:var(--seg-pending); }
+/* The on-leave line keeps the brand hue: it is one series, so a categorical
+   slot would be saying something about a distinction that does not exist. */
+.accent-violet{ --accent:#5341b8; }
+:root[data-bs-theme="dark"] .accent-violet{ --accent:#8574e6; }
 
 /* ---- Period switch: a radio group, revealed with :has() ------------------ */
 .an-switch{ display:flex; gap:.3rem; flex-wrap:wrap; }
@@ -1765,7 +1768,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 }
 .day-label{
   position:absolute; bottom:-1.4rem; left:0; right:0; text-align:center;
-  font-size:.67rem; color:var(--muted); white-space:nowrap; overflow:hidden;
+  font-size:.65rem; color:var(--muted); white-space:nowrap; overflow:hidden;
   text-overflow:ellipsis;
 }
 .is-today > .day-label{ color:var(--primary); font-weight:700; }
@@ -1782,7 +1785,8 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .day-hit:hover > .day-tip{ opacity:1; }
 
 /* ---- Vertical bars (single hue per chart) -------------------------------- */
-.bar-cols{ display:flex; align-items:flex-end; gap:.7rem; }
+.bar-cols{ display:flex; align-items:flex-end; gap:.4rem; }
+@media (min-width:1200px){ .bar-cols{ gap:.55rem; } }
 .bar-col{
   flex:1; min-width:0; height:100%; position:relative;
   display:flex; flex-direction:column; justify-content:flex-end;
@@ -1790,17 +1794,21 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .bar-fill{
   display:block; min-height:3px; border-radius:5px 5px 0 0;
   background:linear-gradient(180deg,
-    var(--accent) 0%,
-    color-mix(in srgb,var(--accent) 62%,transparent) 100%);
+    var(--tone,var(--primary)) 0%,
+    color-mix(in srgb,var(--tone,var(--primary)) 68%,transparent) 100%);
   transition:filter .15s;
 }
+/* A type or department with nothing filed still gets a column, so the empty
+   ones read as "none" rather than "missing": a hairline stub and a grey zero. */
+.bar-col.is-zero .bar-fill{ background:var(--border-strong); }
+.bar-col.is-zero .bar-value{ color:var(--muted-2); font-weight:600; }
 .bar-col.is-muted .bar-fill{
   background:linear-gradient(180deg,
     var(--muted) 0%, color-mix(in srgb,var(--muted) 55%,transparent) 100%);
 }
 .bar-col:hover .bar-fill{ filter:brightness(1.12) saturate(1.1); }
 .bar-value{
-  font-size:.74rem; font-weight:700; text-align:center; color:var(--text-2);
+  font-size:.72rem; font-weight:700; text-align:center; color:var(--text-2);
   font-variant-numeric:tabular-nums; margin-bottom:.3rem;
 }
 .bar-col.is-muted .bar-value{ color:var(--muted); }
@@ -1840,7 +1848,10 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 
 /* ---- Day line ------------------------------------------------------------ */
 .day-line{ color:var(--accent); }
-.day-svg{ position:absolute; inset:0 0 1.5rem 0; width:100%; display:block; }
+.day-svg{
+  position:absolute; top:0; left:0; display:block;
+  width:100%; height:calc(100% - 1.5rem);
+}
 .day-fill{ stroke:none; }
 .day-fill.is-future{ opacity:.45; }
 .day-stroke{
@@ -1888,11 +1899,6 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .an-numbers .table-responsive{ margin-top:.6rem; }
 
 /* ---- Layout helpers ------------------------------------------------------ */
-.dash-row2{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
-@media (max-width:992px){ .dash-row2{ grid-template-columns:minmax(0,1fr); } }
-.dash-row2 .dash-frame{ display:flex; flex-direction:column; }
-.dash-row2 .dash-body{ flex:1; }
-
 /* ---- Print --------------------------------------------------------------- */
 @media print{
   /* Only one pane of a switch is on screen; on paper show them all, since

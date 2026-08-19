@@ -7,21 +7,21 @@
      * used, or a department that filed nothing, belongs as an absent column
      * rather than a line dipping to the floor and back.
      *
-     * One hue per chart, not one per column. The column height already carries
-     * the magnitude, so colouring each column differently would imply a
-     * category difference that is not there — and it would repaint the
-     * survivors every time the ranking changed between the month and year
-     * views. The hue instead identifies the panel.
+     * Each column carries its own colour, keyed to the row's identity rather
+     * than to its rank — so a leave type keeps its colour when the ranking
+     * shifts between the month and the year view, instead of the whole chart
+     * repainting. Colour is decorative here, not the encoding: every column is
+     * labelled with its code and its count, and the eight slots wrap, so two
+     * distant columns may share a hue without any ambiguity.
      *
      * Expects:
      *   $rows    array of ['label' => short, 'name' => full, 'value' => int,
-     *                      'note' => string|null, 'muted' => bool]
-     *   $accent  'cyan' | 'amber' | 'violet' — the panel's hue
+     *                      'note' => string|null, 'tone' => int|null,
+     *                      'muted' => bool]
      *   $height  plot height in px
      */
     $rows = array_values($rows);
     $height = $height ?? 210;
-    $accent = $accent ?? 'violet';
 
     $peak = $rows ? max(array_column($rows, 'value')) : 0;
 
@@ -37,7 +37,7 @@
     $ceiling = max(4, $step * 4);
 @endphp
 
-<div class="bar-plot accent-{{ $accent }}" style="--plot-h:{{ $height }}px">
+<div class="bar-plot" style="--plot-h:{{ $height }}px">
     <div class="day-axis">
         @for ($i = 4; $i >= 0; $i--)
             <span>{{ (int) ($ceiling / 4 * $i) }}</span>
@@ -46,7 +46,7 @@
 
     <div class="bar-cols">
         @forelse ($rows as $row)
-            <div class="bar-col {{ ! empty($row['muted']) ? 'is-muted' : '' }}">
+            <div class="bar-col {{ ! empty($row['muted']) ? 'is-muted' : 'tone-'.($row['tone'] ?? 0) }} {{ $row['value'] === 0 ? 'is-zero' : '' }}">
                 <span class="day-tip">
                     <b>{{ $row['name'] }}</b> &middot; {{ $row['value'] }}
                     {{ $row['value'] === 1 ? 'application' : 'applications' }}

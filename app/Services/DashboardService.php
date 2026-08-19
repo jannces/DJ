@@ -2,12 +2,12 @@
 
 namespace App\Services;
 
-use App\Models\AuthorizedDevice;
 use App\Models\Department;
 use App\Models\EmployeeProfile;
 use App\Models\IntrusionLog;
 use App\Models\LeaveBalance;
 use App\Models\LeaveRequest;
+use App\Models\LeaveType;
 use App\Models\User;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
@@ -22,30 +22,16 @@ class DashboardService
      */
     public const OPEN_STATUSES = ['pending', 'dept_review', 'hr_review', 'final_review', 'returned'];
 
+    /**
+     * How many distinct chart colours the stylesheet defines. Slots are keyed
+     * to a row's own identity rather than to its rank, so a leave type keeps
+     * its colour when the ranking shifts between the month and the year view.
+     */
+    public const TONES = 8;
+
     public function forUser(User $user): array
     {
-        $data = ['role' => $this->primaryRole($user), 'cards' => [], 'charts' => []];
-
-        // System counters. These belong to whoever runs the installation, not to
-        // whoever decides leave, so they are gated on their own permissions.
-        if ($user->hasPermission('security.dashboard') || $user->hasPermission('users.manage')) {
-            $data['cards'] += [
-                'employees' => EmployeeProfile::count(),
-                'pending_leaves' => LeaveRequest::whereIn('status', self::OPEN_STATUSES)->count(),
-                'intrusions_today' => IntrusionLog::whereDate('created_at', today())->count(),
-                'devices_online' => AuthorizedDevice::active()->where('last_active_at', '>', now()->subMinutes(5))->count(),
-                'devices_offline' => AuthorizedDevice::active()->where(fn ($q) => $q->whereNull('last_active_at')->orWhere('last_active_at', '<=', now()->subMinutes(5)))->count(),
-            ];
-            $data['system_row'] = true;
-        }
-
-        if ($user->hasPermission('leave.requests.view-all') || $user->hasPermission('leave.certify.hr')) {
-            $data['cards'] += [
-                'total_requests' => LeaveRequest::count(),
-                'approved' => LeaveRequest::where('status', 'approved')->count(),
-                'departments' => Department::count(),
-            ];
-        }
+        $data = ['cards' => []];
 
         // Employee self-service cards. The dashboard is now the single place an
         // employee sees leave credits, so it also carries the credit ledger that
@@ -63,12 +49,11 @@ class DashboardService
         }
 
         // Leave analytics for the administrator's Dashboard — the plain one,
-        // not the Security Dashboard. It rendered two counters before this and
-        // discarded the rest of what this service already computed.
+        // not the Security Dashboard, which rendered two counters before this.
         //
-        // Gated with the system counters above rather than on a leave
-        // permission: these are read-only aggregates about the installation,
-        // and the administrator holds none of the leave permissions.
+        // Gated on the administration permissions rather than on a leave one:
+        // these are read-only aggregates about the installation, and the
+        // administrator holds none of the leave permissions.
         if ($user->hasPermission('security.dashboard') || $user->hasPermission('users.manage')) {
             $data['leave_analytics'] = true;
             $data['an_users'] = $this->registeredUsers();
@@ -80,11 +65,6 @@ class DashboardService
         }
 
         return $data;
-    }
-
-    public function primaryRole(User $user): string
-    {
-        return app(\App\Services\Rbac\RbacService::class)->userRoleSlugs($user)->first() ?? 'employee';
     }
 
     /** Accounts on the system, split into those with an employee record and those without. */
@@ -247,48 +227,64 @@ class DashboardService
     }
 
     /**
-     * Leave types ranked by how many applications name them, in a window.
+     * Every active leave type, ranked by how many applications name it.
+     *
+     * Every type, not just the busy ones: a leave nobody filed for is a real
+     * answer to "what do people apply for", and a chart that silently omits it
+     * cannot be told apart from one where the type does not exist.
      *
      * Applications, not days: "most applied for" and "most days taken" are
      * different questions and only one of them was asked.
      *
-     * Shaped for the bar-chart partial — the code is the axis label, the full
-     * name and the share are the hover readout.
+     * The colour slot is keyed to the type's own id, not to its rank, so a type
+     * keeps its colour when the ranking changes between the month and the year
+     * view. There are more leave types than slots, so two can share a colour —
+     * harmless, because every column is labelled with its code and its count.
      */
-    public function mostAppliedTypes(CarbonInterface $from, CarbonInterface $to, string $period = '', int $limit = 6): array
+    public function mostAppliedTypes(CarbonInterface $from, CarbonInterface $to, string $period = ''): array
     {
-        $rows = LeaveRequest::query()
+        $counts = LeaveRequest::query()
             ->whereBetween('date_filed', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
             ->selectRaw('leave_type_id, count(*) as total')
             ->groupBy('leave_type_id')
-            ->orderByDesc('total')
-            ->limit($limit)
-            ->with('leaveType:id,name,code')
-            ->get();
+            ->pluck('total', 'leave_type_id');
 
-        $overall = (int) $rows->sum('total');
+        $types = LeaveType::query()->active()->orderBy('id')->get(['id', 'code', 'name']);
+        $overall = (int) $counts->sum();
 
-        return $rows->map(function ($row) use ($overall, $period) {
-            $share = $overall > 0 ? round((int) $row->total / $overall * 100) : 0;
+        $rows = $types->values()->map(function ($type, $slot) use ($counts, $overall, $period) {
+            $value = (int) ($counts[$type->id] ?? 0);
+            $share = $overall > 0 ? round($value / $overall * 100) : 0;
 
             return [
-                'label' => $row->leaveType?->code ?? '—',
-                'name' => $row->leaveType?->name ?? 'Unknown leave type',
-                'value' => (int) $row->total,
-                'note' => $share.'% of applications '.$period,
+                'label' => $type->code,
+                'name' => $type->name,
+                'value' => $value,
+                'note' => $value > 0
+                    ? $share.'% of applications '.$period
+                    : 'Nothing filed '.$period,
+                'tone' => $slot % self::TONES,
                 'muted' => false,
             ];
         })->all();
+
+        usort($rows, fn ($a, $b) => [$b['value'], $a['label']] <=> [$a['value'], $b['label']]);
+
+        return $rows;
     }
 
     /**
-     * Applications per department, with a per-head figure in the readout.
+     * Every department, ranked by applications filed, with a per-head figure in
+     * the readout.
      *
      * The raw count only says which department is biggest. Per head says
      * whether its people actually file more often, which is the question
-     * somebody would act on. Employees with no department are reported as
-     * "Unassigned" rather than dropped — a silent gap looks like nothing is
-     * wrong.
+     * somebody would act on. A department that filed nothing still gets a
+     * column — an absent bar is an answer; a missing one is a blank.
+     *
+     * Employees with no department are reported as "Unassigned" rather than
+     * dropped, and only when there is something to report: a silent gap looks
+     * like nothing is wrong.
      */
     public function applicationsByDepartment(CarbonInterface $from, CarbonInterface $to): array
     {
@@ -299,37 +295,56 @@ class DashboardService
             ->groupBy('employee_profiles.department_id')
             ->pluck('total', 'department_id');
 
-        if ($filings->isEmpty()) {
-            return [];
-        }
-
         $staff = EmployeeProfile::query()
             ->selectRaw('department_id, count(*) as total')
             ->groupBy('department_id')
             ->pluck('total', 'department_id');
 
-        $names = Department::pluck('name', 'id');
-        $codes = Department::pluck('code', 'id');
+        $departments = Department::orderBy('id')->get(['id', 'code', 'name']);
 
-        $rows = $filings->map(function ($total, $departmentId) use ($names, $codes, $staff) {
-            $known = isset($names[$departmentId]);
-            $headcount = (int) ($staff[$departmentId] ?? 0);
-            $perHead = $headcount > 0 ? round((int) $total / $headcount, 1) : null;
+        $rows = $departments->values()->map(function ($department, $slot) use ($filings, $staff) {
+            $value = (int) ($filings[$department->id] ?? 0);
+            $headcount = (int) ($staff[$department->id] ?? 0);
+            $perHead = $headcount > 0 ? round($value / $headcount, 1) : null;
 
             return [
-                'label' => $known ? ($codes[$departmentId] ?: $names[$departmentId]) : 'None',
-                'name' => $known ? $names[$departmentId] : 'Unassigned',
-                'value' => (int) $total,
+                'label' => $department->code ?: $department->name,
+                'name' => $department->name,
+                'value' => $value,
                 'staff' => $headcount,
                 'per_head' => $perHead,
-                'note' => $known
-                    ? $headcount.' staff'.($perHead !== null ? ' · '.$perHead.' per head' : '')
-                    : 'Employees with no department set',
-                'muted' => ! $known,
+                'note' => $headcount.($headcount === 1 ? ' employee' : ' employees')
+                    .($perHead !== null ? ' · '.$perHead.' per head' : ''),
+                'tone' => $slot % self::TONES,
+                'muted' => false,
             ];
-        })->values()->all();
+        })->all();
 
-        usort($rows, fn ($a, $b) => $b['value'] <=> $a['value']);
+        // "" is how a null department_id comes back from pluck.
+        $strayFilings = (int) ($filings[''] ?? 0);
+        $strayStaff = (int) ($staff[''] ?? 0);
+        if ($strayFilings > 0 || $strayStaff > 0) {
+            $rows[] = [
+                'label' => 'None',
+                'name' => 'Unassigned',
+                'value' => $strayFilings,
+                'staff' => $strayStaff,
+                'per_head' => $strayStaff > 0 ? round($strayFilings / $strayStaff, 1) : null,
+                'note' => $strayStaff.($strayStaff === 1 ? ' employee' : ' employees').' with no department set',
+                'tone' => null,
+                'muted' => true,
+            ];
+        }
+
+        usort($rows, function ($a, $b) {
+            // Unassigned is a data problem, not a department: it sorts last
+            // whatever its count, so it never reads as the busiest office.
+            if ($a['muted'] !== $b['muted']) {
+                return $a['muted'] <=> $b['muted'];
+            }
+
+            return [$b['value'], $a['label']] <=> [$a['value'], $b['label']];
+        });
 
         return $rows;
     }

@@ -63,10 +63,7 @@ class AdminDashboardTest extends TestCase
             ->assertSee('Applications by outcome')
             ->assertSee('Employees on leave')
             ->assertSee('Most applied leave type')
-            ->assertSee('Applications by department')
-            // ...alongside the system figures the view used to throw away.
-            ->assertSee('Devices online')
-            ->assertSee('Intrusions today');
+            ->assertSee('Applications by department');
     }
 
     public function test_an_employee_sees_none_of_it(): void
@@ -75,7 +72,6 @@ class AdminDashboardTest extends TestCase
             ->assertOk()
             ->assertDontSee('Applications by outcome')
             ->assertDontSee('Applications by department')
-            ->assertDontSee('Devices online')
             // ...but keeps their own page.
             ->assertSee('Credit summary');
     }
@@ -273,12 +269,70 @@ class AdminDashboardTest extends TestCase
     }
 
     /**
+     * Every leave type gets a column, including the ones nobody used. A type
+     * with no applications is a real answer to "what do people apply for"; a
+     * chart that silently drops it cannot be told apart from one where the type
+     * does not exist at all.
+     */
+    public function test_every_active_leave_type_gets_a_column(): void
+    {
+        $employee = $this->makeUser('employee');
+        $this->file($employee, 'approved', now()->toDateString(), now()->toDateString());
+
+        $rows = app(DashboardService::class)
+            ->mostAppliedTypes(now()->startOfMonth(), now()->endOfMonth(), 'this month');
+
+        $active = LeaveType::where('active', true)->count();
+        $this->assertCount($active, $rows, 'every active leave type belongs on the chart');
+        $this->assertSame(1, $rows[0]['value'], 'the busiest type sorts first');
+        $this->assertSame(0, end($rows)['value'], 'the unused ones sort last, at zero');
+    }
+
+    /**
+     * Colour is keyed to the row's own identity, not to its rank, so switching
+     * between This month and This year does not repaint the whole chart.
+     */
+    public function test_a_leave_type_keeps_its_colour_when_the_ranking_changes(): void
+    {
+        $employee = $this->makeUser('employee');
+        $sl = LeaveType::where('code', 'SL')->firstOrFail();
+
+        // VL leads the year, SL leads the month.
+        $this->file($employee, 'approved',
+            now()->startOfYear()->toDateString(), now()->startOfYear()->toDateString());
+        foreach ([0, 1] as $offset) {
+            LeaveRequest::factory()->create([
+                'user_id' => $employee->id,
+                'leave_type_id' => $sl->id,
+                'status' => 'approved',
+                'date_filed' => now()->startOfMonth()->addDays($offset)->toDateString(),
+                'start_date' => now()->startOfMonth()->addDays($offset)->toDateString(),
+                'end_date' => now()->startOfMonth()->addDays($offset)->toDateString(),
+            ]);
+        }
+
+        $service = app(DashboardService::class);
+        $month = collect($service->mostAppliedTypes(now()->startOfMonth(), now()->endOfMonth(), 'm'));
+        $year = collect($service->mostAppliedTypes(now()->startOfYear(), now()->endOfYear(), 'y'));
+
+        $this->assertSame('SL', $month->first()['label']);
+        $this->assertSame(
+            $month->firstWhere('label', 'SL')['tone'],
+            $year->firstWhere('label', 'SL')['tone'],
+            'a leave type that moves down the ranking must keep its colour'
+        );
+    }
+
+    /**
      * The panels are drawn in HTML and inline SVG. No canvas means no Chart.js
      * on this page, and no way to reproduce the runaway-growth bug the Security
      * Dashboard had.
      */
     public function test_the_analytics_need_no_script_and_no_canvas(): void
     {
+        $this->file($this->makeUser('employee'), 'approved',
+            now()->toDateString(), now()->toDateString());
+
         $html = $this->visit('system-admin')->assertOk()->getContent();
 
         $this->assertStringNotContainsString('<canvas', $html);
