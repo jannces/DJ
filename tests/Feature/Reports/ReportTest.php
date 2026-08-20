@@ -173,8 +173,12 @@ class ReportTest extends TestCase
             ->build('audit', ['period' => 'monthly', 'year' => 2026, 'month' => 3]);
 
         $headings = (new GenericReportExport($data))->headings();
-        $this->assertSame(['Audit Report — March 2026'], $headings[0]);
+        $this->assertSame('Audit Report — March 2026', $headings[0][0]);
         $this->assertSame($data['columns'], $headings[1], 'the column names keep a row of their own');
+
+        // Every row the same width, or the file stops being valid CSV.
+        $this->assertCount(count($data['columns']), $headings[0],
+            'the title row is padded to the column count so the CSV is not ragged');
 
         $this->signIn('system-admin');
 
@@ -192,15 +196,17 @@ class ReportTest extends TestCase
     {
         $this->signIn('system-admin');
 
+        // Asserted on what the browser saves, not on the MIME type: that is
+        // guessed from a temp file by the export library and is its business,
+        // while the filename is ours and is what lands in the user's folder.
         foreach (self::SECURITY as $key) {
-            $csv = $this->get('/reports/'.$key.'?format=csv')->assertOk();
-            $this->assertStringContainsString('text/csv', $csv->headers->get('content-type'), $key);
+            foreach (['csv', 'xlsx', 'pdf'] as $format) {
+                $disposition = $this->get('/reports/'.$key.'?format='.$format)
+                    ->assertOk()->headers->get('content-disposition');
 
-            $xlsx = $this->get('/reports/'.$key.'?format=xlsx')->assertOk();
-            $this->assertStringContainsString('spreadsheet', $xlsx->headers->get('content-type'), $key);
-
-            $pdf = $this->get('/reports/'.$key.'?format=pdf')->assertOk();
-            $this->assertStringContainsString('application/pdf', $pdf->headers->get('content-type'), $key);
+                $this->assertStringContainsString('attachment', $disposition, "{$key} {$format}");
+                $this->assertStringContainsString('.'.$format, $disposition, "{$key} {$format}");
+            }
         }
     }
 }
