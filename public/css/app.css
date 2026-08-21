@@ -1997,3 +1997,79 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .back-link i{ font-size:.9rem; line-height:1; }
 
 @media print{ .back-link,.page-head-actions{ display:none !important; } }
+
+/* ============================================================================
+   USER FORM — create / edit an account
+   ----------------------------------------------------------------------------
+   Scoped to this page. The form was stretching across the full width of a wide
+   monitor, which puts a name field a hand's width from its own label, while the
+   Roles card and the Save button sat alone in a tall empty column. A form is
+   read down, so it gets a reading width, and the column beside it sticks so the
+   button is in reach wherever you are in the page.
+   ========================================================================== */
+.user-form{ max-width:72rem; }
+.user-form-grid{
+  display:grid; grid-template-columns:minmax(0,1fr) 19rem; gap:1.25rem;
+  align-items:start;
+}
+@media (max-width:1100px){ .user-form-grid{ grid-template-columns:minmax(0,1fr); } }
+.user-form-main{ display:flex; flex-direction:column; gap:1rem; min-width:0; }
+.user-form-side{ display:flex; flex-direction:column; gap:1rem; }
+@media (min-width:1101px){
+  .user-form-side{ position:sticky; top:1rem; }
+}
+.user-form .card{ margin-bottom:0; }
+.user-form .card-header{
+  display:flex; align-items:baseline; justify-content:space-between; gap:.75rem;
+  flex-wrap:wrap;
+}
+.card-note{ font-size:.74rem; font-weight:400; color:var(--muted); }
+
+/* A required field says so in its label, not only when you get it wrong. */
+.user-form .req{ color:var(--danger); font-weight:700; margin-left:.1rem; }
+.user-form .form-label{ font-size:.8rem; font-weight:600; margin-bottom:.3rem; }
+.user-form .form-text{ font-size:.72rem; margin-top:.2rem; }
+
+/* ---- Roles ---------------------------------------------------------------- */
+.role-list{ display:flex; flex-direction:column; gap:.15rem; }
+.role-option{
+  display:flex; align-items:flex-start; gap:.6rem; cursor:pointer; margin:0;
+  padding:.5rem .6rem; border-radius:.5rem; border:1px solid transparent;
+  transition:background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.role-option:hover{ background:var(--surface-2); }
+.role-option:has(input:checked){
+  background:color-mix(in srgb,var(--primary) 8%,transparent);
+  border-color:color-mix(in srgb,var(--primary) 35%,transparent);
+}
+.role-option:focus-within{ outline:2px solid var(--primary); outline-offset:1px; }
+.role-option input{ margin-top:.2rem; flex:none; }
+.role-name{ display:block; font-size:.85rem; font-weight:600; }
+.role-desc{ display:block; font-size:.72rem; color:var(--muted); line-height:1.35; }
+.is-invalid-group{
+  border:1px solid var(--danger); border-radius:.55rem; padding:.35rem;
+}
+
+/* ---- Actions -------------------------------------------------------------- */
+.user-form-actions{
+  display:flex; flex-direction:column; gap:.5rem;
+  padding:.9rem; border:1px solid var(--border); border-radius:var(--r-lg);
+  background:var(--surface);
+}
+.user-form-actions .btn{ width:100%; }
+
+/* ---- Permission overrides ------------------------------------------------- */
+.perm-module{ margin-bottom:.9rem; }
+.perm-module-name{
+  font-size:.66rem; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--muted); font-weight:600; margin-bottom:.2rem;
+}
+.perm-row{
+  display:grid; grid-template-columns:minmax(0,1fr) 5rem 5rem;
+  align-items:center; gap:.5rem; font-size:.82rem;
+  padding:.3rem 0; border-bottom:1px solid var(--border);
+}
+.perm-row:last-child{ border-bottom:0; }
+.perm-name{ overflow:hidden; text-overflow:ellipsis; }
+.perm-allow{ color:var(--success); margin:0; }
+.perm-deny{ color:var(--danger); margin:0; }

@@ -11,9 +11,33 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Role extends Model
 {
     use Auditable;
+
+    /**
+     * The roles a user account can actually be given, in the order they are
+     * offered.
+     *
+     * Department Head is organisational structure, not an account type — it
+     * holds no permission of its own since the approval workflow stopped using
+     * it. Super Admin is the unrestricted platform owner and is not something
+     * an administrator hands out from a form; it is set up once, at install.
+     * Neither belongs in a picker, and neither is accepted from a submission —
+     * see UserController, which validates against this list rather than
+     * against every row in the table.
+     */
+    public const ASSIGNABLE = ['mayor', 'vice-mayor', 'hr', 'employee', 'system-admin'];
+
     protected $fillable = ['name', 'slug', 'description', 'parent_id', 'is_system'];
 
     protected $casts = ['is_system' => 'boolean'];
+
+    /** The roles an administrator may hand out, in the declared order. */
+    public function scopeAssignable($query)
+    {
+        return $query->whereIn('slug', self::ASSIGNABLE)
+            ->orderByRaw('CASE slug '.collect(self::ASSIGNABLE)
+                ->map(fn ($slug, $i) => "WHEN '{$slug}' THEN {$i}")
+                ->implode(' ').' ELSE 99 END');
+    }
 
     public function permissions(): BelongsToMany
     {

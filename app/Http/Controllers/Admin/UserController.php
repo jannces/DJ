@@ -15,6 +15,8 @@ use App\Services\Rbac\RbacService;
 use App\Services\Security\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -53,36 +55,79 @@ class UserController extends Controller
     {
         return view('admin.users.form', [
             'user' => new User,
-            'roles' => Role::orderBy('name')->get(),
+            'roles' => Role::assignable()->get(),
             'departments' => Department::orderBy('name')->get(),
             'positions' => Position::orderBy('title')->get(),
             'assignedRoles' => [],
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    /** Civil status and employment status are closed lists, not free text. */
+    public const CIVIL_STATUSES = ['single', 'married', 'widowed', 'separated', 'annulled'];
+
+    public const EMPLOYMENT_STATUSES = ['permanent', 'casual', 'contractual', 'coterminous'];
+
+    /**
+     * Every field the CSC Form 6 header is built from, and the shape each one
+     * has to be in.
+     *
+     * These were nearly all `nullable` before, so an account could be created
+     * with no department, no position and no hire date — and the leave form it
+     * later produces prints those straight onto the sheet. A blank there is not
+     * caught until somebody is holding the paper.
+     */
+    private function profileRules(): array
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'username' => ['required', 'alpha_dash', 'max:255', 'unique:users,username'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'roles' => ['array'],
-            'roles.*' => ['exists:roles,id'],
-            'employee_no' => ['required', 'string', 'max:50', 'unique:employee_profiles,employee_no'],
+        return [
             'first_name' => ['required', 'string', 'max:100'],
             'middle_name' => ['nullable', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
-            'gender' => ['nullable', 'in:male,female'],
-            'civil_status' => ['nullable', 'string', 'max:20'],
-            'birth_date' => ['nullable', 'date'],
-            'contact_no' => ['nullable', 'string', 'max:30'],
-            'address' => ['nullable', 'string', 'max:255'],
-            'salary' => ['required', 'numeric', 'min:0'],
-            'department_id' => ['nullable', 'exists:departments,id'],
-            'position_id' => ['nullable', 'exists:positions,id'],
-            'employment_status' => ['required', 'string', 'max:30'],
-            'date_hired' => ['nullable', 'date'],
-        ]);
+            'gender' => ['required', 'in:male,female'],
+            'civil_status' => ['required', 'in:'.implode(',', self::CIVIL_STATUSES)],
+            // Nobody in service was born this century's last few years, and
+            // nobody was hired before they were born.
+            'birth_date' => ['required', 'date', 'before:-15 years'],
+            'contact_no' => ['required', 'string', 'max:30', 'regex:/^[0-9+()\-\s]{7,30}$/'],
+            'address' => ['required', 'string', 'max:255'],
+            'department_id' => ['required', 'exists:departments,id'],
+            'position_id' => ['required', 'exists:positions,id'],
+            'employment_status' => ['required', 'in:'.implode(',', self::EMPLOYMENT_STATUSES)],
+            'salary' => ['required', 'numeric', 'min:0', 'max:9999999.99'],
+            'date_hired' => ['required', 'date', 'before_or_equal:today', 'after:birth_date'],
+        ];
+    }
+
+    /** Only the five roles the form offers are accepted from a submission. */
+    private function roleRules(): array
+    {
+        return [
+            'roles' => ['required', 'array', 'min:1'],
+            'roles.*' => ['integer', Rule::exists('roles', 'id')->where(
+                fn ($q) => $q->whereIn('slug', Role::ASSIGNABLE)
+            )],
+        ];
+    }
+
+    private static function messages(): array
+    {
+        return [
+            'roles.required' => 'Choose at least one role for this account.',
+            'roles.*.exists' => 'That role cannot be assigned from this form.',
+            'contact_no.regex' => 'Use digits, spaces, brackets, + or - only.',
+            'birth_date.before' => 'The birth date does not look like an employee of working age.',
+            'date_hired.after' => 'The hire date cannot be before the birth date.',
+            'date_hired.before_or_equal' => 'The hire date cannot be in the future.',
+        ];
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $data = $request->validate(array_merge([
+            'name' => ['required', 'string', 'max:255'],
+            'username' => ['required', 'alpha_dash', 'min:3', 'max:255', 'unique:users,username'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'employee_no' => ['required', 'string', 'max:50', 'unique:employee_profiles,employee_no'],
+        ], $this->roleRules(), $this->profileRules()), self::messages());
 
         $tempPassword = Str::password(14);
         $user = User::create([
@@ -95,8 +140,11 @@ class UserController extends Controller
             'email_verified_at' => now(),
         ]);
 
-        $user->employeeProfile()->create($data + ['user_id' => $user->id]);
-        $this->rbac->syncUserRoles($user, $data['roles'] ?? []);
+        // Only profile columns, rather than everything that came off the form.
+        $user->employeeProfile()->create(
+            Arr::only($data, array_merge(['employee_no'], array_keys($this->profileRules())))
+        );
+        $this->rbac->syncUserRoles($user, $this->keepUnassignable($user, $data['roles']));
         $this->audit->log('user_created', $user, [], ['email' => $user->email, 'temp_password' => '[GENERATED]']);
 
         return redirect()->route('users.index')
@@ -109,7 +157,7 @@ class UserController extends Controller
 
         return view('admin.users.form', [
             'user' => $user,
-            'roles' => Role::orderBy('name')->get(),
+            'roles' => Role::assignable()->get(),
             'departments' => Department::orderBy('name')->get(),
             'positions' => Position::orderBy('title')->get(),
             'permissions' => Permission::orderBy('module')->get()->groupBy('module'),
@@ -121,23 +169,18 @@ class UserController extends Controller
 
     public function update(Request $request, User $user): RedirectResponse
     {
-        $data = $request->validate([
+        // The same rules as create, minus the fields that are set once. Gender,
+        // civil status, birth date and hire date used to be missing here
+        // entirely, so the form collected them and the update silently dropped
+        // them — they could never be corrected after the account was made.
+        $data = $request->validate(array_merge([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email,'.$user->id],
-            'salary' => ['required', 'numeric', 'min:0'],
-            'first_name' => ['required', 'string', 'max:100'],
-            'middle_name' => ['nullable', 'string', 'max:100'],
-            'last_name' => ['required', 'string', 'max:100'],
-            'department_id' => ['nullable', 'exists:departments,id'],
-            'position_id' => ['nullable', 'exists:positions,id'],
-            'employment_status' => ['required', 'string', 'max:30'],
-            'contact_no' => ['nullable', 'string', 'max:30'],
-            'address' => ['nullable', 'string', 'max:255'],
-        ]);
+        ], $this->profileRules()), self::messages());
 
         $old = $user->getAttributes();
         $user->update(['name' => $data['name'], 'email' => $data['email']]);
-        $user->employeeProfile?->update($data);
+        $user->employeeProfile?->update(Arr::only($data, array_keys($this->profileRules())));
         $this->audit->log('user_updated', $user, $old, $user->getChanges());
 
         return redirect()->route('users.index')->with('status', 'User updated.');
@@ -150,13 +193,12 @@ class UserController extends Controller
             return back()->with('error', 'You cannot change your own roles or permissions.');
         }
 
-        $data = $request->validate([
-            'roles' => ['array'], 'roles.*' => ['exists:roles,id'],
+        $data = $request->validate(array_merge($this->roleRules(), [
             'allow' => ['array'], 'allow.*' => ['exists:permissions,id'],
             'deny' => ['array'], 'deny.*' => ['exists:permissions,id'],
-        ]);
+        ]), self::messages());
 
-        $this->rbac->syncUserRoles($user, $data['roles'] ?? []);
+        $this->rbac->syncUserRoles($user, $this->keepUnassignable($user, $data['roles']));
 
         $pivot = [];
         foreach ($data['allow'] ?? [] as $id) {
@@ -170,6 +212,26 @@ class UserController extends Controller
         $this->audit->log('user_access_changed', $user, [], $data);
 
         return back()->with('status', 'Access updated.');
+    }
+
+    /**
+     * Keep any role the account already holds that this form cannot offer.
+     *
+     * Without this, opening an existing Super Admin in the editor and pressing
+     * Save would quietly demote them: the picker cannot show the role, so it is
+     * absent from the submission, and a plain sync would remove it.
+     *
+     * @param  array<int>  $submitted
+     * @return array<int>
+     */
+    private function keepUnassignable(User $user, array $submitted): array
+    {
+        $hidden = $user->roles()
+            ->whereNotIn('slug', Role::ASSIGNABLE)
+            ->pluck('roles.id')
+            ->all();
+
+        return array_values(array_unique(array_merge($submitted, $hidden)));
     }
 
     public function resetPassword(User $user): RedirectResponse
