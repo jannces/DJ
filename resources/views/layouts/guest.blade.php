@@ -16,16 +16,16 @@
     <aside class="auth-aside">
         <div style="position:relative;z-index:1">
             <div class="a-seal"><i class="bi bi-buildings"></i></div>
-            <div class="mt-4" style="font-size:.8rem;letter-spacing:.05em;text-transform:uppercase;color:#9fc3ac">Republic of the Philippines</div>
+            <div class="mt-4" style="font-size:.8rem;letter-spacing:.05em;text-transform:uppercase;color:#c6b6f0">Republic of the Philippines</div>
             <h2 class="mt-1">Local Government Unit<br>of Alicia</h2>
-            <p style="color:#c5d8cc;max-width:420px">Cybersecurity Integrated Digital Leave Management System with Real-Time Intrusion Alerts.</p>
+            <p style="color:#d8cfee;max-width:420px">Cybersecurity Integrated Digital Leave Management System with Real-Time Intrusion Alerts.</p>
         </div>
         <div style="position:relative;z-index:1">
             <div class="feat"><i class="bi bi-shield-check"></i><div><strong style="color:#fff">Secure by design</strong><br><span style="font-size:.82rem">Two-factor OTP, account lockout, and live intrusion monitoring.</span></div></div>
             <div class="feat"><i class="bi bi-file-earmark-text"></i><div><strong style="color:#fff">CSC compliant</strong><br><span style="font-size:.82rem">Official CSC Form No. 6 with automated leave-credit computation.</span></div></div>
             <div class="feat"><i class="bi bi-diagram-3"></i><div><strong style="color:#fff">Full approval workflow</strong><br><span style="font-size:.82rem">Department Head → HR → Municipal Mayor, digitally signed.</span></div></div>
         </div>
-        <div style="position:relative;z-index:1;font-size:.75rem;color:#8fb69f">
+        <div style="position:relative;z-index:1;font-size:.75rem;color:#a99ad6">
             Authorized personnel and registered devices only. All activity is monitored and logged.
         </div>
     </aside>

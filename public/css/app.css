@@ -2105,3 +2105,38 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .perm-name{ overflow:hidden; text-overflow:ellipsis; }
 .perm-allow{ color:var(--success); margin:0; }
 .perm-deny{ color:var(--danger); margin:0; }
+
+/* ============================================================================
+   SIGN-IN SCREEN — the municipal hall, and the ONE ALICIA mark
+   ----------------------------------------------------------------------------
+   Two photographs of the actual municipality replace the two flat gradients.
+
+   LEFT. The hall goes BEHIND the indigo rather than instead of it. The panel
+   carries white text and the photograph is bright — pale sky across the top,
+   cream walls through the middle — so an unfiltered image would leave the
+   heading sitting on cloud at about 1.4:1. The wash at .90–.955 keeps the
+   building clearly readable and every text colour above 5.6:1.
+
+   RIGHT. The mark fills the panel. `multiply` is what makes it work: the
+   artwork is drawn on white, and its own outlines are that same white, so it
+   cannot be cut out cleanly — multiply drops the white to nothing against a
+   light ground and leaves the violet and gold. Dark theme has no equivalent
+   (multiply on a dark ground erases the mark, and any lightening blend turns
+   the white plate into a white rectangle), so there it becomes a watermark.
+   ========================================================================== */
+.auth-aside{
+  background:
+    linear-gradient(165deg, rgba(47,34,96,.90) 0%, rgba(26,19,48,.955) 100%),
+    url('../img/alicia-hall.jpg') center 22% / cover no-repeat;
+}
+
+.auth-main{ position:relative; isolation:isolate; }
+.auth-main::before{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background:url('../img/one-alicia.png') center / 74% no-repeat;
+  mix-blend-mode:multiply;
+}
+[data-bs-theme="dark"] .auth-main::before{ mix-blend-mode:normal; opacity:.14; }
+
+/* The card is painted after the mark, and stays fully opaque over it. */
+.auth-card{ position:relative; z-index:1; }
