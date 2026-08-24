@@ -1034,9 +1034,21 @@ body{ background:var(--bg); color:var(--text); }
 .lms-nav{
   flex:1 1 auto;
   min-height:0;             /* the fix: allows the flex item to shrink and scroll */
+  flex-wrap:nowrap;         /* see below */
   overflow-y:auto;
   overscroll-behavior:contain;
 }
+
+/* The markup is `class="lms-nav nav flex-column"`, and Bootstrap's `.nav` ships
+   `display:flex; flex-wrap:wrap`. Once `min-height:0` above gave the nav a
+   definite height, that wrap had something to act on: the menu stopped growing
+   past the rail and instead folded into a SECOND COLUMN, starting again at the
+   top and cut off by the rail's `overflow:hidden`. The surplus went sideways,
+   so `overflow-y:auto` had nothing to scroll and never appeared.
+
+   `flex-wrap:nowrap` keeps the menu one column at any height, which is what
+   makes it scroll. Set here rather than by dropping the Bootstrap class, so
+   the nav keeps the `.nav` styling the rest of this file builds on. */
 
 /* At high zoom the effective viewport narrows, so the rail becomes the drawer
    at the same breakpoint a small screen would — driven by width, so zoom and a
