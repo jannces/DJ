@@ -2133,7 +2133,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .auth-main{ position:relative; isolation:isolate; }
 .auth-main::before{
   content:""; position:absolute; inset:0; pointer-events:none;
-  background:url('../img/one-alicia.png') center / 74% no-repeat;
+  background:url('../img/one-alicia.png') center 20% / 74% no-repeat;
   mix-blend-mode:multiply;
 }
 [data-bs-theme="dark"] .auth-main::before{ mix-blend-mode:normal; opacity:.14; }
