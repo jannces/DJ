@@ -27,6 +27,12 @@ class SidebarScrollTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seedCore();
+    }
+
     private function css(): string
     {
         return file_get_contents(public_path('css/app.css'));
