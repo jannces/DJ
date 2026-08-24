@@ -1072,6 +1072,26 @@ body{ background:var(--bg); color:var(--text); }
 .lms-content{ min-width:0; }
 
 /* ============================================================================
+   CONTENT WIDTH — no centring gutter beside the rail
+   ----------------------------------------------------------------------------
+   `max-width:1440px` with `margin:0 auto` split every surplus pixel into two
+   equal gutters, and the left one landed right against the sidebar: 108px of
+   dead space on a 1920 screen, 428px at 75% browser zoom (zooming OUT widens
+   the viewport in CSS pixels, so the gutter grows rather than shrinks).
+
+   Without the cap the gap is the padding and nothing else — a flat 1.75rem at
+   every width and zoom level, the same value already set above the cards. The
+   dashboard, the tables and the stat row are all fluid, so they simply have
+   more room; nothing is resized.
+   ========================================================================== */
+.lms-content{ max-width:none; margin:0; }
+
+/* One exception. This page is running prose in two columns, and prose is the
+   one thing a screen can be too wide for — unbounded, each column reaches
+   about 150 characters. The cap belongs on the text, not on the whole app. */
+.instr-page .csc-instr-cols{ max-width:1180px; }
+
+/* ============================================================================
    CSC FORM 6 — alignment and ruling corrections
    ----------------------------------------------------------------------------
    • The header was absolutely positioned over a padded row, so the form number

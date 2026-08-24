@@ -93,6 +93,46 @@ class SidebarScrollTest extends TestCase
             'the flex-wrap:nowrap override in app.css exists to answer this class list');
     }
 
+    /**
+     * The content column sits against the rail rather than being centred in
+     * what is left of the screen.
+     *
+     * `max-width:1440px` with `margin:0 auto` split the surplus into two equal
+     * gutters, and the left one landed beside the sidebar — 108px on a 1920
+     * screen and 428px at 75% zoom, because zooming out widens the viewport in
+     * CSS pixels rather than narrowing it.
+     */
+    public function test_the_content_is_not_centred_into_a_gutter_beside_the_rail(): void
+    {
+        // The stylesheet is written in layers, so the earlier declarations are
+        // still in the file and the last one is what the browser uses. Assert
+        // the effective value rather than the presence of any one line.
+        $css = preg_replace('/@media\s+print\s*\{.*?\}\s*\}/s', '', $this->css());
+        preg_match_all('/\.lms-content\s*\{([^}]*)\}/', $css, $matches);
+        $declarations = implode(';', $matches[1]);
+
+        preg_match_all('/max-width\s*:\s*([^;}]+)/', $declarations, $widths);
+        $this->assertSame('none', trim(end($widths[1])),
+            'a max-width on the content column reappears as a gutter against the sidebar');
+
+        preg_match_all('/(?<!-)margin\s*:\s*([^;}]+)/', $declarations, $margins);
+        $this->assertDoesNotMatchRegularExpression('/\bauto\b/', trim(end($margins[1])),
+            'an auto side margin is what turns leftover width into that gutter');
+    }
+
+    /**
+     * Prose is the one thing a wide screen can be too wide for, so the cap that
+     * came off the app belongs on the page that is actually running text.
+     */
+    public function test_the_instructions_page_keeps_a_readable_measure(): void
+    {
+        $this->assertMatchesRegularExpression(
+            '/\.instr-page\s+\.csc-instr-cols\s*\{[^}]*max-width\s*:/',
+            $this->css(),
+            'without a cap each column of the instructions reaches about 150 characters'
+        );
+    }
+
     /** The whole menu reaches the page, whatever height the browser has. */
     public function test_every_permitted_item_is_rendered_into_the_rail(): void
     {
