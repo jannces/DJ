@@ -2107,36 +2107,174 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .perm-deny{ color:var(--danger); margin:0; }
 
 /* ============================================================================
-   SIGN-IN SCREEN — the municipal hall, and the ONE ALICIA mark
+   SIGN-IN SCREEN
    ----------------------------------------------------------------------------
-   Two photographs of the actual municipality replace the two flat gradients.
+   Two halves. The municipal hall carries the identity on the left; the form
+   sits on the right over the ONE ALICIA mark, which shows through the card
+   because the card is glass.
 
-   LEFT. The hall goes BEHIND the indigo rather than instead of it. The panel
-   carries white text and the photograph is bright — pale sky across the top,
-   cream walls through the middle — so an unfiltered image would leave the
-   heading sitting on cloud at about 1.4:1. The wash at .90–.955 keeps the
-   building clearly readable and every text colour above 5.6:1.
+   Everything scales from --u, one per cent of the viewport width, clamped at
+   both ends so the panel holds its proportions from a 1366 office laptop up to
+   a projector without any breakpoints in between.
 
-   RIGHT. The mark fills the panel. `multiply` is what makes it work: the
-   artwork is drawn on white, and its own outlines are that same white, so it
-   cannot be cut out cleanly — multiply drops the white to nothing against a
-   light ground and leaves the violet and gold. Dark theme has no equivalent
-   (multiply on a dark ground erases the mark, and any lightening blend turns
-   the white plate into a white rectangle), so there it becomes a watermark.
+   THE SCRIM. A gradient needs range or it reads as a tint: six stops with a
+   third, lighter colour in the middle, plus a radial highlight that gives the
+   panel a light source. Dense where text sits, thin over the building. The
+   grain layer is not decoration — a ramp this large bands visibly on a
+   projector without it.
+
+   THE MARK. multiply is what lets it sit at full strength: the artwork is
+   drawn on white and its own outlines are that same white, so it can never be
+   cut out. Against the light panel multiply drops the white to nothing.
    ========================================================================== */
-.auth-aside{
-  background:
-    linear-gradient(165deg, rgba(47,34,96,.90) 0%, rgba(26,19,48,.955) 100%),
-    url('../img/alicia-hall.jpg') center 22% / cover no-repeat;
+.auth-page{
+  --u:clamp(9px, 1vw, 19px);
+  --op:.72;                       /* scrim master opacity */
+  --g1:26 19 48;                  /* indigo, the dark ends */
+  --g2:44 30 96;                  /* the mid tone */
+  --g3:96 62 196;                 /* the light band the ramp opens to */
+  --ty:39;                        /* heading block, 0 top … 100 bottom */
+  min-height:100vh; display:grid; grid-template-columns:51.4% 48.6%;
+  font-size:calc(var(--u)*1.15);
 }
 
-.auth-main{ position:relative; isolation:isolate; }
+/* ---------------------------------------------------------------- the hall */
+.auth-aside{
+  position:relative; overflow:hidden; color:#fff;
+  padding:calc(var(--u)*3.1) calc(var(--u)*3.4);
+  display:flex; flex-direction:column;
+  background:url('../img/alicia-hall-zoom.jpg') 52% 46% / cover no-repeat;
+}
+.auth-aside::before{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background:
+    radial-gradient(70% 60% at 76% 22%,
+      rgb(var(--g3)/calc(var(--op)*.44)) 0%, transparent 68%),
+    linear-gradient(192deg,
+      rgb(var(--g1)/var(--op))            0%,
+      rgb(var(--g1)/calc(var(--op)*.97)) 22%,
+      rgb(var(--g2)/calc(var(--op)*.80)) 46%,
+      rgb(var(--g3)/calc(var(--op)*.58)) 62%,
+      rgb(var(--g2)/calc(var(--op)*.84)) 80%,
+      rgb(var(--g1)/calc(var(--op)*.97)) 100%);
+}
+.auth-aside::after{
+  content:""; position:absolute; inset:0; width:auto; height:auto; border-radius:0;
+  pointer-events:none; opacity:.55;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='150' height='150' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");
+}
+.auth-aside > *{ position:relative; z-index:2; }
+
+.auth-brand{ display:flex; align-items:center; gap:calc(var(--u)*1.25); }
+.auth-seal{
+  width:calc(var(--u)*7); height:auto; flex:none; display:block;
+  filter:drop-shadow(0 calc(var(--u)*.3) calc(var(--u)*.8) rgba(0,0,0,.45));
+}
+.auth-rp{
+  font-size:.70em; letter-spacing:.19em; text-transform:uppercase;
+  color:#C9D6EE; font-weight:500; margin:0 0 .2em;
+}
+.auth-mu{ font-size:.98em; color:#fff; font-weight:600; margin:0; letter-spacing:-.006em; }
+
+.auth-sp{ flex-basis:0; flex-shrink:1; pointer-events:none; }
+.auth-sp-a{ flex-grow:var(--ty); }
+.auth-sp-b{ flex-grow:calc(100 - var(--ty)); }
+
+.auth-hero h1{
+  font-size:3.15em; font-weight:800; line-height:1.03; letter-spacing:-.033em;
+  margin:0 0 .34em; color:#fff;
+}
+.auth-hero h1 em{ font-style:normal; color:#F5C518; }
+.auth-hero p{ font-size:.88em; color:#C8D4EA; margin:0; max-width:24em; letter-spacing:-.004em; }
+
+/* ---------------------------------------------------------------- the form */
+.auth-main{
+  position:relative; overflow:hidden; isolation:isolate;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:calc(var(--u)*3);
+  background:
+    radial-gradient(58% 48% at 10% 6%,  rgba(99,102,241,.09), transparent 62%),
+    radial-gradient(54% 46% at 94% 97%, rgba(245,197,24,.10), transparent 62%),
+    #FBFBFD;
+}
 .auth-main::before{
   content:""; position:absolute; inset:0; pointer-events:none;
-  background:url('../img/one-alicia.png') center 0% / 64% no-repeat;
+  background:url('../img/one-alicia.png') center center / 101% no-repeat;
   mix-blend-mode:multiply;
 }
-[data-bs-theme="dark"] .auth-main::before{ mix-blend-mode:normal; opacity:.14; }
+.auth-card{
+  position:relative; z-index:2; width:100%; max-width:calc(var(--u)*25.8);
+  background:rgb(255 255 255 / .90);
+  -webkit-backdrop-filter:blur(calc(var(--u)*.72)) saturate(165%);
+  backdrop-filter:blur(calc(var(--u)*.72)) saturate(165%);
+  border:1px solid rgb(255 255 255 / .82); border-radius:calc(var(--u)*1.25);
+  padding:calc(var(--u)*2.6);
+  box-shadow:0 1px 2px rgba(16,24,40,.04),
+             0 calc(var(--u)*1.1) calc(var(--u)*2.8) calc(var(--u)*-.7) rgba(16,24,40,.12);
+  color:#0A090C;
+}
+.auth-title{ font-size:1.72em; font-weight:700; letter-spacing:-.03em; line-height:1.1; margin:0 0 .3em; }
+.auth-sub{ font-size:.85em; color:#6B6675; margin:0 0 1.8em; letter-spacing:-.006em; }
 
-/* The card is painted after the mark, and stays fully opaque over it. */
-.auth-card{ position:relative; z-index:1; }
+.auth-note{
+  display:flex; gap:.6em; align-items:flex-start; font-size:.78em;
+  border-radius:.5em; padding:.68em .78em; margin:0 0 1.35em; letter-spacing:-.004em;
+}
+.auth-note i{ font-size:1.05em; line-height:1.2; flex:none; }
+.auth-note-bad{ background:rgb(254 242 242 / .92); border:1px solid #F2A6A6; color:#8E1F1B; }
+.auth-note-ok{ background:rgb(240 250 245 / .92); border:1px solid #A6D8C0; color:#14603F; }
+/* More than one message becomes a list rather than a run-on sentence. */
+.auth-note ul{ margin:0; padding-left:1.1em; }
+.auth-note ul li + li{ margin-top:.25em; }
+
+.auth-field{ margin-bottom:1em; }
+.auth-field > label{
+  display:flex; justify-content:space-between; align-items:baseline;
+  font-size:.78em; font-weight:500; margin-bottom:.42em; color:#2C2934;
+}
+.auth-field > label a{ color:#7C3AED; font-weight:400; text-decoration:none; }
+.auth-field > label a:hover{ text-decoration:underline; }
+.auth-input{
+  display:flex; align-items:center; gap:.62em; height:2.9em; border-radius:.58em;
+  border:1px solid rgb(228 227 234 / .9); background:rgb(255 255 255 / .82);
+  padding:0 .8em; font-size:.83em;
+}
+.auth-input:focus-within{ border-color:#7C3AED; box-shadow:0 0 0 3px rgb(124 58 237 / .16); }
+.auth-input.is-bad{ border-color:#D26A63; }
+.auth-input > i{ color:#A8A3B2; flex:none; }
+.auth-input input{
+  flex:1 1 auto; min-width:0; border:0; background:transparent; outline:0;
+  font:inherit; color:#0A090C; padding:0;
+}
+.auth-input input::placeholder{ color:#9A95A4; }
+.auth-eye{
+  border:0; background:transparent; padding:.2em .1em; margin-left:auto;
+  color:#A8A3B2; cursor:pointer; line-height:1; flex:none;
+}
+.auth-eye:hover{ color:#57525F; }
+.auth-err{ font-size:.74em; color:#B3342C; margin:.4em 0 0; }
+
+.auth-cta{
+  width:100%; height:2.95em; border:0; border-radius:.58em; color:#fff; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; gap:.5em;
+  font-size:.85em; font-weight:500; letter-spacing:-.008em;
+  background:linear-gradient(90deg,#4C1D95 0%,#7C3AED 100%);
+}
+.auth-cta:hover{ filter:brightness(1.07); }
+.auth-rule{ height:1px; background:#EDEDF2; margin:1.5em 0 1.15em; }
+.auth-prot{ display:flex; gap:.6em; align-items:flex-start; font-size:.76em; color:#77727F; margin:0; }
+.auth-prot i{ color:#9A95A4; flex:none; margin-top:.1em; }
+.auth-need{
+  position:relative; z-index:2; font-size:.78em; color:#5D5866;
+  margin:calc(var(--u)*1.4) 0 0; text-align:center;
+}
+.auth-need b{ color:#2C2934; font-weight:600; border-bottom:1px solid #CFCBD8; }
+
+/* Matches the 900px rule further up, which already hides the aside. Below it
+   the hall is not rendered, so a phone never downloads the photograph. */
+@media (max-width:900px){
+  .auth-page{ grid-template-columns:1fr; --u:clamp(11px, 3.4vw, 17px); }
+  .auth-aside{ display:none; }
+  .auth-main{ padding:calc(var(--u)*2); }
+  .auth-card{ max-width:26em; }
+}

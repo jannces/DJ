@@ -2,16 +2,19 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * The sign-in screen carries two photographs of the municipality itself.
+ * The sign-in screen.
  *
- * They are ordinary files under public/, referenced from the stylesheet rather
- * than from a template, which means nothing fails loudly if one goes missing —
- * the panel just renders empty and nobody notices until it is on a projector.
- * These assertions are the only thing standing between that and a defence.
+ * It carries two photographs of the municipality, referenced from the
+ * stylesheet rather than a template, so nothing fails loudly if one goes
+ * missing — the panel just renders empty and nobody notices until it is on a
+ * projector. It also carries two decisions worth holding: the failure message
+ * has to be somewhere a person will read it, and there is no way to skip the
+ * one-time code.
  */
 class SignInScreenTest extends TestCase
 {
@@ -19,7 +22,8 @@ class SignInScreenTest extends TestCase
 
     /** @var array<string,int> file => smallest size that is plausibly the real image */
     private const ASSETS = [
-        'img/alicia-hall.jpg' => 100_000,
+        'img/alicia-hall-zoom.jpg' => 100_000,
+        'img/alicia-seal.png' => 40_000,
         'img/one-alicia.png' => 20_000,
     ];
 
@@ -28,110 +32,162 @@ class SignInScreenTest extends TestCase
         return file_get_contents(public_path('css/app.css'));
     }
 
-    public function test_both_photographs_are_present_and_are_not_placeholders(): void
+    // ------------------------------------------------------------- the images
+
+    public function test_every_photograph_is_present_and_is_not_a_placeholder(): void
     {
         foreach (self::ASSETS as $path => $floor) {
             $this->assertFileExists(public_path($path));
-            $this->assertGreaterThan($floor, filesize(public_path($path)),
-                "{$path} is too small to be the real image");
+            $this->assertGreaterThan($floor, filesize(public_path($path)), "{$path} is too small");
         }
     }
 
-    public function test_the_stylesheet_points_at_the_files_that_are_actually_there(): void
+    public function test_nothing_is_asked_for_that_is_not_there(): void
     {
-        $css = $this->css();
+        preg_match_all("#url\(['\"]?(\.\./img/[^'\")]+)#", $this->css(), $m);
+        $this->assertNotEmpty($m[1], 'the sign-in screen references no images at all');
 
-        foreach (array_keys(self::ASSETS) as $path) {
-            $this->assertStringContainsString('../'.$path, $css,
-                "nothing in the stylesheet uses {$path}");
-        }
-
-        // The reference is relative to public/css/, so a stray leading slash or
-        // a missing ../ resolves to a URL that does not exist on the LAN build.
-        preg_match_all("#url\(['\"]?(\.\./img/[^'\")]+)#", $css, $matches);
-        foreach ($matches[1] as $reference) {
-            $this->assertFileExists(
-                public_path('css/'.$reference),
-                "the stylesheet asks for {$reference} and it is not there"
-            );
+        foreach ($m[1] as $reference) {
+            $this->assertFileExists(public_path('css/'.$reference),
+                "the stylesheet asks for {$reference} and it is not there");
         }
     }
+
+    // -------------------------------------------------------------- the scrim
 
     /**
-     * The hall is bright — pale sky across the top, cream walls through the
-     * middle — and the panel is white text. Without the wash in front of it the
-     * heading sits on cloud at roughly 1.4:1.
+     * `rgb(R,G,B / A)` is invalid — slash alpha needs space-separated channels,
+     * and the whole declaration is dropped when it is wrong. That failed
+     * silently once: the scrim vanished and the photograph rendered raw with
+     * white text on it.
      */
-    public function test_the_hall_sits_behind_a_wash_rather_than_on_its_own(): void
+    public function test_the_scrim_colours_are_in_the_syntax_the_slash_alpha_needs(): void
     {
-        preg_match('/\.auth-aside\s*\{([^}]*alicia-hall[^}]*)\}/s', $this->css(), $m);
-        $this->assertNotEmpty($m, '.auth-aside does not use the photograph');
+        preg_match_all('/--g[123]:\s*([^;]+);/', $this->css(), $m);
+        $this->assertNotEmpty($m[1], 'the scrim defines no colours');
 
-        $this->assertStringContainsString('linear-gradient', $m[1],
-            'the photograph needs an overlay in front of it or the text is unreadable');
-
-        preg_match_all('/rgba\([^)]*?,\s*\.(\d+)\s*\)/', $m[1], $alphas);
-        $this->assertNotEmpty($alphas[1], 'the overlay has no alpha to check');
-        foreach ($alphas[1] as $alpha) {
-            $this->assertGreaterThanOrEqual(85, (int) str_pad($alpha, 2, '0'),
-                'an overlay below .85 lets the sky through and the heading fails contrast');
+        foreach ($m[1] as $triplet) {
+            $this->assertStringNotContainsString(',', $triplet,
+                "--g holds '{$triplet}'; a comma here makes every rgb(... / alpha) using it invalid");
+            $this->assertMatchesRegularExpression('/^\d{1,3}\s+\d{1,3}\s+\d{1,3}$/', trim($triplet));
         }
     }
 
-    /**
-     * The artwork is drawn on white and its own outlines are that same white,
-     * so it cannot be cut out. `multiply` is what drops the white against the
-     * light panel; without it the mark arrives as a white rectangle.
-     */
+    public function test_the_hall_sits_under_a_scrim_with_actual_range(): void
+    {
+        preg_match('/\.auth-aside::before\{([^}]*)\}/s', $this->css(), $m);
+        $this->assertNotEmpty($m, '.auth-aside::before is gone — there is no scrim');
+
+        preg_match_all('/calc\(var\(--op\)\*\.(\d+)\)|var\(--op\)\)/', $m[1], $stops);
+        $this->assertGreaterThanOrEqual(5, count($stops[0]),
+            'a two-stop ramp reads as a tint, not a gradient');
+
+        $factors = array_map(static fn ($f) => $f === '' ? 100 : (int) str_pad($f, 2, '0'), $stops[1]);
+        $this->assertLessThanOrEqual(60, min($factors),
+            'nothing opens far enough for the building to show through');
+    }
+
+    /** Multiply against a dark ground erases the mark, so it needs a light panel. */
     public function test_the_mark_is_blended_rather_than_pasted_on(): void
     {
-        preg_match('/\.auth-main::before\s*\{([^}]*)\}/s', $this->css(), $m);
-        $this->assertNotEmpty($m, '.auth-main::before is gone');
+        preg_match('/\.auth-main::before\{([^}]*)\}/s', $this->css(), $m);
+        $this->assertNotEmpty($m);
 
-        $this->assertStringContainsString('one-alicia', $m[1]);
-        $this->assertStringContainsString('mix-blend-mode:multiply', str_replace(' ', '', $m[1]));
-        $this->assertStringContainsString('pointer-events:none', str_replace(' ', '', $m[1]),
-            'the layer covers the whole panel and must not swallow clicks on the form');
+        $rule = str_replace(' ', '', $m[1]);
+        $this->assertStringContainsString('one-alicia', $rule);
+        $this->assertStringContainsString('mix-blend-mode:multiply', $rule);
+        $this->assertStringContainsString('pointer-events:none', $rule,
+            'the layer covers the panel and must not swallow clicks on the form');
+
+        $this->assertMatchesRegularExpression('/\.auth-main\{[^}]*isolation:isolate/s', $this->css(),
+            'without isolation the blend reaches past this panel');
     }
 
-    /** Multiply on a dark ground erases the mark, so dark theme needs its own. */
-    public function test_dark_theme_gets_its_own_treatment(): void
+    // --------------------------------------------------------------- the card
+
+    /**
+     * The controller already reports how many attempts remain, when a block
+     * lifts and how long a throttle has left. Rendered under a field at 12px
+     * that is information nobody reads.
+     */
+    public function test_a_failure_is_reported_where_somebody_will_read_it(): void
     {
-        $this->assertMatchesRegularExpression(
-            '/\[data-bs-theme="dark"\]\s*\.auth-main::before\s*\{[^}]*opacity/',
-            $this->css(),
-            'without this the mark is invisible for anyone signed in with dark theme'
-        );
+        $user = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+
+        $html = $this->from('/login')
+            ->followingRedirects()
+            ->post('/login', ['identifier' => $user->username, 'password' => 'not-the-password'])
+            ->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('/class="auth-note auth-note-bad"[^>]*role="alert"/', $html,
+            'the failure has no alert region at the top of the card');
+        $this->assertStringContainsString('attempt(s) remaining', $html,
+            'the remaining-attempt count the controller computed never reaches the page');
+        $this->assertStringContainsString('aria-describedby="auth-alert"', $html,
+            'the field has to point at the region, since the message is no longer printed twice');
+        $this->assertSame(1, substr_count($html, 'attempt(s) remaining'),
+            'the same message must not appear both in the region and under the field');
+    }
+
+    public function test_the_password_reveal_is_reachable_and_named(): void
+    {
+        $html = $this->get('/login')->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('/<button[^>]*class="auth-eye"[^>]*aria-label="Show password"/', $html);
+        $this->assertDoesNotMatchRegularExpression('/class="auth-eye"[^>]*tabindex="-1"/', $html,
+            'a negative tabindex puts the control out of reach of the keyboard');
     }
 
     /**
-     * The panel text was three greens from an earlier palette. Over a
-     * photograph they read as muddy and the fine print drops under 4.5:1.
+     * A remember-me cookie walks straight past the one-time code. On a counter
+     * machine shared across the municipal hall that is how one person inherits
+     * another's session.
      */
-    public function test_the_panel_text_is_no_longer_the_old_green_palette(): void
+    public function test_there_is_no_way_to_stay_signed_in_past_the_one_time_code(): void
     {
-        $blade = file_get_contents(resource_path('views/layouts/guest.blade.php'));
+        $html = $this->get('/login')->assertOk()->getContent();
 
-        foreach (['#9fc3ac', '#c5d8cc', '#8fb69f'] as $green) {
-            $this->assertStringNotContainsStringIgnoringCase($green, $blade,
-                "{$green} is left over from the green palette and does not survive the photograph");
-        }
+        $this->assertStringNotContainsString('name="remember"', $html);
+        $this->assertStringNotContainsStringIgnoringCase('Keep me signed in', $html);
     }
 
-    public function test_the_sign_in_page_still_renders_with_both_panels(): void
+    public function test_the_footer_names_the_office_that_actually_creates_accounts(): void
+    {
+        $html = $this->get('/login')->assertOk()->getContent();
+
+        // The controller's own blocked-account message says the same thing;
+        // pointing at HR here would contradict it on the same screen.
+        $this->assertStringContainsString('System Administrator', $html);
+        $this->assertStringNotContainsString('HR Management Office', $html);
+    }
+
+    public function test_the_screen_still_renders_with_both_halves(): void
     {
         $html = $this->get('/login')->assertOk()->getContent();
 
         $this->assertStringContainsString('auth-aside', $html);
         $this->assertStringContainsString('auth-main', $html);
-        $this->assertStringContainsString('Local Government Unit', $html);
+        $this->assertStringContainsString('alicia-seal.png', $html);
+        $this->assertStringContainsString('Local Government', $html);
+        $this->assertStringContainsString('name="identifier"', $html);
+        $this->assertStringContainsString('name="password"', $html);
     }
 
-    /**
-     * The panel is hidden below 900px, which is also what stops a phone on
-     * mobile data from downloading a quarter-megabyte photograph it will never
-     * show.
-     */
+    /** Signing in is unchanged — this was a change of shell, not of behaviour. */
+    public function test_a_correct_password_still_signs_in(): void
+    {
+        $user = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+
+        // The factory's shared password; the point is that the new shell did
+        // not disturb the flow, not what the string is.
+        $this->post('/login', [
+            'identifier' => $user->username,
+            'password' => 'Secret!Passw0rd#1',
+        ])->assertRedirect();
+
+        $this->assertAuthenticatedAs($user->fresh());
+    }
+
     public function test_the_photograph_is_not_sent_to_phones(): void
     {
         $this->assertMatchesRegularExpression(
