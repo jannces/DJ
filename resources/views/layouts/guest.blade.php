@@ -37,10 +37,15 @@
 
     <main class="auth-main">
         <div class="auth-card">
-            @if (session('status'))
-                <div class="auth-note auth-note-ok">
-                    <i class="bi bi-check-circle"></i><span>{{ session('status') }}</span>
-                </div>
+            {{-- A view that needs the flash somewhere other than the top of the
+                 card declares an empty `own-flash` section and renders it
+                 itself; the OTP screen puts it against the verify button. --}}
+            @sectionMissing('own-flash')
+                @if (session('status'))
+                    <div class="auth-note auth-note-ok">
+                        <i class="bi bi-check-circle"></i><span>{{ session('status') }}</span>
+                    </div>
+                @endif
             @endif
             @yield('content')
         </div>

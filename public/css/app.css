@@ -2278,3 +2278,76 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   .auth-main{ padding:calc(var(--u)*2); }
   .auth-card{ max-width:26em; }
 }
+
+/* ============================================================================
+   OTP SCREEN — one input, six cells
+   ----------------------------------------------------------------------------
+   The cells are a view of a single string, not six values. The input is the
+   only thing that holds the code, so paste, autofill, auto-advance, backspace
+   and the numeric keypad are the browser's behaviour rather than ours, and the
+   screen still works with JavaScript off.
+
+   Alignment is arithmetic, not eyeballing: a character's advance is
+   `1ch + letter-spacing` and a cell's pitch is `cell + gap`. Make those equal
+   and every digit lands centred in its own box, caret included. Both the cells
+   and the input take their `ch` from the same font, so the two cannot drift.
+   ========================================================================== */
+.otp-crest{
+  width:2.9em; height:2.9em; border-radius:.85em; margin:0 auto .9em;
+  background:#EFEAFB; color:#5B21B6; font-size:1em;
+  display:flex; align-items:center; justify-content:center;
+}
+.otp-crest i{ font-size:1.45em; }
+.otp-title{ text-align:center; font-size:1.5em; }
+.otp-lead{ text-align:center; font-size:.83em; margin-bottom:1.5em; }
+.otp-lead b{ color:#2C2934; font-weight:600; }
+
+.otp{
+  --cw:2.4ch;                     /* cell width  */
+  --cg:.6ch;                      /* gap between cells */
+  position:relative; margin:0 auto 1.1em;
+  width:calc(var(--cw)*6 + var(--cg)*5);
+  font-family:ui-monospace, "Cascadia Mono", Consolas, "SF Mono", monospace;
+  font-size:1.45em; font-weight:600;
+}
+.otp-cells{ display:flex; gap:var(--cg); pointer-events:none; }
+.otp-cells span{
+  width:var(--cw); height:2.5em; border-radius:.3em;
+  border:1px solid #DCD9E4; background:rgb(255 255 255 / .86);
+  transition:border-color .12s, box-shadow .12s, background .12s;
+}
+.otp input{
+  position:absolute; inset:0; width:100%; height:100%;
+  border:0; background:transparent; outline:0; color:#0A090C;
+  font:inherit; text-align:left; caret-color:#5B21B6;
+  letter-spacing:calc(var(--cw) + var(--cg) - 1ch);
+  padding:0 0 0 calc((var(--cw) - 1ch)/2);
+}
+.otp:focus-within .otp-cells span{ border-color:#CFC9DE; }
+.otp:focus-within .otp-cells span[data-at]{
+  border-color:#5B21B6; box-shadow:0 0 0 3px rgb(91 33 182 / .14); background:#fff;
+}
+.otp-cells span[data-on]{ border-color:#B9AEE0; background:#fff; }
+
+/* A wrong code comes back as a page render, so the shake is an animation on
+   load and the refocus is `autofocus`. Neither needs a line of script. */
+.otp.is-bad .otp-cells span{ border-color:#E2A6A2; }
+.otp.is-bad{ animation:otp-shake .34s cubic-bezier(.36,.07,.19,.97); }
+@keyframes otp-shake{
+  10%,90%{ transform:translateX(-1px) } 20%,80%{ transform:translateX(2px) }
+  30%,50%,70%{ transform:translateX(-4px) } 40%,60%{ transform:translateX(4px) }
+}
+@media (prefers-reduced-motion:reduce){ .otp.is-bad{ animation:none; } }
+
+.otp-foot{
+  display:flex; justify-content:space-between; align-items:center;
+  margin-top:1.15em; font-size:.78em;
+}
+.otp-foot form{ margin:0; }
+.otp-foot button{
+  font:inherit; border:0; background:none; padding:0; cursor:pointer; color:#7C3AED;
+}
+.otp-foot button:hover:not([disabled]){ text-decoration:underline; }
+.otp-foot button[disabled]{ color:#A9A3B4; cursor:default; }
+.otp-foot .otp-cancel{ color:#77727F; }
+.otp-tick{ font-family:ui-monospace, Consolas, monospace; font-size:.95em; }
