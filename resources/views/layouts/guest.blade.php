@@ -37,15 +37,13 @@
 
     <main class="auth-main">
         <div class="auth-card">
-            {{-- A view that needs the flash somewhere other than the top of the
-                 card declares an empty `own-flash` section and renders it
-                 itself; the OTP screen puts it against the verify button. --}}
-            @sectionMissing('own-flash')
-                @if (session('status'))
-                    <div class="auth-note auth-note-ok">
-                        <i class="bi bi-check-circle"></i><span>{{ session('status') }}</span>
-                    </div>
-                @endif
+            {{-- A view that places the flash itself is handed `ownFlash` by its
+                 controller and the layout stands aside; the OTP screen puts it
+                 against the verify button rather than at the top of the card. --}}
+            @if (! ($ownFlash ?? false) && session('status'))
+                <div class="auth-note auth-note-ok">
+                    <i class="bi bi-check-circle"></i><span>{{ session('status') }}</span>
+                </div>
             @endif
             @yield('content')
         </div>

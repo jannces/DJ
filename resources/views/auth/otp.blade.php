@@ -1,10 +1,6 @@
 @extends('layouts.guest')
 @section('title', 'Verify OTP')
 
-{{-- Declared empty on purpose: this screen places the flash itself, against
-     the verify button rather than at the top of the card. --}}
-@section('own-flash')@endsection
-
 @section('content')
 <div class="otp-crest" aria-hidden="true"><i class="bi bi-envelope-check"></i></div>
 <h1 class="auth-title otp-title">Verify it&rsquo;s you</h1>
@@ -19,7 +15,7 @@
     {{-- One input is the value; the six cells are a view of it. Paste, autofill,
          auto-advance and backspace are then the browser's job, not ours, and
          the whole thing still works with JavaScript off. --}}
-    <div class="otp @error('code') is-bad @enderror">
+    <div class="otp{{ $errors->has('code') ? ' is-bad' : '' }}">
         <div class="otp-cells" aria-hidden="true">
             <span></span><span></span><span></span><span></span><span></span><span></span>
         </div>

@@ -140,13 +140,23 @@ class OtpScreenTest extends TestCase
 
     // ------------------------------------------------------------ the resend
 
+    /** @return string the resend button, markup and all */
+    private function resendButton(string $html): string
+    {
+        preg_match('#<button[^>]*id="otp-resend".*?</button>#s', $html, $m);
+        $this->assertNotEmpty($m, 'there is no resend button');
+
+        return $m[0];
+    }
+
     public function test_resend_is_offered_when_the_server_would_accept_it(): void
     {
         $this->signIn();
-        $html = $this->get('/otp')->assertOk()->getContent();
+        $button = $this->resendButton($this->get('/otp')->assertOk()->getContent());
 
-        $this->assertStringContainsString('Resend code', $html);
-        $this->assertStringNotContainsString('Resend in', $html);
+        $this->assertStringContainsString('Resend code', $button);
+        $this->assertStringNotContainsString('Resend in', $button);
+        $this->assertStringNotContainsString('disabled', $button);
     }
 
     /**
@@ -163,12 +173,12 @@ class OtpScreenTest extends TestCase
             RateLimiter::hit($key, 120);
         }
 
-        $html = $this->get('/otp')->assertOk()->getContent();
+        $button = $this->resendButton($this->get('/otp')->assertOk()->getContent());
 
-        $this->assertStringContainsString('Resend in', $html);
-        $this->assertMatchesRegularExpression('/<button[^>]*id="otp-resend"[^>]*disabled/', $html);
-        $this->assertMatchesRegularExpression('/data-in="\d+"/', $html,
-            'the page needs the real remaining seconds to count down from');
+        $this->assertStringContainsString('Resend in', $button);
+        $this->assertStringContainsString('disabled', $button);
+        $this->assertMatchesRegularExpression('/data-in="[1-9]\d*"/', $button,
+            'the button needs the real remaining seconds to count down from');
     }
 
     // ------------------------------------------------------------- the shell

@@ -32,6 +32,8 @@ class OtpController extends Controller
         $key = 'otp-resend|'.$request->user()->id;
 
         return view('auth.otp', [
+            // this screen draws the flash itself, above the verify button
+            'ownFlash' => true,
             'resendIn' => RateLimiter::tooManyAttempts($key, 3) ? RateLimiter::availableIn($key) : 0,
         ]);
     }
