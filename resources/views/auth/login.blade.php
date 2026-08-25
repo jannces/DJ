@@ -39,10 +39,4 @@
     </div>
     <button type="submit" class="btn btn-lgu w-100 py-2"><i class="bi bi-box-arrow-in-right"></i>Sign in</button>
 </form>
-
-<div class="text-center mt-4">
-    <button class="btn btn-sm btn-link text-muted" onclick="const n=document.documentElement.getAttribute('data-bs-theme')==='dark'?'light':'dark';document.documentElement.setAttribute('data-bs-theme',n);localStorage.setItem('lms-theme',n)">
-        <i class="bi bi-circle-half"></i> Toggle theme
-    </button>
-</div>
 @endsection
