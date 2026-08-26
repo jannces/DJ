@@ -13,18 +13,20 @@ class Role extends Model
     use Auditable;
 
     /**
-     * The roles a user account can actually be given, in the order they are
-     * offered.
+     * The five roles the LGU has, in the order they are offered.
      *
-     * Department Head is organisational structure, not an account type — it
-     * holds no permission of its own since the approval workflow stopped using
-     * it. Super Admin is the unrestricted platform owner and is not something
-     * an administrator hands out from a form; it is set up once, at install.
-     * Neither belongs in a picker, and neither is accepted from a submission —
-     * see UserController, which validates against this list rather than
-     * against every row in the table.
+     * All five are assignable: these are the account types, fixed by the
+     * organisation's structure rather than by anything in this application, and
+     * there is no sixth to invent — the Roles page offers no way to create one.
+     *
+     * Ordered as the organisation reads: an employee, the head of their office,
+     * HR, the Mayor, and the administrator who runs the system.
+     *
+     * Still a separate list from "every row in the roles table", and
+     * UserController still validates submissions against it, because the two
+     * being the same today is a fact about the data rather than a guarantee.
      */
-    public const ASSIGNABLE = ['mayor', 'vice-mayor', 'hr', 'employee', 'system-admin'];
+    public const ASSIGNABLE = ['employee', 'department-head', 'hr', 'mayor', 'system-admin'];
 
     protected $fillable = ['name', 'slug', 'description', 'parent_id', 'is_system'];
 

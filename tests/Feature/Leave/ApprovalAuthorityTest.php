@@ -104,7 +104,11 @@ class ApprovalAuthorityTest extends TestCase
 
     public static function approverRoles(): array
     {
-        return ['mayor' => ['mayor'], 'vice mayor' => ['vice-mayor'], 'hr' => ['hr']];
+        // Vice Mayor was retired: it held exactly what the Mayor holds, and the
+        // LGU has five roles. Authority is still a permission rather than a
+        // role, so this list is "who holds leave.approve.final", not "who is
+        // senior enough".
+        return ['mayor' => ['mayor'], 'hr' => ['hr']];
     }
 
     // ------------------------------------------------------ department head
@@ -164,7 +168,7 @@ class ApprovalAuthorityTest extends TestCase
         $this->assertSame(LeaveRequest::STATUS_REJECTED, $request->fresh()->status);
 
         $this->expectException(ValidationException::class);
-        $workflow->act($request->fresh(), $this->approver('vice-mayor'), 'approved');
+        $workflow->act($request->fresh(), $this->approver('hr'), 'approved');
     }
 
     public function test_the_decision_records_who_acted(): void
@@ -261,14 +265,14 @@ class ApprovalAuthorityTest extends TestCase
     {
         $request = $this->fileRequest();
         app(ApprovalWorkflowService::class)
-            ->act($request, $this->approver('vice-mayor'), 'rejected', ['comments' => 'Short staffed']);
+            ->act($request, $this->approver('hr'), 'rejected', ['comments' => 'Short staffed']);
 
         $this->actingAs($this->employee);
         session(['otp_verified' => true]);
 
         $this->get("/leave/{$request->id}/timeline")
             ->assertOk()
-            ->assertSee('Rejected by Vice Mayor')
+            ->assertSee('Rejected by HR')
             ->assertSee('Short staffed');
     }
 }

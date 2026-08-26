@@ -168,7 +168,7 @@ class SidebarScrollTest extends TestCase
      */
     public function test_the_dashboard_entry_stays_for_everyone_it_leads_somewhere_for(): void
     {
-        foreach (['employee', 'hr', 'mayor', 'vice-mayor'] as $role) {
+        foreach (['employee', 'department-head', 'hr', 'mayor'] as $role) {
             $this->actingAs($this->makeUser($role));
             session(['otp_verified' => true]);
 

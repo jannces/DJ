@@ -42,7 +42,10 @@ class RolePermissionSeeder extends Seeder
         'leave.apply' => ['File leave applications', 'leave'],
         'leave.view-own' => ['View own leave requests, balances, history', 'leave'],
         'leave.cancel' => ['Cancel own pending leave requests', 'leave'],
-        'leave.review.department' => ['Recommend leave (Department Head step)', 'leave'],
+        // Named a step that no longer exists. What it does — and all it has
+        // done since the approval chain was collapsed to one step — is let its
+        // holder read leave requests from their own department.
+        'leave.review.department' => ["View own department's leave requests", 'leave'],
         'leave.certify.hr' => ['Validate & certify leave credits (HR step)', 'leave'],
         'leave.approve.final' => ['Final approval/disapproval (Mayor step)', 'leave'],
         'leave.requests.view-all' => ['View all leave requests', 'leave'],
@@ -82,19 +85,9 @@ class RolePermissionSeeder extends Seeder
             'description' => 'Final approving authority for leave applications.',
         ]);
 
-        $viceMayor = Role::updateOrCreate(['slug' => 'vice-mayor'], [
-            'name' => 'Municipal Vice Mayor', 'is_system' => true, 'parent_id' => $employee->id,
-            'description' => 'Authorized approving officer for leave applications.',
-        ]);
-
         $sysAdmin = Role::updateOrCreate(['slug' => 'system-admin'], [
             'name' => 'System Administrator', 'is_system' => true,
             'description' => 'Operates users, devices, security monitoring and settings.',
-        ]);
-
-        $superAdmin = Role::updateOrCreate(['slug' => 'super-admin'], [
-            'name' => 'Super Admin', 'is_system' => true,
-            'description' => 'Unrestricted platform owner.',
         ]);
 
         $grant = function (Role $role, array $slugs): void {
@@ -105,9 +98,18 @@ class RolePermissionSeeder extends Seeder
         $grant($employee, [
             'dashboard.view', 'leave.apply', 'leave.view-own', 'leave.cancel',
         ]);
-        // Department Head is no longer part of the leave approval workflow.
-        // The role is kept for organisational structure; it simply holds the
-        // inherited Employee permissions and no approval authority.
+        // Department Head currently holds nothing of its own — only what it
+        // inherits from Employee.
+        //
+        // NOTE: the description on this role says it reviews and recommends
+        // leave for its department, and that is what the LGU's process
+        // actually requires. The code does not do it: the approval chain was
+        // collapsed to a single step (see the 2026_08_14 migration), which
+        // removed the Department Head stage. The description is the intent and
+        // the empty grant is the implementation, and they disagree. Reinstating
+        // the stage is a workflow change, not an RBAC grant — do not paper over
+        // it by handing this role `leave.approve.final`, which would let a head
+        // decide any office's leave, not just their own.
         $grant($deptHead, []);
         $grant($hr, [
             'employees.view', 'employees.manage', 'employees.view-salary',
@@ -115,10 +117,10 @@ class RolePermissionSeeder extends Seeder
             'leave.requests.view-all', 'leave.balances.manage', 'leave-types.manage',
             'leave.certify.hr', 'leave.approve.final', 'reports.generate',
         ]);
-        // Mayor, Vice Mayor and HR are the three authorized approvers. Any ONE
-        // of them can decide an application — see ApprovalWorkflowService.
+        // Mayor and HR are the two authorized approvers. Any ONE of them can
+        // decide an application — see ApprovalWorkflowService, which gates on
+        // the permission rather than on a role slug.
         $grant($mayor, ['leave.approve.final', 'leave.requests.view-all']);
-        $grant($viceMayor, ['leave.approve.final', 'leave.requests.view-all']);
         $grant($sysAdmin, [
             'dashboard.view', 'users.manage', 'users.block', 'users.reset-password',
             'users.assign-roles', 'users.history', 'rbac.manage', 'settings.manage',
@@ -126,7 +128,11 @@ class RolePermissionSeeder extends Seeder
             'security.intrusions', 'audit.view', 'activity.view',
             'reports.generate', 'reports.security',
         ]);
-        $grant($superAdmin, ['*']);
+
+        // No role holds `*`. Super Admin did, and the System Administrator
+        // already covers what an administrator does here — so there is now no
+        // permission anywhere that satisfies every check, and none that this
+        // installation can grant by accident. RoleController refuses it too.
 
         DB::table('cache')->where('key', 'like', '%rbac%')->delete();
     }

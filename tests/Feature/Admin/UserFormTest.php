@@ -82,16 +82,14 @@ class UserFormTest extends TestCase
     {
         $html = $this->get('/users/create')->assertOk()->getContent();
 
-        foreach (['Municipal Mayor', 'Municipal Vice Mayor', 'HR', 'Employee', 'System Administrator'] as $name) {
+        foreach (['Employee', 'Department Head', 'HR', 'Municipal Mayor', 'System Administrator'] as $name) {
             $this->assertStringContainsString($name, $html);
         }
 
-        foreach (Role::whereNotIn('slug', Role::ASSIGNABLE)->get() as $role) {
-            $this->assertStringNotContainsString('value="'.$role->id.'" id="r'.$role->id.'"', $html,
-                "{$role->name} should not be offered");
-        }
-
+        // Five, and five is every role there is: the LGU has no sixth, and the
+        // Roles page offers no way to invent one.
         $this->assertCount(5, Role::assignable()->get());
+        $this->assertSame(5, Role::count(), 'a role exists that no account can be given');
     }
 
     /**
@@ -99,18 +97,17 @@ class UserFormTest extends TestCase
      * where it has to be refused, because the form can be replayed with any
      * role id in it.
      */
-    public function test_a_role_the_form_does_not_offer_is_refused_on_submission(): void
+    public function test_a_role_id_the_form_did_not_offer_is_refused_on_submission(): void
     {
-        foreach (['super-admin', 'department-head'] as $slug) {
-            $role = Role::where('slug', $slug)->firstOrFail();
-
-            $this->post('/users', $this->payload([
-                'username' => 'probe'.$role->id,
-                'email' => 'probe'.$role->id.'@alicia.gov.ph',
-                'employee_no' => 'EMP-P'.$role->id,
-                'roles' => [$role->id],
-            ]))->assertSessionHasErrors('roles.0');
-        }
+        // Every role is assignable now, so the case left to guard is a role id
+        // that does not correspond to one — which is what a replayed form with
+        // an edited value looks like.
+        $this->post('/users', $this->payload([
+            'username' => 'probe',
+            'email' => 'probe@alicia.gov.ph',
+            'employee_no' => 'EMP-P1',
+            'roles' => [Role::max('id') + 99],
+        ]))->assertSessionHasErrors('roles.0');
 
         $this->assertSame(0, User::where('username', 'like', 'probe%')->count());
     }
@@ -128,14 +125,22 @@ class UserFormTest extends TestCase
      */
     public function test_editing_does_not_strip_a_role_the_form_cannot_show(): void
     {
-        $owner = $this->makeUser('super-admin');
+        // No role is unassignable today, so this is guarding the mechanism
+        // rather than a live case: a role outside ASSIGNABLE must survive a
+        // save from a form that could not offer it.
+        $hidden = Role::create([
+            'name' => 'Auditor General', 'slug' => 'auditor-general', 'is_system' => true,
+        ]);
+        $owner = $this->makeUser('employee');
+        $owner->roles()->attach($hidden);
+
         $employee = Role::where('slug', 'employee')->firstOrFail();
 
         $this->post('/users/'.$owner->id.'/assign-roles', ['roles' => [$employee->id]])
             ->assertRedirect();
 
         $this->assertEqualsCanonicalizing(
-            ['super-admin', 'employee'],
+            ['auditor-general', 'employee'],
             $owner->fresh()->roles->pluck('slug')->all(),
             'the unshowable role has to survive a save from this form'
         );

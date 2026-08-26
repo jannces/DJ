@@ -62,7 +62,12 @@ class BackLinkTest extends TestCase
         $this->assertGoesBackTo('/users/create', 'users.index', 'Users');
         $this->assertGoesBackTo('/users/'.$admin->id.'/edit', 'users.index', 'Users');
         $this->assertGoesBackTo('/users/'.$admin->id.'/history', 'users.index', 'Users');
-        $this->assertGoesBackTo('/roles/create', 'roles.index', 'Roles');
+        // There is no create form any more — the five roles are fixed — so the
+        // edit screen is the one that has to offer the way back.
+        $this->assertGoesBackTo(
+            '/roles/'.\App\Models\Role::where('slug', 'hr')->firstOrFail()->id.'/edit',
+            'roles.index', 'Roles'
+        );
     }
 
     public function test_an_employee_reaches_their_own_list_from_a_request(): void

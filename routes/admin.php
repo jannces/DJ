@@ -20,9 +20,13 @@ Route::post('/notifications/read-all', [NotificationController::class, 'markAllR
 // Employees are denied server-side, not merely hidden in the UI.
 Route::get('/search', [SearchController::class, 'index'])->middleware('can:use-global-search')->name('search');
 
-// Roles & permissions
+// Roles & permissions.
+// The five roles are fixed by the LGU's structure, so there is no `create` and
+// no `store` — a sixth invented from a form would hold authority nothing in the
+// organisation answers for. `destroy` stays and stays refusing: all five are
+// system roles, and the route is what a replayed form would hit.
 Route::middleware('permission:rbac.manage')->group(function () {
-    Route::resource('roles', RoleController::class)->except(['show']);
+    Route::resource('roles', RoleController::class)->only(['index', 'edit', 'update', 'destroy']);
 });
 
 // Users

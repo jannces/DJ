@@ -19,8 +19,13 @@ use Illuminate\Support\Facades\Log;
  */
 class SecurityAlerter
 {
-    /** Roles that carry responsibility for the system's security. */
-    public const ADMIN_ROLES = ['super-admin', 'system-admin'];
+    /**
+     * Roles that carry responsibility for the system's security.
+     *
+     * Super Admin was here too until it was retired; the System Administrator
+     * is now the only role that answers for this.
+     */
+    public const ADMIN_ROLES = ['system-admin'];
 
     /** An IP crossed the auto-block threshold — SQL injection, XSS, traversal. */
     public function ipAutoBlocked(string $ip, int $events): void

@@ -2657,3 +2657,45 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   .an-pane{ display:block !important; }
   .wl-act{ display:none !important; }
 }
+
+
+/* ============================================================================
+   ROLES & PERMISSIONS
+   ----------------------------------------------------------------------------
+   Five fixed roles. No create form, so nothing here styles one.
+
+   The permission list reads DOWN its module rather than across two columns. The
+   old grid flowed left, right, left, so the first LEAVE permission sat beside
+   the fourth and a reader had to zig-zag through a group to take it in. CSS
+   columns keep the page two columns wide without breaking that reading order,
+   and `break-inside` keeps a module whole.
+   ========================================================================== */
+.roles-note{ font-size:.78rem; color:var(--muted); }
+
+/* Counts are right-aligned, and so are their headings, so a number sits under
+   the word that names it instead of beside it. */
+.roles-table th.num,
+.roles-table td.num{
+  text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap;
+}
+.roles-table td.num{ color:var(--text-2); }
+.roles-table .role-about{ max-width:32rem; }
+.roles-table code{ font-size:.85em; }
+
+.perm-cols{ columns:2; column-gap:2.25rem; }
+@media (max-width:900px){ .perm-cols{ columns:1; } }
+.perm-group{ break-inside:avoid; margin-bottom:1.15rem; }
+.perm-cap{
+  font-size:.66rem; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--muted); font-weight:600; margin:0 0 .4rem;
+  padding-bottom:.25rem; border-bottom:1px solid var(--border);
+}
+.perm{ display:flex; gap:.55rem; align-items:flex-start; padding:.24rem .1rem; }
+.perm input{ margin:.3rem 0 0; flex:none; accent-color:var(--primary); }
+.perm label{ font-size:.82rem; color:var(--text-2); cursor:pointer; margin:0; }
+.perm.is-locked label{ color:var(--muted); cursor:default; }
+.perm-lock{
+  font-size:.62rem; font-weight:600; padding:.05rem .32rem; border-radius:3px;
+  background:var(--surface-2); color:var(--muted); margin-left:.3rem;
+  vertical-align:.08em;
+}

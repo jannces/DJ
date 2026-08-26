@@ -43,7 +43,8 @@ class LeaveWorkflowTest extends TestCase
         $this->mayor = $this->makeUser('mayor');
         EmployeeProfile::factory()->create(['user_id' => $this->mayor->id, 'department_id' => $dept->id]);
 
-        $this->viceMayor = $this->makeUser('vice-mayor');
+        // Vice Mayor was retired; HR is the second authorized approver.
+        $this->viceMayor = $this->makeUser('hr');
         EmployeeProfile::factory()->create(['user_id' => $this->viceMayor->id, 'department_id' => $dept->id]);
     }
 

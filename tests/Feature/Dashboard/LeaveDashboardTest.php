@@ -64,7 +64,7 @@ class LeaveDashboardTest extends TestCase
 
     public function test_the_roles_with_authority_over_leave_get_the_analytics(): void
     {
-        foreach (['hr', 'mayor', 'vice-mayor'] as $role) {
+        foreach (['hr', 'mayor'] as $role) {
             $this->visit($role)
                 ->assertOk()
                 ->assertSee('Waiting on a decision')
