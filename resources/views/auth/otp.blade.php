@@ -13,8 +13,10 @@
     @csrf
 
     {{-- One input is the value; the six cells are a view of it. Paste, autofill,
-         auto-advance and backspace are then the browser's job, not ours, and
-         the whole thing still works with JavaScript off. --}}
+         auto-advance and backspace stay the browser's job, and the field
+         submits as one value. The cells are drawn only once the script has
+         run — without it this is a single plain box, which is worse-looking
+         and impossible to misalign. --}}
     <div class="otp{{ $errors->has('code') ? ' is-bad' : '' }}">
         <div class="otp-cells" aria-hidden="true">
             <span></span><span></span><span></span><span></span><span></span><span></span>
@@ -62,15 +64,19 @@
 </div>
 
 <script>
-// Everything above works without this. It adds the lit cell under the caret
-// and ticks the resend countdown down; neither is needed to enter a code.
+// Entering and submitting a code needs none of this — the field works on its
+// own. What this adds is the six-box presentation and the resend countdown.
 (function () {
     var input = document.getElementById('code');
     var cells = document.querySelectorAll('.otp-cells span');
 
+    // Only claim the cells once we can actually keep them filled.
+    document.documentElement.classList.add('otp-js');
+
     function paint() {
-        var n = input.value.length;
+        var v = input.value, n = v.length;
         for (var i = 0; i < cells.length; i++) {
+            cells[i].textContent = v.charAt(i);
             cells[i].toggleAttribute('data-on', i < n);
             cells[i].toggleAttribute('data-at', document.activeElement === input && i === Math.min(n, 5));
         }

@@ -2282,15 +2282,20 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 /* ============================================================================
    OTP SCREEN — one input, six cells
    ----------------------------------------------------------------------------
-   The cells are a view of a single string, not six values. The input is the
-   only thing that holds the code, so paste, autofill, auto-advance, backspace
-   and the numeric keypad are the browser's behaviour rather than ours, and the
-   screen still works with JavaScript off.
+   The input is still the only thing that holds the code, so paste, autofill,
+   backspace and the numeric keypad stay native and the field submits as one
+   value. What changed is how the six boxes are drawn.
 
-   Alignment is arithmetic, not eyeballing: a character's advance is
-   `1ch + letter-spacing` and a cell's pitch is `cell + gap`. Make those equal
-   and every digit lands centred in its own box, caret included. Both the cells
-   and the input take their `ch` from the same font, so the two cannot drift.
+   The first attempt overlaid a transparent input on six cells and matched a
+   character's advance to a cell's pitch in `ch`. On paper that is exact. In
+   practice the two `ch` measurements are taken on two different elements, and
+   anything that makes their glyph metrics differ — a missing family in the
+   stack, a synthesised weight — walks the digits out of their boxes. It did.
+
+   So the digits are now rendered INTO the cells, which cannot drift because
+   each digit is centred in its own box by the layout. That needs JavaScript,
+   and without it there are no cells at all: the field falls back to one plain
+   box, which is always correctly aligned because there is nothing to align to.
    ========================================================================== */
 .otp-crest{
   width:2.9em; height:2.9em; border-radius:.85em; margin:0 auto .9em;
@@ -2303,35 +2308,49 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .otp-lead b{ color:#2C2934; font-weight:600; }
 
 .otp{
-  --cw:2.4ch;                     /* cell width  */
-  --cg:.6ch;                      /* gap between cells */
-  position:relative; margin:0 auto 1.1em;
-  width:calc(var(--cw)*6 + var(--cg)*5);
-  font-family:ui-monospace, "Cascadia Mono", Consolas, "SF Mono", monospace;
-  font-size:1.45em; font-weight:600;
+  --otp-face:ui-monospace, "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
+  --otp-h:3.05rem;
+  position:relative; margin:0 auto 1.1em; width:100%; max-width:17.5rem;
 }
-.otp-cells{ display:flex; gap:var(--cg); pointer-events:none; }
-.otp-cells span{
-  width:var(--cw); height:2.5em; border-radius:.3em;
-  border:1px solid #DCD9E4; background:rgb(255 255 255 / .86);
+.otp-cells{ display:none; }
+
+/* ---- before enhancement: one field, centred, spaced ---- */
+.otp input{
+  width:100%; height:var(--otp-h);
+  border:1px solid #DCD9E4; border-radius:.5rem; background:rgb(255 255 255 / .86);
+  color:#0A090C; outline:0; padding:0;
+  font-family:var(--otp-face); font-size:1.4rem; font-weight:600;
+  font-variant-numeric:tabular-nums;
+  text-align:center; letter-spacing:.55em; text-indent:.55em;  /* offset the trailing space */
+}
+.otp input:focus{ border-color:#5B21B6; box-shadow:0 0 0 3px rgb(91 33 182 / .14); }
+
+/* ---- enhanced: six cells, each holding its own digit ---- */
+.otp-js .otp-cells{ display:flex; gap:.45rem; }
+.otp-js .otp-cells span{
+  flex:1 1 0; height:var(--otp-h);
+  border:1px solid #DCD9E4; border-radius:.5rem; background:rgb(255 255 255 / .86);
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--otp-face); font-size:1.4rem; font-weight:600;
+  font-variant-numeric:tabular-nums; color:#0A090C;
   transition:border-color .12s, box-shadow .12s, background .12s;
 }
-.otp input{
+.otp-js .otp input{
   position:absolute; inset:0; width:100%; height:100%;
-  border:0; background:transparent; outline:0; color:#0A090C;
-  font:inherit; text-align:left; caret-color:#5B21B6;
-  letter-spacing:calc(var(--cw) + var(--cg) - 1ch);
-  padding:0 0 0 calc((var(--cw) - 1ch)/2);
+  border:0; background:transparent; box-shadow:none;
+  color:transparent; caret-color:transparent;
+  letter-spacing:0; text-indent:0;
 }
-.otp:focus-within .otp-cells span{ border-color:#CFC9DE; }
-.otp:focus-within .otp-cells span[data-at]{
+.otp-js .otp-cells span[data-on]{ border-color:#B9AEE0; background:#fff; }
+.otp-js .otp:focus-within .otp-cells span{ border-color:#CFC9DE; }
+.otp-js .otp:focus-within .otp-cells span[data-on]{ border-color:#B9AEE0; }
+.otp-js .otp:focus-within .otp-cells span[data-at]{
   border-color:#5B21B6; box-shadow:0 0 0 3px rgb(91 33 182 / .14); background:#fff;
 }
-.otp-cells span[data-on]{ border-color:#B9AEE0; background:#fff; }
 
 /* A wrong code comes back as a page render, so the shake is an animation on
    load and the refocus is `autofocus`. Neither needs a line of script. */
-.otp.is-bad .otp-cells span{ border-color:#E2A6A2; }
+.otp.is-bad input, .otp-js .otp.is-bad .otp-cells span{ border-color:#E2A6A2; }
 .otp.is-bad{ animation:otp-shake .34s cubic-bezier(.36,.07,.19,.97); }
 @keyframes otp-shake{
   10%,90%{ transform:translateX(-1px) } 20%,80%{ transform:translateX(2px) }

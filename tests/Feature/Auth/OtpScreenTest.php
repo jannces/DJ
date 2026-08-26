@@ -71,20 +71,43 @@ class OtpScreenTest extends TestCase
     }
 
     /**
-     * A character advances by `1ch + letter-spacing`; a cell repeats every
-     * `cell + gap`. Equal, and every digit lands centred in its own box. If one
-     * side is edited without the other the digits walk out of the cells.
+     * The first build overlaid a transparent input on the cells and matched a
+     * character's advance to a cell's pitch in `ch`. Exact on paper; the two
+     * measurements are taken on two different elements, and when their glyph
+     * metrics differed the digits walked out of their boxes. They did.
+     *
+     * Each digit is now centred in its own cell by the layout, so there is no
+     * arithmetic left to drift. This fails if anyone reintroduces it.
      */
-    public function test_the_cells_and_the_characters_share_one_measurement(): void
+    public function test_no_digit_is_positioned_by_arithmetic(): void
     {
         $css = preg_replace('/\s+/', '', $this->css());
 
-        $this->assertStringContainsString('letter-spacing:calc(var(--cw)+var(--cg)-1ch)', $css,
-            'the character advance no longer derives from the cell pitch');
-        $this->assertStringContainsString('padding:000calc((var(--cw)-1ch)/2)', $css,
-            'the first digit is no longer centred in the first cell');
-        $this->assertStringContainsString('width:calc(var(--cw)*6+var(--cg)*5)', $css,
-            'the track width no longer matches six cells and five gaps');
+        $this->assertStringNotContainsString('var(--cw)', $css,
+            'cell-pitch arithmetic is back; digits will drift out of their boxes again');
+        $this->assertMatchesRegularExpression('/\.otp-js\.otp-cellsspan\{[^}]*justify-content:center/', $css,
+            'the cells no longer centre their own digit');
+    }
+
+    /**
+     * Without the script there are no cells — one plain box instead, which is
+     * plainer and impossible to misalign. The field itself never depended on
+     * JavaScript and still does not.
+     */
+    public function test_the_field_works_before_the_script_runs(): void
+    {
+        $this->signIn();
+        $html = $this->get('/otp')->assertOk()->getContent();
+        $css = preg_replace('/\s+/', '', $this->css());
+
+        $this->assertMatchesRegularExpression('/\.otp-cells\{display:none/', $css,
+            'the cells must be hidden until the script can keep them filled');
+        $this->assertMatchesRegularExpression('/\.otp-js\.otp-cells\{display:flex/', $css);
+        $this->assertStringContainsString("classList.add('otp-js')", $html,
+            'nothing turns the cells on');
+
+        // the fallback is a real, usable field
+        $this->assertMatchesRegularExpression('/\.otpinput\{[^}]*text-align:center/', $css);
     }
 
     // ----------------------------------------------------------- the message
