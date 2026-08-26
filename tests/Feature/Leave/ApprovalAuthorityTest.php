@@ -298,6 +298,77 @@ class ApprovalAuthorityTest extends TestCase
             'an unsigned recommendation must stay unsigned');
     }
 
+    /**
+     * 7.C's three blanks: days with pay, days without pay, and others (specify).
+     * The third had no field, no column and no way to be filled — a blank on an
+     * official form that cannot be filled is worse than one left empty, because
+     * it looks like a field.
+     */
+    public function test_7c_carries_all_three_of_its_blanks(): void
+    {
+        $request = $this->fileRequest();
+        $mayor = $this->approver('mayor');
+
+        $this->actingAs($mayor);
+        session(['otp_verified' => true]);
+        $this->post("/review/{$request->id}/act", [
+            'action' => 'approved',
+            'days_with_pay' => 2,
+            'days_without_pay' => 1,
+            'approved_others' => 'commutation requested',
+        ]);
+
+        $this->assertSame('commutation requested', $request->fresh()->approved_others);
+
+        $this->actingAs($this->employee);
+        $html = $this->get("/leave/{$request->id}/preview")->assertOk()->getContent();
+
+        preg_match('#7\.C APPROVED FOR:(.*?)7\.D#s', $html, $c);
+        $this->assertNotEmpty($c, 'the form has no 7.C block');
+        $this->assertStringContainsString('commutation requested', $c[1]);
+    }
+
+    /**
+     * The signature under 7.C used to be the configured Mayor, whoever had
+     * actually decided. HR is one of the two deciding officers, so on any leave
+     * HR approved the form asserted the Mayor had signed it — a false statement
+     * on the document that replaces the paper CSC form.
+     */
+    public function test_the_form_names_the_officer_who_actually_decided(): void
+    {
+        $request = $this->fileRequest();
+
+        app(ApprovalWorkflowService::class)
+            ->act($request, $this->approver('hr'), 'approved', ['signature' => 'M. VALEROZO']);
+
+        $this->actingAs($this->employee);
+        session(['otp_verified' => true]);
+        $html = $this->get("/leave/{$request->id}/preview")->assertOk()->getContent();
+
+        $mayorName = \App\Models\SystemSetting::get('general.mayor_name', 'ATTY. JOEL AMOS P. ALEJANDRO, CPA');
+
+        $this->assertStringContainsString('M. VALEROZO', $html);
+        $this->assertStringNotContainsString($mayorName, $html,
+            'the form is claiming the Mayor signed an application HR decided');
+    }
+
+    /** An undecided form is unsigned. A name above the rule says otherwise. */
+    public function test_an_undecided_form_carries_no_signature(): void
+    {
+        $request = $this->fileRequest();
+
+        $this->actingAs($this->employee);
+        session(['otp_verified' => true]);
+        $html = $this->get("/leave/{$request->id}/preview")->assertOk()->getContent();
+
+        $mayorName = \App\Models\SystemSetting::get('general.mayor_name', 'ATTY. JOEL AMOS P. ALEJANDRO, CPA');
+        $this->assertStringNotContainsString($mayorName, $html);
+
+        // ...but the rule is still labelled with who should sign it.
+        $this->assertStringContainsString(
+            \App\Models\SystemSetting::get('general.mayor_title', 'Municipal Mayor'), $html);
+    }
+
     /** The head sees the request. Certifying credits is HR's step. */
     public function test_a_recommendation_does_not_certify_credits(): void
     {

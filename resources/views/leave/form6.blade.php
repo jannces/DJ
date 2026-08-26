@@ -29,6 +29,22 @@
         && $a->action !== \App\Models\Approval::ACTION_PENDING);
     $endorsed = $recommendation?->action === \App\Models\Approval::ACTION_APPROVED;
     $notEndorsed = $recommendation?->action === \App\Models\Approval::ACTION_REJECTED;
+
+    // Who actually signs under 7.C / 7.D.
+    //
+    // This block printed the configured Mayor's name unconditionally. HR is one
+    // of the two officers who can decide an application, so on any leave HR
+    // approved, the form asserted the Mayor had signed it — a false statement on
+    // a document that replaces the paper CSC form. Now it names whoever decided.
+    //
+    // Undecided, it stays blank. The label below the rule still names the
+    // designated authority, because that describes who SHOULD sign; a name
+    // above the rule would say somebody already had.
+    $signedBy = $decision?->signature ?? $decision?->approver?->name;
+    $signedTitle = $decision?->approver?->roles?->contains('slug', 'mayor')
+        ? \App\Models\SystemSetting::get('general.mayor_title', 'Municipal Mayor')
+        : ($decision ? 'Authorized Officer'
+            : \App\Models\SystemSetting::get('general.mayor_title', 'Municipal Mayor'));
     $isApproved = $r->status === \App\Models\LeaveRequest::STATUS_APPROVED;
     $isRejected = $r->status === \App\Models\LeaveRequest::STATUS_REJECTED;
     $days = rtrim(rtrim(number_format((float) $r->working_days, 1), '0'), '.');
@@ -277,7 +293,7 @@
         <div class="sub">7.C APPROVED FOR:</div>
         <div><span class="blank">{{ $r->days_with_pay !== null ? rtrim(rtrim(number_format((float) $r->days_with_pay, 1), '0'), '.') : '' }}</span> days with pay</div>
         <div><span class="blank">{{ $r->days_without_pay !== null ? rtrim(rtrim(number_format((float) $r->days_without_pay, 1), '0'), '.') : '' }}</span> days without pay</div>
-        <div><span class="blank"></span> others (Specify)</div>
+        <div><span class="blank">{{ $r->approved_others ?? '' }}</span> others (Specify)</div>
       </td>
       <td>
         <div class="sub">7.D DISAPPROVED DUE TO:</div>
@@ -287,8 +303,9 @@
     <tr>
       <td colspan="2">
         <div class="sign">
-          <div class="signname">{{ \App\Models\SystemSetting::get('general.mayor_name', 'ATTY. JOEL AMOS P. ALEJANDRO, CPA') }}</div>
-          <div class="lbl">{{ \App\Models\SystemSetting::get('general.mayor_title', 'Municipal Mayor') }}</div>
+          <div class="signname">{{ $signedBy ?? '' }}</div>
+          <div class="signline"></div>
+          <div class="lbl">{{ $signedTitle }}</div>
         </div>
       </td>
     </tr>

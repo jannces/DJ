@@ -27,7 +27,7 @@ class LeaveRequest extends Model
         'start_date', 'end_date', 'working_days', 'details', 'purpose',
         'commutation', 'status', 'current_step', 'is_late_filing',
         'late_filing_reason', 'filing_warnings', 'hr_override', 'hr_override_reason',
-        'days_with_pay', 'days_without_pay', 'disapproval_reason',
+        'days_with_pay', 'days_without_pay', 'approved_others', 'disapproval_reason',
         'office_snapshot', 'position_snapshot', 'salary_snapshot',
         'applicant_signature', 'decided_at',
     ];
