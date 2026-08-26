@@ -20,6 +20,17 @@ return [
         'requires_any' => ['leave.view-own', 'leave.requests.view-all'],
     ],
 
+    // Sits in the top group beside Dashboard rather than down in
+    // Administration, because for the System Administrator this IS their
+    // dashboard — it is where /dashboard sends them, and it took the slot the
+    // plain Dashboard entry vacated for that role.
+    //
+    // It has to live above the first heading, not merely above Reports: an item
+    // placed between two headings renders underneath the one before it, so
+    // dropping it just above "Reports" would file it under HR Management for
+    // anybody who can see that section.
+    ['label' => 'Security Dashboard', 'icon' => 'bi-shield-exclamation', 'route' => 'security.dashboard', 'permission' => 'security.dashboard'],
+
     ['heading' => 'Leave'],
     ['label' => 'Apply for Leave', 'icon' => 'bi-calendar-plus', 'route' => 'leave.create', 'permission' => 'leave.apply'],
     ['label' => 'My Leave Requests', 'icon' => 'bi-card-checklist', 'route' => 'leave.index', 'permission' => 'leave.view-own'],
@@ -46,7 +57,6 @@ return [
     ['label' => 'Users', 'icon' => 'bi-people-fill', 'route' => 'users.index', 'permission' => 'users.manage'],
     ['label' => 'Roles & Permissions', 'icon' => 'bi-shield-lock', 'route' => 'roles.index', 'permission' => 'rbac.manage'],
     ['label' => 'Authorized Devices', 'icon' => 'bi-pc-display', 'route' => 'devices.index', 'permission' => 'devices.manage'],
-    ['label' => 'Security Dashboard', 'icon' => 'bi-shield-exclamation', 'route' => 'security.dashboard', 'permission' => 'security.dashboard'],
     ['label' => 'Blocked IPs', 'icon' => 'bi-slash-circle', 'route' => 'security.blocked-ips', 'permission' => 'security.blocked-ips'],
     ['label' => 'Intrusion Logs', 'icon' => 'bi-bug', 'route' => 'security.intrusions', 'permission' => 'security.intrusions'],
     ['label' => 'Audit Logs', 'icon' => 'bi-journal-text', 'route' => 'audit.index', 'permission' => 'audit.view'],

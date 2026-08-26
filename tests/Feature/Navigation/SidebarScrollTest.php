@@ -178,6 +178,35 @@ class SidebarScrollTest extends TestCase
         }
     }
 
+    /**
+     * Security Dashboard sits above Reports, in the top group beside Dashboard.
+     *
+     * Above the first *heading*, not merely above the Reports item: the rail
+     * files an item under whichever heading precedes it, so dropping it between
+     * "HR Management" and "Reports" would have put it under HR Management for
+     * anybody who can see that section.
+     */
+    public function test_the_security_dashboard_sits_above_reports(): void
+    {
+        $this->actingAs($this->makeUser('system-admin'));
+        session(['otp_verified' => true]);
+
+        $html = $this->followingRedirects()->get('/dashboard')->assertOk()->getContent();
+
+        $security = strpos($html, '<span>Security Dashboard</span>');
+        $reports = strpos($html, '<span>Reports</span>');
+        $heading = strpos($html, 'nav-heading">Reports');
+
+        $this->assertNotFalse($security, 'the Security Dashboard entry is missing');
+        $this->assertLessThan($reports, $security, 'Security Dashboard should come before Reports');
+        $this->assertLessThan($heading, $security, 'it must sit above the Reports heading, not inside it');
+
+        // And above every heading, so it is never filed under one.
+        preg_match('/nav-heading">/', $html, $m, PREG_OFFSET_CAPTURE);
+        $this->assertLessThan($m[0][1], $security,
+            'an item after a heading belongs to it; this one belongs to no section');
+    }
+
     /** A heading with every item under it hidden must not render either. */
     public function test_a_heading_does_not_outlive_its_items(): void
     {
