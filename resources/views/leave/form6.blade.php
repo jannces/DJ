@@ -274,8 +274,11 @@
       </td>
       <td style="width:50%">
         {{-- The department head signs 7.B. Their recommendation is not the
-             decision: 7.C and 7.D below carry that, signed by the authorized
-             officer. Blank when there was no head to sign. --}}
+             decision: 7.C and 7.D below carry that.
+
+             "Authorized Officer" is the LGU's own wording on the printed form
+             — generic on paper, and the head is who signs it. Blank when there
+             was no head to sign. --}}
         <div class="sub">7.B RECOMMENDATION</div>
         <table class="rows">
           <tr><td class="b">{!! $box($endorsed) !!}</td><td>For approval</td></tr>
@@ -284,7 +287,7 @@
         <div class="sign">
           <div class="signname">{{ $recommendation?->signature ?? $recommendation?->approver?->name ?? '' }}</div>
           <div class="signline"></div>
-          <div class="lbl">Department Head</div>
+          <div class="lbl">Authorized Officer</div>
         </div>
       </td>
     </tr>

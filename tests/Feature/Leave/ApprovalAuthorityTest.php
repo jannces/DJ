@@ -273,7 +273,9 @@ class ApprovalAuthorityTest extends TestCase
         preg_match('#7\.B RECOMMENDATION(.*?)7\.C#s', $html, $b);
         $this->assertNotEmpty($b, 'the form has no 7.B block');
         $this->assertStringContainsString('D. MENDOZA', $b[1]);
-        $this->assertStringContainsString('Department Head', $b[1]);
+        // "Authorized Officer" is the LGU's own wording on the printed form —
+        // generic on paper, and the head is who signs it.
+        $this->assertStringContainsString('Authorized Officer', $b[1]);
         $this->assertStringNotContainsString('J. ALEJANDRO', $b[1],
             'the deciding officer is signing the recommendation block');
     }

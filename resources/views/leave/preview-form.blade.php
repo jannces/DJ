@@ -392,10 +392,18 @@
                     {{-- The department head signs here. This is the block the
                          LGU's process means by "the head checks it first": a
                          recommendation, which 7.C then approves or 7.D
-                         disapproves. Blank when there was no head to sign —
-                         the applicant heads the office themselves, the office
-                         has none assigned, or the decision was made before the
-                         head acted. --}}
+                         disapproves.
+
+                         The rule is labelled "Authorized Officer" because that
+                         is what the LGU's printed form says. It is generic on
+                         paper and the head is who signs it; the name above the
+                         rule is theirs, so nothing is lost by keeping the
+                         official wording.
+
+                         Blank when there was no head to sign — the applicant
+                         heads the office themselves, the office has none
+                         assigned, or the decision was made before the head
+                         acted. --}}
                     <div class="csc-sub">7.B RECOMMENDATION</div>
                     <div class="csc-check csc-rowline">
                         <span class="{{ $tick($endorsed) }}" aria-hidden="true"></span>
@@ -409,7 +417,7 @@
                     <div class="csc-signatory">
                         <div class="csc-signatory-name">{{ $recommendation?->signature ?? $recommendation?->approver?->name ?? '' }}</div>
                         <div class="csc-rule"></div>
-                        <div class="csc-sublabel">Department Head</div>
+                        <div class="csc-sublabel">Authorized Officer</div>
                     </div>
                 </td>
             </tr>
