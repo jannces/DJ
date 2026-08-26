@@ -16,18 +16,40 @@ class ApprovalController extends Controller
     }
 
     /**
-     * The single approval queue. Mayor, Vice Mayor and HR all see the same
-     * pending applications — whichever of them acts first decides it.
+     * One page, showing what the signed-in officer may actually act on.
+     *
+     * Mayor and HR see every application awaiting a decision — including ones
+     * still at department review, which they may decide past so that an absent
+     * head never strands somebody's leave.
+     *
+     * A department head sees only their own office's applications, only while
+     * those are at department review. Scoped by the head named on the office
+     * rather than by "works in that department", so two people in one office
+     * cannot both act.
      */
     public function queue(Request $request): View
     {
-        $requests = LeaveRequest::with('leaveType', 'user.employeeProfile.department')
-            ->whereIn('status', [LeaveRequest::STATUS_PENDING, LeaveRequest::STATUS_RETURNED])
-            ->latest()->paginate(15);
+        $user = $request->user();
+        $decides = $user->hasPermission(ApprovalWorkflowService::STEP_PERMISSION);
+
+        $query = LeaveRequest::with('leaveType', 'user.employeeProfile.department');
+
+        if ($decides) {
+            $query->whereIn('status', [
+                LeaveRequest::STATUS_PENDING,
+                LeaveRequest::STATUS_DEPT_REVIEW,
+                LeaveRequest::STATUS_RETURNED,
+            ]);
+        } else {
+            $query->where('status', LeaveRequest::STATUS_DEPT_REVIEW)
+                ->whereHas('user.employeeProfile.department',
+                    fn ($q) => $q->where('head_user_id', $user->id));
+        }
 
         return view('leave.review', [
-            'requests' => $requests,
-            'title' => 'Leave Approvals',
+            'requests' => $query->latest()->paginate(15),
+            'title' => $decides ? 'Leave Approvals' : 'Department Review',
+            'decides' => $decides,
         ]);
     }
 
@@ -48,9 +70,12 @@ class ApprovalController extends Controller
             'signature' => $data['signature'] ?? $request->user()->name,
         ];
 
-        // The deciding officer certifies the credit snapshot at the moment of
-        // the decision, whichever of the three authorized roles they hold.
-        $extra['certified_balances'] = $this->certification($leaveRequest);
+        // Only a deciding officer certifies credits. A department head
+        // recommends on the strength of the request and the office's coverage;
+        // the credit ledger is HR's competence and is not their business.
+        if ($request->user()->hasPermission(ApprovalWorkflowService::STEP_PERMISSION)) {
+            $extra['certified_balances'] = $this->certification($leaveRequest);
+        }
 
         $this->workflow->act($leaveRequest, $request->user(), $data['action'], $extra);
 

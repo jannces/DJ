@@ -72,6 +72,12 @@ class DashboardService
 
         if ($user->hasPermission('leave.requests.view-all')) {
             $data['management'] = $this->managementPane();
+        } elseif ($user->hasPermission('leave.review.department')) {
+            // A department head gets the same pane scoped to the one office
+            // they head — never `leave.requests.view-all`, which is the whole
+            // municipality. If they head no office there is nothing to show,
+            // and the pane is absent rather than empty.
+            $data['department'] = $this->departmentPane($user);
         }
 
         return $data;
@@ -195,6 +201,82 @@ class DashboardService
     }
 
     // =====================================================================
+    //  My office — the department head's second pane
+    // =====================================================================
+
+    /**
+     * The management pane, narrowed to the one office this user heads.
+     *
+     * Same questions as HR's, asked about a single department: who is waiting
+     * on me, who is away today, and can the office still function next
+     * fortnight. Nothing municipality-wide appears, which is the point of
+     * scoping the role rather than widening it.
+     */
+    public function departmentPane(User $user): ?array
+    {
+        $office = Department::where('head_user_id', $user->id)->first();
+
+        if ($office === null) {
+            return null;
+        }
+
+        $staff = EmployeeProfile::where('department_id', $office->id)->pluck('user_id');
+        $queue = $this->waitingQueue(6, $staff);
+        $onLeave = $this->onLeaveToday($staff);
+
+        return [
+            'office' => $office->name,
+            'headcount' => $staff->count(),
+            'kpis' => [
+                [
+                    'label' => 'Waiting on me',
+                    'value' => $queue['mine'],
+                    'sub' => $queue['mine'] > 0 ? 'awaiting your recommendation' : 'nothing to recommend',
+                    'icon' => 'inbox',
+                    'tone' => $queue['mine'] > 0 ? 'warn' : 'good',
+                ],
+                [
+                    'label' => 'Away today',
+                    'value' => $onLeave,
+                    'sub' => 'of '.$this->plural($staff->count(), 'person').' in the office',
+                    'icon' => 'walk',
+                    'tone' => 'info',
+                ],
+                [
+                    'label' => 'Filed this month',
+                    'value' => LeaveRequest::whereIn('user_id', $staff)
+                        ->whereBetween('date_filed', [now()->startOfMonth(), now()->endOfMonth()])->count(),
+                    'sub' => now()->format('F Y'),
+                    'icon' => 'file',
+                    'tone' => 'info',
+                ],
+                [
+                    'label' => 'Open applications',
+                    'value' => $queue['total'],
+                    'sub' => 'anywhere in the workflow',
+                    'icon' => 'gavel',
+                    'tone' => 'info',
+                ],
+            ],
+            'worklist' => $queue['rows'],
+            'coverage' => collect($this->coverageRisk())->firstWhere('office', $office->name),
+            'types' => $this->mostAppliedTypes(
+                now()->startOfYear(), now()->endOfYear(), 'this year', $staff
+            ),
+        ];
+    }
+
+    /** How many of these people are on approved leave today. */
+    private function onLeaveToday($userIds): int
+    {
+        return LeaveRequest::whereIn('user_id', $userIds)
+            ->where('status', 'approved')
+            ->whereDate('start_date', '<=', today())
+            ->whereDate('end_date', '>=', today())
+            ->distinct()->count('user_id');
+    }
+
+    // =====================================================================
     //  Leave management — HR's second tab, and the approvers'
     // =====================================================================
 
@@ -276,10 +358,11 @@ class DashboardService
      * query, run twice, once by the dashboard and once by the person reading
      * it.
      */
-    public function waitingQueue(int $limit = 6): array
+    public function waitingQueue(int $limit = 6, $userIds = null): array
     {
         $open = LeaveRequest::with(['leaveType', 'user.employeeProfile'])
             ->whereIn('status', self::OPEN_STATUSES)
+            ->when($userIds !== null, fn ($q) => $q->whereIn('user_id', $userIds))
             ->orderBy('date_filed')
             ->get();
 
@@ -306,6 +389,9 @@ class DashboardService
             'stale' => $open->filter(
                 fn ($r) => $r->date_filed->startOfDay()->diffInDays(now()->startOfDay()) > self::STALE_AFTER_DAYS
             )->count(),
+            // Waiting specifically on the department step — what a head can act
+            // on, as opposed to everything of theirs still in flight.
+            'mine' => $open->where('status', LeaveRequest::STATUS_DEPT_REVIEW)->count(),
             'rows' => $rows,
         ];
     }
@@ -705,10 +791,11 @@ class DashboardService
      * and the year view. The stylesheet gives the top row the system's violet
      * and everything else grey.
      */
-    public function mostAppliedTypes(CarbonInterface $from, CarbonInterface $to, string $period = ''): array
+    public function mostAppliedTypes(CarbonInterface $from, CarbonInterface $to, string $period = '', $userIds = null): array
     {
         $counts = LeaveRequest::query()
             ->whereBetween('date_filed', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
+            ->when($userIds !== null, fn ($q) => $q->whereIn('user_id', $userIds))
             ->selectRaw('leave_type_id, count(*) as total')
             ->groupBy('leave_type_id')
             ->pluck('total', 'leave_type_id');

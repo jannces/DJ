@@ -43,6 +43,26 @@ class ApprovalAuthorityTest extends TestCase
         ]);
     }
 
+    /**
+     * Make somebody the head of this employee's office.
+     *
+     * The reviewer is the head NAMED on the department, not whoever holds the
+     * role and happens to work there — so the test sets the same field the
+     * Departments page does.
+     */
+    private function headOf(User $employee): User
+    {
+        $head = $this->makeUser('department-head');
+        $department = $employee->employeeProfile->department;
+
+        EmployeeProfile::factory()->create(['user_id' => $head->id, 'department_id' => $department->id]);
+        $department->update(['head_user_id' => $head->id]);
+
+        $employee->refresh();
+
+        return $head;
+    }
+
     private function approver(string $roleSlug): User
     {
         $user = $this->makeUser($roleSlug);
@@ -113,36 +133,135 @@ class ApprovalAuthorityTest extends TestCase
 
     // ------------------------------------------------------ department head
 
-    public function test_department_head_can_no_longer_approve(): void
+    /**
+     * A head recommends; they do not decide. The distinction is the whole
+     * design: their step exists so they are aware and their view is recorded,
+     * not so they can end somebody's leave.
+     */
+    public function test_a_department_head_recommends_and_never_decides(): void
     {
-        $request = $this->fileRequest();
-        $head = $this->approver('department-head');
+        $head = $this->headOf($this->employee);
 
-        $this->assertFalse($head->hasPermission('leave.approve.final'));
+        $this->assertTrue($head->hasPermission('leave.review.department'));
+        $this->assertFalse($head->hasPermission('leave.approve.final'),
+            'a head who could decide could decide any office, not just their own');
+    }
+
+    /**
+     * The recommendation travels either way — this is the case that would be
+     * wrong if the step were a veto.
+     */
+    public function test_a_head_who_does_not_endorse_still_sends_it_on(): void
+    {
+        $head = $this->headOf($this->employee);
+        $request = $this->fileRequest();
+
+        $this->assertSame(LeaveRequest::STATUS_DEPT_REVIEW, $request->fresh()->status);
+
+        app(ApprovalWorkflowService::class)
+            ->act($request, $head, 'rejected', ['comments' => 'Office is short that week']);
+
+        $request->refresh();
+        $this->assertSame(LeaveRequest::STATUS_PENDING, $request->status,
+            'a head must not be able to end an application');
+        $this->assertSame(1, $request->current_step);
+
+        // ...and the Mayor can still approve it, with the objection on record.
+        app(ApprovalWorkflowService::class)->act($request, $this->approver('mayor'), 'approved');
+        $this->assertSame(LeaveRequest::STATUS_APPROVED, $request->fresh()->status);
+
+        $this->assertSame('Office is short that week',
+            $request->approvals()->where('step_no', 0)->first()->comments);
+    }
+
+    public function test_a_head_cannot_recommend_on_another_office(): void
+    {
+        $this->headOf($this->employee);
+        $stranger = $this->approver('department-head');
+        $request = $this->fileRequest();
 
         $this->expectException(ValidationException::class);
-        app(ApprovalWorkflowService::class)->act($request, $head, 'approved');
+        app(ApprovalWorkflowService::class)->act($request, $stranger, 'approved');
     }
 
-    public function test_department_head_is_denied_the_approval_queue(): void
+    public function test_a_head_cannot_post_a_final_decision_directly(): void
     {
-        $head = $this->approver('department-head');
+        $head = $this->headOf($this->employee);
+        $request = $this->fileRequest();
+
         $this->actingAs($head);
         session(['otp_verified' => true]);
 
-        $this->get('/review')->assertForbidden();
+        // The queue is presentation; the endpoint takes an id, so it is the
+        // endpoint that has to refuse. A head acting here recommends — the
+        // application moves to the deciding step, it is not approved.
+        $this->post("/review/{$request->id}/act", ['action' => 'approved']);
+
+        $this->assertSame(LeaveRequest::STATUS_PENDING, $request->fresh()->status,
+            'a head posting "approved" must recommend, not approve');
     }
 
-    public function test_department_head_cannot_post_a_decision_directly(): void
+    /** A head's own leave skips the step — nobody reviews their own. */
+    public function test_a_heads_own_leave_goes_straight_to_the_mayor_and_hr(): void
+    {
+        $head = $this->headOf($this->employee);
+        LeaveBalance::create([
+            'user_id' => $head->id, 'leave_type_id' => $this->vl->id,
+            'earned' => 30, 'used' => 0, 'balance' => 30,
+        ]);
+
+        $own = app(LeaveApplicationService::class)->submit($head, $this->vl, [
+            'date_filed' => '2026-07-01', 'start_date' => '2026-07-20', 'end_date' => '2026-07-21',
+            'purpose' => 'Family matters',
+            'details' => ['location' => 'within_ph', 'location_specify' => 'Alicia'],
+            'applicant_signature' => $head->name,
+        ]);
+
+        $this->assertSame(LeaveRequest::STATUS_PENDING, $own->fresh()->status);
+        $this->assertSame(1, $own->fresh()->current_step);
+        $this->assertSame(0, $own->approvals()->where('step_no', 0)->count(),
+            'a step nobody can act is not created');
+    }
+
+    /** An office with no head assigned must not strand its people. */
+    public function test_an_office_with_no_head_skips_the_step(): void
     {
         $request = $this->fileRequest();
-        $head = $this->approver('department-head');
+
+        $this->assertSame(LeaveRequest::STATUS_PENDING, $request->fresh()->status);
+        $this->assertSame(0, $request->approvals()->where('step_no', 0)->count());
+    }
+
+    /**
+     * One absent head must never strand somebody's leave, so the deciding
+     * officers can act past a pending recommendation — and the timeline says
+     * so rather than showing a silent gap.
+     */
+    public function test_the_mayor_can_decide_past_a_head_who_has_not_acted(): void
+    {
+        $this->headOf($this->employee);
+        $request = $this->fileRequest();
+        $this->assertSame(LeaveRequest::STATUS_DEPT_REVIEW, $request->fresh()->status);
+
+        app(ApprovalWorkflowService::class)->act($request, $this->approver('mayor'), 'approved');
+
+        $this->assertSame(LeaveRequest::STATUS_APPROVED, $request->fresh()->status);
+        $this->assertSame(\App\Models\Approval::ACTION_SKIPPED,
+            $request->approvals()->where('step_no', 0)->first()->action);
+    }
+
+    /** The head sees the request. Certifying credits is HR's step. */
+    public function test_a_recommendation_does_not_certify_credits(): void
+    {
+        $head = $this->headOf($this->employee);
+        $request = $this->fileRequest();
+
         $this->actingAs($head);
         session(['otp_verified' => true]);
+        $this->post("/review/{$request->id}/act", ['action' => 'approved']);
 
-        // Hiding the button is not the control — the endpoint itself refuses.
-        $this->post("/review/{$request->id}/act", ['action' => 'approved'])->assertForbidden();
-        $this->assertSame(LeaveRequest::STATUS_PENDING, $request->fresh()->status);
+        $this->assertNull($request->approvals()->where('step_no', 0)->first()->certified_balances,
+            'a recommendation is not a certification');
     }
 
     // ---------------------------------------------------- no double decision

@@ -4,9 +4,13 @@
  * Sidebar menu. Visibility is permission-driven (RBAC menu visibility):
  * an item renders only when the signed-in user holds `permission`.
  *
+ * `permission` may be a single slug or a list, in which case holding any one of
+ * them is enough — for a page several roles reach for different reasons.
+ *
  * An item may also carry `requires_any`: a list of which the user needs at
- * least one, on top of `permission`. It exists for the case where an item is
- * permitted but has nothing behind it for this particular role.
+ * least one, ON TOP OF `permission`. It exists for the case where an item is
+ * permitted but has nothing behind it for this particular role. The two are not
+ * the same thing: one widens who may see an entry, the other narrows it.
  */
 return [
     // `dashboard.view` says they may open a dashboard; `requires_any` says
@@ -38,7 +42,11 @@ return [
     // employee dashboard (single location, one query path — see DashboardService).
     // One approval queue shared by Mayor, Vice Mayor and HR. Department Head is
     // no longer an approver, so it has no review entry.
-    ['label' => 'Leave Approvals', 'icon' => 'bi-clipboard-check', 'route' => 'review.index', 'permission' => 'leave.approve.final'],
+    // Two permissions, either of which is enough: the Mayor and HR decide,
+    // the Department Head recommends for their own office. One page, one entry
+    // — the entry is not new and nothing else moved.
+    ['label' => 'Leave Approvals', 'icon' => 'bi-clipboard-check', 'route' => 'review.index',
+        'permission' => ['leave.approve.final', 'leave.review.department']],
     ['label' => 'All Leave Requests', 'icon' => 'bi-collection', 'route' => 'leave.all', 'permission' => 'leave.requests.view-all'],
 
 

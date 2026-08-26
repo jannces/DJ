@@ -37,7 +37,11 @@ Route::middleware('permission:leave.requests.view-all')->group(function () {
 // Single approval queue — Mayor, Vice Mayor and HR share it, and whichever of
 // them acts first decides the application. Both the queue and the decision are
 // gated by the same permission, enforced server-side.
-Route::middleware('permission:leave.approve.final')->group(function () {
+// Either permission reaches this page — the middleware takes "any of" — and
+// the controller then shows each officer only what they may act on. A head who
+// tries to act on another office is refused in the service, not merely absent
+// from the list: a queue is presentation, and this route takes a request id.
+Route::middleware('permission:leave.approve.final,leave.review.department')->group(function () {
     Route::get('review', [\App\Http\Controllers\Leave\ApprovalController::class, 'queue'])->name('review.index');
     Route::post('review/{leaveRequest}/act', [\App\Http\Controllers\Leave\ApprovalController::class, 'act'])->name('review.act');
 });

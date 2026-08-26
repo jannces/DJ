@@ -45,7 +45,7 @@ class RolePermissionSeeder extends Seeder
         // Named a step that no longer exists. What it does — and all it has
         // done since the approval chain was collapsed to one step — is let its
         // holder read leave requests from their own department.
-        'leave.review.department' => ["View own department's leave requests", 'leave'],
+        'leave.review.department' => ['Recommend leave for own department', 'leave'],
         'leave.certify.hr' => ['Validate & certify leave credits (HR step)', 'leave'],
         'leave.approve.final' => ['Final approval/disapproval (Mayor step)', 'leave'],
         'leave.requests.view-all' => ['View all leave requests', 'leave'],
@@ -98,19 +98,14 @@ class RolePermissionSeeder extends Seeder
         $grant($employee, [
             'dashboard.view', 'leave.apply', 'leave.view-own', 'leave.cancel',
         ]);
-        // Department Head currently holds nothing of its own — only what it
-        // inherits from Employee.
+        // Department Head recommends leave for its own office, which is the
+        // first step of the workflow again.
         //
-        // NOTE: the description on this role says it reviews and recommends
-        // leave for its department, and that is what the LGU's process
-        // actually requires. The code does not do it: the approval chain was
-        // collapsed to a single step (see the 2026_08_14 migration), which
-        // removed the Department Head stage. The description is the intent and
-        // the empty grant is the implementation, and they disagree. Reinstating
-        // the stage is a workflow change, not an RBAC grant — do not paper over
-        // it by handing this role `leave.approve.final`, which would let a head
-        // decide any office's leave, not just their own.
-        $grant($deptHead, []);
+        // Deliberately NOT `leave.approve.final`: that would let a head decide
+        // any office's leave, not just their own, and would make the
+        // recommendation a decision. The permission below is scoped by the head
+        // named on the department — see ApprovalWorkflowService::canRecommend().
+        $grant($deptHead, ['leave.review.department']);
         $grant($hr, [
             'employees.view', 'employees.manage', 'employees.view-salary',
             'departments.manage', 'positions.manage', 'holidays.manage',

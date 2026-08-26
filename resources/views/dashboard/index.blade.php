@@ -30,7 +30,11 @@
 @php
     $hasMine = isset($mine);
     $hasManagement = isset($management);
-    $both = $hasMine && $hasManagement;
+    // A department head heads no office until somebody assigns them one, in
+    // which case the service returns null and the pane is absent rather than
+    // an empty frame.
+    $hasDepartment = isset($department) && $department !== null;
+    $both = $hasMine && ($hasManagement || $hasDepartment);
 @endphp
 
 <div class="dash" @if ($both) id="dash-tabs" @endif>
@@ -38,7 +42,10 @@
 @if ($both)
     <div class="dash-tabs">
         <label><input type="radio" name="dash-pane" id="pane-mine" checked>My leave</label>
-        <label><input type="radio" name="dash-pane" id="pane-mgt">Leave management</label>
+        <label>
+            <input type="radio" name="dash-pane" id="pane-mgt">
+            {{ $hasDepartment ? 'My office' : 'Leave management' }}
+        </label>
     </div>
 @endif
 
@@ -376,7 +383,92 @@
 </div>
 @endif
 
-@if (! $hasMine && ! $hasManagement)
+{{-- ==================================================================== --}}
+{{-- My office — the department head's pane                               --}}
+{{-- ==================================================================== --}}
+@if ($hasDepartment)
+<div class="{{ $both ? 'an-pane pane-mgt' : '' }}">
+
+    <div class="kpi-grid">
+        @foreach ($department['kpis'] as $kpi)
+            @include('dashboard._kpi', ['kpi' => $kpi])
+        @endforeach
+    </div>
+
+    <div class="dash-split">
+        {{-- ---------- Waiting on the head ---------- --}}
+        <div class="dash-frame">
+            <div class="dash-head">
+                <p class="dash-title">Waiting on your recommendation</p>
+                <a href="{{ route('review.index') }}" class="dash-link">Department Review &rarr;</a>
+            </div>
+            <div class="dash-body">
+                @forelse ($department['worklist'] as $row)
+                    <div class="wl-r">
+                        <span class="wl-ref">{{ $row['reference'] }}</span>
+                        <span class="wl-m">
+                            <b>{{ $row['who'] }}</b>
+                            <small>{{ $row['what'] }}</small>
+                        </span>
+                        <span class="wl-age {{ $row['stale'] ? 'hot' : '' }}">{{ $row['age'] }}d waiting</span>
+                    </div>
+                @empty
+                    <p class="dash-empty">Nothing from your office is waiting.</p>
+                @endforelse
+                <p class="dash-note">
+                    Endorsed or not, an application goes on to the Mayor or HR &mdash; your
+                    comment goes with it.
+                </p>
+            </div>
+        </div>
+
+        {{-- ---------- Coverage for this one office ---------- --}}
+        <div class="dash-frame">
+            <div class="dash-head">
+                <p class="dash-title">{{ $department['office'] }}</p>
+                <span class="dash-link">next 14 days</span>
+            </div>
+            <div class="dash-body">
+                @php $cover = $department['coverage']; @endphp
+                @if ($cover)
+                    <div class="dash-figures">
+                        <div>
+                            <p class="hero-n {{ $cover['at_risk'] ? 'is-bad' : '' }}">{{ $cover['out'] }}</p>
+                            <p class="hero-s">
+                                away at once, of {{ $department['headcount'] }}
+                                @if ($cover['when']) &middot; {{ $cover['when'] }} @endif
+                            </p>
+                        </div>
+                        <div>
+                            <p class="hero-n">{{ $cover['pct'] }}%</p>
+                            <p class="hero-s">of the office, at the worst day</p>
+                        </div>
+                    </div>
+                @else
+                    <p class="dash-empty">Nobody from this office is booked off in the next fortnight.</p>
+                @endif
+                <p class="dash-note">
+                    Red is {{ (int) (\App\Services\DashboardService::COVERAGE_RISK * 100) }}% or more
+                    of the office away on the same day &mdash; the only figure here that looks forward.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="dash-frame">
+        <div class="dash-head">
+            <p class="dash-title">Most applied leave type in your office</p>
+            <span class="dash-link">{{ now()->year }} to date</span>
+        </div>
+        <div class="dash-body">
+            @include('dashboard._hbars', ['rows' => $department['types'], 'markZeros' => true])
+        </div>
+    </div>
+
+</div>
+@endif
+
+@if (! $hasMine && ! $hasManagement && ! $hasDepartment)
     <p class="dash-empty">There is nothing on your dashboard yet.</p>
 @endif
 

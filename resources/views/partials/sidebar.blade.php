@@ -9,7 +9,9 @@
     $itemVisible = function (array $item) {
         $user = auth()->user();
 
-        if (! $user?->hasPermission($item['permission'])) {
+        // `permission` may be one slug or several, any one of which is enough.
+        $needed = (array) $item['permission'];
+        if (! collect($needed)->contains(fn ($p) => (bool) $user?->hasPermission($p))) {
             return false;
         }
 
