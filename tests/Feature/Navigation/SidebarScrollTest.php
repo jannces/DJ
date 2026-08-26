@@ -148,10 +148,45 @@ class SidebarScrollTest extends TestCase
 
         $html = $this->followingRedirects()->get('/dashboard')->assertOk()->getContent();
 
-        foreach (['Dashboard', 'Users', 'Roles &amp; Permissions', 'Authorized Devices',
+        foreach (['Users', 'Roles &amp; Permissions', 'Authorized Devices',
             'Security Dashboard', 'Blocked IPs', 'Intrusion Logs', 'Audit Logs',
             'Activity Logs', 'System Settings'] as $label) {
             $this->assertStringContainsString('<span>'.$label.'</span>', $html, $label);
         }
+
+        // Not `Dashboard`. The administrator has one dashboard and it is the
+        // security one, which is already in this list; the plain entry only
+        // redirected there, so it was a second link to a page they had.
+        $this->assertStringNotContainsString('<span>Dashboard</span>', $html);
+    }
+
+    /**
+     * ...and everybody who does have a leave dashboard keeps the entry. The
+     * item is gated on holding a leave permission as well as `dashboard.view`,
+     * not on lacking a security one — so a role added later that holds both
+     * still gets the link.
+     */
+    public function test_the_dashboard_entry_stays_for_everyone_it_leads_somewhere_for(): void
+    {
+        foreach (['employee', 'hr', 'mayor', 'vice-mayor'] as $role) {
+            $this->actingAs($this->makeUser($role));
+            session(['otp_verified' => true]);
+
+            $this->assertStringContainsString('<span>Dashboard</span>',
+                $this->get('/dashboard')->assertOk()->getContent(),
+                $role.' lost the Dashboard entry');
+        }
+    }
+
+    /** A heading with every item under it hidden must not render either. */
+    public function test_a_heading_does_not_outlive_its_items(): void
+    {
+        $this->actingAs($this->makeUser('employee'));
+        session(['otp_verified' => true]);
+
+        $html = $this->get('/dashboard')->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('nav-heading">Administration', $html);
+        $this->assertStringContainsString('nav-heading">Leave', $html);
     }
 }

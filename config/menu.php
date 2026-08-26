@@ -3,9 +3,22 @@
 /*
  * Sidebar menu. Visibility is permission-driven (RBAC menu visibility):
  * an item renders only when the signed-in user holds `permission`.
+ *
+ * An item may also carry `requires_any`: a list of which the user needs at
+ * least one, on top of `permission`. It exists for the case where an item is
+ * permitted but has nothing behind it for this particular role.
  */
 return [
-    ['label' => 'Dashboard', 'icon' => 'bi-speedometer2', 'route' => 'dashboard', 'permission' => 'dashboard.view'],
+    // `dashboard.view` says they may open a dashboard; `requires_any` says
+    // there is one here for them. The System Administrator holds the first and
+    // neither of the second — /dashboard redirects them to the Security
+    // Dashboard, which is its own entry further down — so this item would be a
+    // second link to a page they already have.
+    [
+        'label' => 'Dashboard', 'icon' => 'bi-speedometer2', 'route' => 'dashboard',
+        'permission' => 'dashboard.view',
+        'requires_any' => ['leave.view-own', 'leave.requests.view-all'],
+    ],
 
     ['heading' => 'Leave'],
     ['label' => 'Apply for Leave', 'icon' => 'bi-calendar-plus', 'route' => 'leave.create', 'permission' => 'leave.apply'],

@@ -1189,7 +1189,9 @@ body{ background:var(--bg); color:var(--text); }
    Replaces the connected strip. Each metric is its own card, so the row reads
    as four distinct figures rather than one divided band. */
 .kpi-grid{
-  display:grid; gap:1rem; margin-bottom:1.25rem;
+  /* 1rem, the same as every other vertical gap on these pages: the counter row
+     and the panels below it are one rhythm, not two. */
+  display:grid; gap:1rem; margin-bottom:1rem;
   /* auto-fit so three cards (employee) and four (administrator) both fill the
      row evenly, without a separate rule for each count. */
   grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));
@@ -1734,15 +1736,26 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 }
 
 /* ---- Two-column arrangement ---------------------------------------------- */
-/* Two panels side by side, collapsing to one column on a narrow screen. */
+/* Two panels side by side, collapsing to one column on a narrow screen.
+   `stretch`, not `start`: the two panels in a row almost never have the same
+   natural height — a seven-column chart against a three-row list — and left to
+   themselves they end at different points, so the row below starts against a
+   ragged edge and the whitespace between rows reads as uneven. Sharing the row
+   height puts every panel edge on the same line. The shorter panel's body takes
+   up the slack rather than its header stretching. */
 .dash-split{
   display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-  gap:1rem; align-items:start;
+  gap:1rem; align-items:stretch; margin-bottom:1rem;
 }
 @media (max-width:992px){ .dash-split{ grid-template-columns:minmax(0,1fr); } }
+.dash-split > .dash-frame{ margin-bottom:0; display:flex; flex-direction:column; }
+.dash-split > .dash-frame > .dash-body{ flex:1 1 auto; display:flex; flex-direction:column; }
+/* A caption is the last thing in a panel, so it sits at the foot of whatever
+   slack the row height leaves rather than floating in the middle of it. Its own
+   top margin is overridden by `auto`, so the gap is restored as padding. */
+.dash-split > .dash-frame > .dash-body > .dash-note{ margin-top:auto; padding-top:.9rem; }
 .dash-col{ display:flex; flex-direction:column; gap:1rem; min-width:0; }
 .dash-col .dash-frame{ margin-bottom:0; }
-.dash-split > .dash-frame{ margin-bottom:0; }
 
 /* ---- "Show the numbers": the table view a chart carries ------------------ */
 .an-numbers{ margin-top:1rem; }
