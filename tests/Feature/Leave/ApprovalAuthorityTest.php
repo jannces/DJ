@@ -250,6 +250,54 @@ class ApprovalAuthorityTest extends TestCase
             $request->approvals()->where('step_no', 0)->first()->action);
     }
 
+    /**
+     * 7.B of CSC Form No. 6 is the RECOMMENDATION block, and that is where the
+     * department head signs. 7.C and 7.D are the decision, signed by the
+     * authorized officer — so the two names must not be the same name.
+     */
+    public function test_the_head_signs_7b_and_the_decider_signs_7c(): void
+    {
+        $head = $this->headOf($this->employee);
+        $request = $this->fileRequest();
+
+        app(ApprovalWorkflowService::class)
+            ->act($request, $head, 'approved', ['signature' => 'D. MENDOZA']);
+        app(ApprovalWorkflowService::class)
+            ->act($request->fresh(), $this->approver('mayor'), 'approved', ['signature' => 'J. ALEJANDRO']);
+
+        $this->actingAs($this->employee);
+        session(['otp_verified' => true]);
+        $html = $this->get("/leave/{$request->id}/preview")->assertOk()->getContent();
+
+        // 7.B carries the head, under the Department Head rule.
+        preg_match('#7\.B RECOMMENDATION(.*?)7\.C#s', $html, $b);
+        $this->assertNotEmpty($b, 'the form has no 7.B block');
+        $this->assertStringContainsString('D. MENDOZA', $b[1]);
+        $this->assertStringContainsString('Department Head', $b[1]);
+        $this->assertStringNotContainsString('J. ALEJANDRO', $b[1],
+            'the deciding officer is signing the recommendation block');
+    }
+
+    /**
+     * No head, no signature. A form that printed the Mayor's name against the
+     * recommendation would be a document claiming a supervisor endorsed
+     * something they never saw.
+     */
+    public function test_7b_is_blank_when_nobody_recommended(): void
+    {
+        $request = $this->fileRequest();
+        app(ApprovalWorkflowService::class)
+            ->act($request, $this->approver('mayor'), 'approved', ['signature' => 'J. ALEJANDRO']);
+
+        $this->actingAs($this->employee);
+        session(['otp_verified' => true]);
+        $html = $this->get("/leave/{$request->id}/preview")->assertOk()->getContent();
+
+        preg_match('#7\.B RECOMMENDATION(.*?)7\.C#s', $html, $b);
+        $this->assertStringNotContainsString('J. ALEJANDRO', $b[1],
+            'an unsigned recommendation must stay unsigned');
+    }
+
     /** The head sees the request. Certifying credits is HR's step. */
     public function test_a_recommendation_does_not_certify_credits(): void
     {

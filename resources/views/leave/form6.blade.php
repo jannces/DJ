@@ -14,7 +14,21 @@
 @php
     $p = $r->user->employeeProfile;
     $details = $r->details ?? [];
-    $decision = $r->approvals->firstWhere('action', '!=', \App\Models\Approval::ACTION_PENDING);
+    // Two steps now, so "the approval row" is no longer one thing. 7.B is the
+    // department head's RECOMMENDATION; 7.C, 7.D and the signature underneath
+    // belong to the authorized officer who decided. Reading them off the first
+    // non-pending row — which is what this did — would have printed the head's
+    // name against the Mayor's approval the moment a second row existed.
+    //
+    // `skipped` is not a recommendation: it is the marker left when the Mayor
+    // or HR decided before the head acted, so 7.B stays blank, which is what a
+    // paper form with no supervisor's signature looks like.
+    $recommendation = $r->approvals->first(fn ($a) => $a->step_no === 0
+        && in_array($a->action, [\App\Models\Approval::ACTION_APPROVED, \App\Models\Approval::ACTION_REJECTED], true));
+    $decision = $r->approvals->first(fn ($a) => $a->step_no === 1
+        && $a->action !== \App\Models\Approval::ACTION_PENDING);
+    $endorsed = $recommendation?->action === \App\Models\Approval::ACTION_APPROVED;
+    $notEndorsed = $recommendation?->action === \App\Models\Approval::ACTION_REJECTED;
     $isApproved = $r->status === \App\Models\LeaveRequest::STATUS_APPROVED;
     $isRejected = $r->status === \App\Models\LeaveRequest::STATUS_REJECTED;
     $days = rtrim(rtrim(number_format((float) $r->working_days, 1), '0'), '.');
@@ -243,17 +257,18 @@
         </div>
       </td>
       <td style="width:50%">
-        {{-- One authorized officer decides — Mayor, Vice Mayor or HR. There is
-             no Department Head step, so none is printed. --}}
+        {{-- The department head signs 7.B. Their recommendation is not the
+             decision: 7.C and 7.D below carry that, signed by the authorized
+             officer. Blank when there was no head to sign. --}}
         <div class="sub">7.B RECOMMENDATION</div>
         <table class="rows">
-          <tr><td class="b">{!! $box($isApproved) !!}</td><td>For approval</td></tr>
-          <tr><td class="b">{!! $box($isRejected) !!}</td><td>For disapproval due to {!! $rule($r->disapproval_reason ?? $decision?->comments) !!}</td></tr>
+          <tr><td class="b">{!! $box($endorsed) !!}</td><td>For approval</td></tr>
+          <tr><td class="b">{!! $box($notEndorsed) !!}</td><td>For disapproval due to {!! $rule($notEndorsed ? $recommendation?->comments : null) !!}</td></tr>
         </table>
         <div class="sign">
-          <div class="signname">{{ $decision?->signature ?? $decision?->approver?->name ?? '' }}</div>
+          <div class="signname">{{ $recommendation?->signature ?? $recommendation?->approver?->name ?? '' }}</div>
           <div class="signline"></div>
-          <div class="lbl">Authorized Officer</div>
+          <div class="lbl">Department Head</div>
         </div>
       </td>
     </tr>
