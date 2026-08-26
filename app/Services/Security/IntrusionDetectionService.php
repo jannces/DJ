@@ -5,11 +5,8 @@ namespace App\Services\Security;
 use App\Models\BlockedIp;
 use App\Models\IntrusionLog;
 use App\Models\SystemSetting;
-use App\Notifications\IntrusionAlertNotification;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Notification;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -84,8 +81,10 @@ class IntrusionDetectionService
         'details', 'signature', 'applicant_signature', 'blocked_reason',
     ];
 
-    public function __construct(private readonly AuditLogger $audit)
-    {
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly SecurityAlerter $alerts,
+    ) {
     }
 
     public function inspect(Request $request): ?Response
@@ -254,17 +253,9 @@ class IntrusionDetectionService
         Cache::forget("blocked-ip.{$ip}");
 
         $this->audit->log('ip_auto_blocked', $block, [], ['ip' => $ip, 'events' => $recent]);
-        $this->alertAdmins($ip, $recent);
+        $this->alerts->ipAutoBlocked($ip, $recent);
 
         return true;
-    }
-
-    private function alertAdmins(string $ip, int $events): void
-    {
-        $admins = User::whereHas('roles', fn ($q) => $q->whereIn('slug', ['super-admin', 'system-admin']))->get();
-        if ($admins->isNotEmpty()) {
-            Notification::send($admins, new IntrusionAlertNotification($ip, $events));
-        }
     }
 
     private function sanitize(string $value): string

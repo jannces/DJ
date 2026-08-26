@@ -2,15 +2,17 @@
 
 namespace App\Notifications;
 
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class IntrusionAlertNotification extends Notification implements ShouldQueue
+/**
+ * Not queued — see AccountLockoutAlertNotification for the reasoning. In short:
+ * `QUEUE_CONNECTION` defaults to `database` and no worker runs on the LAN box,
+ * so a queued security alert is a row in `jobs` that nobody reads. It looked
+ * built and behaved as though it were not.
+ */
+class IntrusionAlertNotification extends Notification
 {
-    use Queueable;
-
     public function __construct(public string $ip, public int $events)
     {
     }
