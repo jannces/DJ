@@ -9,72 +9,115 @@
 
   The filtering here is presentation. The permission is enforced in
   ReportController::generate() as well, because the URL is guessable and the
-  PDF/Excel/CSV downloads all come off that same route.
+  PDF/Excel downloads come off that same route.
 
-  Every report covers one month or one year — never a free date range. Two
-  people asking the same question get the same period, and the file says which
-  period it is, in the caption and in its own filename.
+  THE PERIOD. Each card carries exactly one period control, and it is the
+  segment: `period` is the radio's own name, so the thing you press IS the value
+  that gets submitted. There is no separate "Monthly/Yearly" dropdown any more —
+  that named the period a second time, and the month and year fields underneath
+  named it a third.
+
+  Choosing Year hides the month with :has(), the same no-script technique as the
+  dashboard tabs. Without :has() the field stays visible and the server ignores
+  it, which is the harmless failure.
+
+  Not every report has a period at all. A balance and a queue are true as of
+  now, and Mandatory Leave is a calendar-year obligation — so those cards offer
+  a year, or nothing, rather than a control that changes no figure. See
+  ReportService::SCOPE_*.
 --}}
 
 <h1 class="h4 mb-3">Reports</h1>
 
 @forelse ($groups as $slug => $reports)
     <h2 class="reports-group">{{ $labels[$slug] ?? $slug }}</h2>
-    <div class="row g-3 mb-4">
-        @foreach ($reports as $key => $title)
-            <div class="col-md-4">
-                <div class="card h-100"><div class="card-body">
-                    <h3 class="h6">{{ $title }}</h3>
+    <div class="report-grid">
+        @foreach ($reports as $key => $report)
+            @php
+                $scope = $report['scope'] ?? \App\Services\Reports\ReportService::SCOPE_RANGE;
+                $byDepartment = in_array($key, ['employee-leave', 'leave-balance', 'pending', 'mandatory-leave'], true);
+            @endphp
 
-                    {{-- The month field hides itself when Yearly is chosen. It is
-                         :has() on the select, so no script is involved; without
-                         :has() the field simply stays visible and is ignored. --}}
-                    <form action="{{ route('reports.generate', $key) }}" method="GET"
-                          class="report-period" data-no-loader>
-                        <div class="row g-2 mb-2">
-                            <div class="col-12">
-                                <select name="period" class="form-select form-select-sm" aria-label="Period">
+            <form action="{{ route('reports.generate', $key) }}" method="GET"
+                  class="report-card" data-no-loader>
+                <div class="report-head">
+                    <p class="report-title">{{ $report['title'] }}</p>
+                    <p class="report-about">{{ $report['about'] }}</p>
+                </div>
+
+                <div class="report-body">
+                    @if ($scope === \App\Services\Reports\ReportService::SCOPE_NONE)
+                        {{-- A snapshot. Saying so is the honest control: these
+                             figures are true now and were not true last August,
+                             and no picker can change that. --}}
+                        <p class="report-snap">As of {{ now()->format('j F Y') }}</p>
+                    @else
+                        <div class="report-period">
+                            @if ($scope === \App\Services\Reports\ReportService::SCOPE_RANGE)
+                                <div class="period-seg">
                                     @foreach ($periods as $value => $label)
-                                        <option value="{{ $value }}">{{ $label }}</option>
+                                        <label>
+                                            <input type="radio" name="period" value="{{ $value }}"
+                                                   class="per-{{ $value }}" @checked($loop->first)>{{ $label }}
+                                        </label>
                                     @endforeach
-                                </select>
-                            </div>
-                            <div class="col-6">
-                                <input type="number" name="year" class="form-control form-control-sm"
-                                       value="{{ now()->year }}" min="2000" max="{{ now()->year + 1 }}"
-                                       aria-label="Year">
-                            </div>
-                            <div class="col-6 period-month">
-                                <select name="month" class="form-select form-select-sm" aria-label="Month">
+                                </div>
+
+                                <select name="month" class="period-month" aria-label="Month for {{ $report['title'] }}">
                                     @for ($m = 1; $m <= 12; $m++)
                                         <option value="{{ $m }}" @selected($m === now()->month)>
                                             {{ \Illuminate\Support\Carbon::create(null, $m, 1)->format('F') }}
                                         </option>
                                     @endfor
                                 </select>
-                            </div>
-
-                            @if ($key === 'employee-leave' || $key === 'leave-balance')
-                                <div class="col-12">
-                                    <select name="department" class="form-select form-select-sm" aria-label="Department">
-                                        <option value="">All departments</option>
-                                        @foreach ($departments as $d)
-                                            <option value="{{ $d->id }}">{{ $d->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
                             @endif
-                        </div>
 
-                        <div class="btn-group btn-group-sm w-100">
-                            <button formtarget="_blank" class="btn btn-lgu">View</button>
-                            <button name="format" value="pdf" class="btn btn-outline-danger">PDF</button>
-                            <button name="format" value="xlsx" class="btn btn-outline-success">Excel</button>
-                            <button name="format" value="csv" class="btn btn-outline-secondary">CSV</button>
+                            {{-- A select, not a number spinner: there are six
+                                 values and nobody wants to hold an arrow down. --}}
+                            <select name="year" aria-label="Year for {{ $report['title'] }}">
+                                @foreach ($years as $y)
+                                    <option value="{{ $y }}" @selected($y === (int) now()->year)>{{ $y }}</option>
+                                @endforeach
+                            </select>
                         </div>
-                    </form>
-                </div></div>
-            </div>
+                    @endif
+
+                    @if ($byDepartment)
+                        <select name="department" class="report-dept" aria-label="Department for {{ $report['title'] }}">
+                            <option value="">All departments</option>
+                            @foreach ($departments as $d)
+                                <option value="{{ $d->id }}">{{ $d->name }}</option>
+                            @endforeach
+                        </select>
+                    @endif
+
+                    {{-- View is what you press almost every time, so it carries
+                         the accent and the wider column. PDF and Excel take the
+                         file-type colours everyone already knows — deliberately
+                         a step off the KPI red and green, which mean "a problem"
+                         and "healthy" everywhere else in the system. --}}
+                    <div class="report-acts">
+                        <button formtarget="_blank" class="btn-view">
+                            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                <path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/>
+                                <circle cx="12" cy="12" r="2.8"/>
+                            </svg>View
+                        </button>
+                        <button name="format" value="pdf" class="btn-fmt fmt-pdf">
+                            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                <path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/>
+                                <path d="M14 3v5h5"/>
+                            </svg>PDF
+                        </button>
+                        <button name="format" value="xlsx" class="btn-fmt fmt-xls">
+                            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                <rect x="3.5" y="4" width="17" height="16" rx="2"/>
+                                <path d="M3.5 10h17M9.5 4v16"/>
+                            </svg>Excel
+                        </button>
+                    </div>
+                </div>
+            </form>
         @endforeach
     </div>
 @empty

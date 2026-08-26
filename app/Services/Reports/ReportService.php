@@ -10,11 +10,13 @@ use App\Models\FailedLogin;
 use App\Models\IntrusionLog;
 use App\Models\LeaveBalance;
 use App\Models\LeaveRequest;
+use App\Models\LeaveType;
 use App\Models\User;
+use App\Services\DashboardService;
 use Illuminate\Support\Carbon;
 
 /**
- * Produces the nine report datasets. Each returns a uniform structure
+ * Produces the report datasets. Each returns a uniform structure
  * {title, columns, rows} that a single set of PDF/XLSX/CSV exporters consumes.
  * Which of them a given account may run is declared in CATALOGUE below.
  */
@@ -33,24 +35,93 @@ class ReportService
      * anything. The grouping is what the page and the menu read.
      */
     public const CATALOGUE = [
-        'employee-leave' => ['title' => 'Employee Leave Report', 'permission' => 'leave.requests.view-all', 'group' => 'leave'],
-        'department' => ['title' => 'Department Report', 'permission' => 'leave.requests.view-all', 'group' => 'leave'],
-        'monthly' => ['title' => 'Monthly Report', 'permission' => 'leave.requests.view-all', 'group' => 'leave'],
-        'annual' => ['title' => 'Annual Report', 'permission' => 'leave.requests.view-all', 'group' => 'leave'],
-        'leave-balance' => ['title' => 'Leave Balance Report', 'permission' => 'leave.requests.view-all', 'group' => 'leave'],
-        'intrusion' => ['title' => 'Intrusion Report', 'permission' => 'reports.security', 'group' => 'security'],
-        'audit' => ['title' => 'Audit Report', 'permission' => 'reports.security', 'group' => 'security'],
-        'blocked-login' => ['title' => 'Blocked Login Report', 'permission' => 'reports.security', 'group' => 'security'],
-        'user-activity' => ['title' => 'User Activity Report', 'permission' => 'reports.security', 'group' => 'security'],
+        'employee-leave' => [
+            'title' => 'Employee Leave Report',
+            'about' => 'Every application filed in the period',
+            'permission' => 'leave.requests.view-all', 'group' => 'leave', 'scope' => self::SCOPE_RANGE,
+        ],
+        'leave-type-summary' => [
+            // Was "Annual Report". Its content is a summary per leave type,
+            // which is a real question — but "Annual" is a *period*, and a card
+            // that carries a period control cannot also be named after one. It
+            // honours the period now instead of always being a year.
+            'title' => 'Leave Type Summary',
+            'about' => 'Filed, approved and disapproved per type',
+            'permission' => 'leave.requests.view-all', 'group' => 'leave', 'scope' => self::SCOPE_RANGE,
+        ],
+        'department' => [
+            'title' => 'Department Report',
+            'about' => 'Applications and headcount per office',
+            'permission' => 'leave.requests.view-all', 'group' => 'leave', 'scope' => self::SCOPE_RANGE,
+        ],
+        'pending' => [
+            'title' => 'Pending Applications',
+            'about' => 'Still awaiting a decision, oldest first',
+            'permission' => 'leave.requests.view-all', 'group' => 'leave', 'scope' => self::SCOPE_NONE,
+        ],
+        'mandatory-leave' => [
+            'title' => 'Mandatory Leave Compliance',
+            'about' => 'Who has not filed their five CSC days',
+            'permission' => 'leave.requests.view-all', 'group' => 'leave', 'scope' => self::SCOPE_YEAR,
+        ],
+        'leave-balance' => [
+            'title' => 'Leave Balance Report',
+            'about' => 'Earned, used and remaining per employee',
+            'permission' => 'leave.requests.view-all', 'group' => 'leave', 'scope' => self::SCOPE_NONE,
+        ],
+        'intrusion' => [
+            'title' => 'Intrusion Report',
+            'about' => 'Every detection, with its rule and target',
+            'permission' => 'reports.security', 'group' => 'security', 'scope' => self::SCOPE_RANGE,
+        ],
+        'audit' => [
+            'title' => 'Audit Report',
+            'about' => 'Who changed what, and the role they held',
+            'permission' => 'reports.security', 'group' => 'security', 'scope' => self::SCOPE_RANGE,
+        ],
+        'blocked-login' => [
+            'title' => 'Blocked Login Report',
+            'about' => 'Failed sign-ins and the IPs blocked for them',
+            'permission' => 'reports.security', 'group' => 'security', 'scope' => self::SCOPE_RANGE,
+        ],
+        'user-activity' => [
+            'title' => 'User Activity Report',
+            'about' => 'Pages reached, by whom, from where',
+            'permission' => 'reports.security', 'group' => 'security', 'scope' => self::SCOPE_RANGE,
+        ],
     ];
+
+    /**
+     * How much of a period a report has.
+     *
+     * Not every report has one, and offering a control that changes nothing is
+     * worse than offering none: Department and Leave Balance both carried the
+     * month and year pickers and both ignored them, so a file captioned
+     * "August 2026" could contain every row ever recorded. Department now reads
+     * the period; a balance genuinely has none, so it says so.
+     *
+     *   RANGE — a month or a year, the reader's choice
+     *   YEAR  — a year and only a year. Mandatory Leave is a calendar-year
+     *           obligation; "March's mandatory leave" is not a thing
+     *   NONE  — a snapshot, true as of now. A balance, or a queue
+     */
+    public const SCOPE_RANGE = 'range';
+    public const SCOPE_YEAR = 'year';
+    public const SCOPE_NONE = 'none';
 
     public const PERIOD_MONTHLY = 'monthly';
     public const PERIOD_ANNUAL = 'annual';
 
     public const PERIODS = [
-        self::PERIOD_MONTHLY => 'Monthly',
-        self::PERIOD_ANNUAL => 'Yearly',
+        self::PERIOD_MONTHLY => 'Month',
+        self::PERIOD_ANNUAL => 'Year',
     ];
+
+    /** How much period control a report's card should offer. */
+    public static function scopeOf(string $report): string
+    {
+        return self::CATALOGUE[$report]['scope'] ?? self::SCOPE_RANGE;
+    }
 
     public const GROUPS = [
         'security' => 'Security',
@@ -66,7 +137,7 @@ class ReportService
     /**
      * The catalogue a user may actually run, grouped for the page.
      *
-     * @return array<string,array<string,string>> group slug => [key => title]
+     * @return array<string,array<string,array<string,string>>> group slug => [key => entry]
      */
     public static function visibleTo(User $user): array
     {
@@ -76,7 +147,7 @@ class ReportService
 
         foreach (self::CATALOGUE as $key => $report) {
             if ($user->hasPermission($report['permission'])) {
-                $groups[$report['group']][$key] = $report['title'];
+                $groups[$report['group']][$key] = $report;
             }
         }
 
@@ -89,8 +160,9 @@ class ReportService
         [$columns, $rows] = match ($report) {
             'employee-leave' => $this->employeeLeave($filters),
             'department' => $this->department($filters),
-            'monthly' => $this->monthly($filters),
-            'annual' => $this->annual($filters),
+            'leave-type-summary' => $this->leaveTypeSummary($filters),
+            'pending' => $this->pending($filters),
+            'mandatory-leave' => $this->mandatoryLeave($filters),
             'leave-balance' => $this->leaveBalance($filters),
             'intrusion' => $this->intrusion($filters),
             'audit' => $this->audit($filters),
@@ -102,7 +174,7 @@ class ReportService
         return [
             'key' => $report,
             'title' => self::CATALOGUE[$report]['title'] ?? $report,
-            'period' => $this->periodLabel($filters),
+            'period' => $this->periodLabel($filters, self::scopeOf($report)),
             'columns' => $columns,
             'rows' => $rows,
             'generated_at' => now()->format('F d, Y H:i'),
@@ -135,14 +207,24 @@ class ReportService
         return [$start, $start->copy()->endOfMonth()];
     }
 
-    /** A caption naming the period, so a downloaded file says what it covers. */
-    public function periodLabel(array $f): string
+    /**
+     * A caption naming the period, so a downloaded file says what it covers.
+     *
+     * A snapshot says so rather than borrowing a period it does not have — a
+     * balance sheet captioned "August 2026" is a claim about last August that
+     * the figures underneath do not support.
+     */
+    public function periodLabel(array $f, string $scope = self::SCOPE_RANGE): string
     {
         $year = $this->year($f);
 
-        return ($f['period'] ?? self::PERIOD_MONTHLY) === self::PERIOD_ANNUAL
-            ? 'Year '.$year
-            : Carbon::create($year, $this->month($f), 1)->format('F Y');
+        return match ($scope) {
+            self::SCOPE_NONE => 'As of '.now()->format('F d, Y'),
+            self::SCOPE_YEAR => 'Year '.$year,
+            default => ($f['period'] ?? self::PERIOD_MONTHLY) === self::PERIOD_ANNUAL
+                ? 'Year '.$year
+                : Carbon::create($year, $this->month($f), 1)->format('F Y'),
+        };
     }
 
     /** Clamped, because the year arrives from a query string. */
@@ -178,53 +260,122 @@ class ReportService
         return [['Reference', 'Employee', 'Department', 'Leave Type', 'Start', 'End', 'Days', 'Status'], $rows];
     }
 
+    /**
+     * Applications per office, for the period.
+     *
+     * It used to count every request ever filed, whatever period was chosen,
+     * under a caption naming the period — so the figures and the caption
+     * disagreed with nothing on the page to say which was right.
+     */
     private function department(array $f): array
     {
-        $rows = Department::withCount('employees')->get()->map(function ($d) {
-            $requests = LeaveRequest::whereHas('user.employeeProfile', fn ($w) => $w->where('department_id', $d->id));
+        [$from, $to] = $this->dateRange($f);
+
+        $rows = Department::withCount('employees')->orderBy('name')->get()->map(function ($d) use ($from, $to) {
+            $requests = LeaveRequest::whereBetween('date_filed', [$from, $to])
+                ->whereHas('user.employeeProfile', fn ($w) => $w->where('department_id', $d->id));
 
             return [
                 $d->name, $d->code, $d->employees_count,
                 (clone $requests)->count(),
                 (clone $requests)->where('status', 'approved')->count(),
-                (clone $requests)->whereNotIn('status', ['approved', 'rejected', 'cancelled'])->count(),
+                (clone $requests)->whereIn('status', DashboardService::OPEN_STATUSES)->count(),
             ];
         })->all();
 
-        return [['Department', 'Code', 'Employees', 'Total Requests', 'Approved', 'Pending'], $rows];
+        return [['Department', 'Code', 'Employees', 'Filed', 'Approved', 'Awaiting'], $rows];
     }
 
-    private function monthly(array $f): array
+    /**
+     * Totals per leave type, for the period — was the "Annual Report".
+     *
+     * The list of individual applications is Employee Leave Report; this is the
+     * shape of them, which is a different question and the reason it survived
+     * the rename rather than the drop.
+     */
+    private function leaveTypeSummary(array $f): array
     {
-        $start = Carbon::create($this->year($f), $this->month($f), 1)->startOfMonth();
-        $end = (clone $start)->endOfMonth();
-
-        $rows = LeaveRequest::with('user', 'leaveType')
-            ->whereBetween('start_date', [$start, $end])->get()
-            ->map(fn ($r) => [
-                $r->reference_no, $r->user->name, $r->leaveType->name,
-                $r->start_date->format('Y-m-d'), rtrim(rtrim(number_format($r->working_days, 1), '0'), '.'),
-                ucfirst(str_replace('_', ' ', $r->status)),
-            ])->all();
-
-        return [['Reference', 'Employee', 'Type', 'Start', 'Days', 'Status'], $rows];
-    }
-
-    private function annual(array $f): array
-    {
-        $year = $this->year($f);
+        [$from, $to] = $this->dateRange($f);
         $rows = [];
-        foreach (\App\Models\LeaveType::orderBy('name')->get() as $type) {
-            $q = LeaveRequest::where('leave_type_id', $type->id)->whereYear('start_date', $year);
+
+        foreach (LeaveType::orderBy('name')->get() as $type) {
+            $q = LeaveRequest::where('leave_type_id', $type->id)->whereBetween('date_filed', [$from, $to]);
             $rows[] = [
-                $type->name, (clone $q)->count(),
+                $type->name.($type->active ? '' : ' (retired)'),
+                (clone $q)->count(),
                 (clone $q)->where('status', 'approved')->count(),
                 (clone $q)->where('status', 'rejected')->count(),
+                (clone $q)->whereIn('status', DashboardService::OPEN_STATUSES)->count(),
                 number_format((clone $q)->where('status', 'approved')->sum('working_days'), 1),
             ];
         }
 
-        return [['Leave Type', 'Filed', 'Approved', 'Disapproved', 'Approved Days'], $rows];
+        return [['Leave Type', 'Filed', 'Approved', 'Disapproved', 'Awaiting', 'Approved Days'], $rows];
+    }
+
+    /**
+     * Everything still waiting on a decision, oldest first.
+     *
+     * The only report whose answer is a queue rather than a record, which is
+     * also why it has no period: "the applications that were pending last
+     * August" is not a question anybody asks, and it is not one the data can
+     * answer — a status is current, not historical.
+     */
+    private function pending(array $f): array
+    {
+        $rows = LeaveRequest::with('user.employeeProfile.department', 'leaveType')
+            ->whereIn('status', DashboardService::OPEN_STATUSES)
+            ->when($f['department'] ?? null, fn ($q, $d) => $q->whereHas('user.employeeProfile', fn ($w) => $w->where('department_id', $d)))
+            ->orderBy('date_filed')
+            ->get()
+            ->map(fn ($r) => [
+                $r->reference_no,
+                $r->user->name,
+                $r->user->employeeProfile?->department?->name ?? '—',
+                $r->leaveType->name,
+                $r->date_filed->format('Y-m-d'),
+                (int) $r->date_filed->startOfDay()->diffInDays(now()->startOfDay()),
+                $r->start_date->format('Y-m-d'),
+                ucfirst(str_replace('_', ' ', $r->status)),
+            ])->all();
+
+        return [['Reference', 'Employee', 'Department', 'Leave Type', 'Filed', 'Days Waiting', 'Starts', 'Status'], $rows];
+    }
+
+    /**
+     * Employees who have not taken their Mandatory (Forced) Leave this year.
+     *
+     * The CSC requires five days a year and they do not carry over, so an
+     * employee who has filed none of theirs in November is about to lose them
+     * and HR is the office accountable. Nothing printed this before.
+     *
+     * Year-scoped, never monthly: the obligation is a calendar year, and
+     * "March's mandatory leave" is not a thing.
+     */
+    private function mandatoryLeave(array $f): array
+    {
+        $type = LeaveType::where('code', 'FL')->first();
+
+        if ($type === null) {
+            return [['Employee', 'Department', 'Entitled', 'Used', 'Outstanding'], []];
+        }
+
+        $rows = LeaveBalance::with('user.employeeProfile.department')
+            ->where('leave_type_id', $type->id)
+            ->when($f['department'] ?? null, fn ($q, $d) => $q->whereHas('user.employeeProfile', fn ($w) => $w->where('department_id', $d)))
+            ->get()
+            // Somebody the credits never accrued for is not out of compliance.
+            ->filter(fn ($b) => (float) $b->earned > 0 && (float) $b->used <= 0)
+            ->sortBy(fn ($b) => [$b->user->employeeProfile?->department?->name ?? 'zz', $b->user->name])
+            ->map(fn ($b) => [
+                $b->user->name,
+                $b->user->employeeProfile?->department?->name ?? '—',
+                number_format($b->earned, 2),
+                number_format($b->used, 2),
+                number_format($b->balance, 2),
+            ])->values()->all();
+
+        return [['Employee', 'Department', 'Entitled', 'Used', 'Outstanding'], $rows];
     }
 
     private function leaveBalance(array $f): array

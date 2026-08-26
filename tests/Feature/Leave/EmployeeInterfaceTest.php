@@ -75,8 +75,15 @@ class EmployeeInterfaceTest extends TestCase
         $this->get('/search?q=cruz')->assertOk();
     }
 
-    // ------------------------------------------------------------------- CSV
+    // --------------------------------------------------------------- exports
 
+    /**
+     * CSV has since been dropped as a format — `?format=csv` now falls through
+     * to the on-screen view. These stay exactly as they were, because the rule
+     * they encode is about the *route*, not the format: an export an account
+     * may not have is refused by the server rather than hidden in the markup,
+     * and that has to hold for a format nobody links to any more.
+     */
     public function test_employee_cannot_export_a_report_as_csv(): void
     {
         $this->asEmployee()->get('/reports/employee-leave?format=csv')->assertForbidden();
@@ -97,15 +104,19 @@ class EmployeeInterfaceTest extends TestCase
         ]);
     }
 
-    public function test_hr_can_still_export_a_report_as_csv(): void
+    public function test_hr_can_still_export_a_report(): void
     {
         $hr = $this->makeUser('hr');
         $this->actingAs($hr);
         session(['otp_verified' => true]);
 
-        $this->get('/reports/employee-leave?format=csv')
-            ->assertOk()
-            ->assertHeader('content-disposition');
+        // Excel and PDF are the two formats now; CSV was dropped from the
+        // backend as well as the button, so this is what "still exports" means.
+        foreach (['xlsx', 'pdf'] as $format) {
+            $this->get('/reports/employee-leave?format='.$format)
+                ->assertOk()
+                ->assertHeader('content-disposition');
+        }
     }
 
     // -------------------------------------------------------- balances moved

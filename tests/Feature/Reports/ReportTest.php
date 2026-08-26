@@ -18,7 +18,13 @@ class ReportTest extends TestCase
     private const SECURITY = ['intrusion', 'audit', 'blocked-login', 'user-activity'];
 
     /** @var array<string> */
-    private const LEAVE = ['employee-leave', 'department', 'monthly', 'annual', 'leave-balance'];
+    private const LEAVE = [
+        'employee-leave', 'leave-type-summary', 'department',
+        'pending', 'mandatory-leave', 'leave-balance',
+    ];
+
+    /** @var array<string> the two formats a report downloads as */
+    private const FORMATS = ['pdf', 'xlsx'];
 
     protected function setUp(): void
     {
@@ -89,6 +95,9 @@ class ReportTest extends TestCase
             $this->get('/reports/'.$key)->assertForbidden();
             // The exports are the same route with a query string, so a denial
             // that only covered the HTML view would leak the whole dataset.
+            // `csv` is in the list although the format was dropped: an
+            // unrecognised format falls through to the on-screen view, and that
+            // view must be refused too.
             foreach (['csv', 'xlsx', 'pdf'] as $format) {
                 $this->get('/reports/'.$key.'?format='.$format)->assertForbidden();
             }
@@ -176,23 +185,43 @@ class ReportTest extends TestCase
         $this->assertSame('Audit Report — March 2026', $headings[0][0]);
         $this->assertSame($data['columns'], $headings[1], 'the column names keep a row of their own');
 
-        // Every row the same width, or the file stops being valid CSV.
+        // Every row the same width, or the sheet comes out ragged.
         $this->assertCount(count($data['columns']), $headings[0],
-            'the title row is padded to the column count so the CSV is not ragged');
+            'the title row is padded to the column count');
 
         $this->signIn('system-admin');
 
         $this->assertStringContainsString('audit-march-2026',
-            $this->get('/reports/audit?format=csv&period=monthly&year=2026&month=3')
+            $this->get('/reports/audit?format=xlsx&period=monthly&year=2026&month=3')
                 ->assertOk()->headers->get('content-disposition'));
 
         $this->assertStringContainsString('audit-year-2026',
-            $this->get('/reports/audit?format=csv&period=annual&year=2026')
+            $this->get('/reports/audit?format=xlsx&period=annual&year=2026')
                 ->assertOk()->headers->get('content-disposition'));
     }
 
-    /** Every security report downloads in all three formats. */
-    public function test_the_security_reports_export_as_pdf_excel_and_csv(): void
+    /**
+     * CSV is gone from the backend, not only from the card.
+     *
+     * An export route nothing links to is exactly the kind of thing that
+     * outlives the decision to drop it — and the standing rule on this system
+     * is that an export an account may not have is refused by the server, not
+     * hidden in the markup. `?format=csv` falls through to the on-screen view
+     * like any other unrecognised format, which is still permission-checked.
+     */
+    public function test_csv_no_longer_downloads(): void
+    {
+        $this->signIn('system-admin');
+
+        $response = $this->get('/reports/audit?format=csv')->assertOk();
+
+        $this->assertNull($response->headers->get('content-disposition'),
+            'CSV is still downloading; the format was supposed to be gone');
+        $this->assertStringContainsString('Audit Report', $response->getContent());
+    }
+
+    /** Every security report downloads in both formats. */
+    public function test_the_security_reports_export_as_pdf_and_excel(): void
     {
         $this->signIn('system-admin');
 
@@ -200,7 +229,7 @@ class ReportTest extends TestCase
         // guessed from a temp file by the export library and is its business,
         // while the filename is ours and is what lands in the user's folder.
         foreach (self::SECURITY as $key) {
-            foreach (['csv', 'xlsx', 'pdf'] as $format) {
+            foreach (self::FORMATS as $format) {
                 $disposition = $this->get('/reports/'.$key.'?format='.$format)
                     ->assertOk()->headers->get('content-disposition');
 

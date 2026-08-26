@@ -1780,20 +1780,139 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 
 
 /* ============================================================================
-   REPORTS — period picker
+   REPORTS
    ----------------------------------------------------------------------------
-   Every report covers one month or one year. Choosing Yearly hides the month
-   field rather than leaving a control that does nothing — :has() on the select,
-   so no script is involved. Without :has() the field stays visible and the
-   server ignores it, which is the harmless failure.
+   ONE PERIOD CONTROL. There used to be a `Monthly / Yearly` dropdown, and a
+   month field, and a year field: three controls naming one thing, where the
+   first silently decided whether the second meant anything. The segment is the
+   control now, and it is literally the form field — `period` is the radio's own
+   name, so the thing you press is the value that gets submitted. Choosing Year
+   hides the month with :has(), the same technique as the dashboard tabs.
+
+   Not every report has a period. Department read none of it while showing the
+   pickers, so a file captioned "August 2026" could hold every row ever
+   recorded; a balance and a queue have no period that can be reconstructed at
+   all. Those cards say "as of today" instead of offering a choice that changes
+   no figure. See ReportService::SCOPE_*.
+
+   THE BUTTONS. View carries the accent and the wider column, because it is what
+   somebody presses almost every time; PDF and Excel take the file-type colours
+   everyone already knows. Those two are deliberately a step off the KPI red and
+   green — on the dashboards those mean "a problem" and "healthy", and a red PDF
+   button must not read as a warning. Both clear 4.5:1 against their own tinted
+   background in both themes.
    ========================================================================== */
-.report-period:has(select[name="period"] option[value="annual"]:checked) .period-month{
-  display:none;
+:root{
+  --fmt-pdf:#BE2E1E;
+  --fmt-xls:#1D7A4C;
 }
+:root[data-bs-theme="dark"], [data-bs-theme="dark"]{
+  --fmt-pdf:#F08A72;
+  --fmt-xls:#5CC98F;
+}
+
 .reports-group{
   font-size:.72rem; font-weight:600; letter-spacing:.09em; text-transform:uppercase;
   color:var(--muted); margin:0 0 .6rem;
 }
+
+.report-grid{
+  display:grid; gap:1rem; margin-bottom:1.75rem;
+  grid-template-columns:repeat(auto-fit,minmax(20rem,1fr));
+}
+@media (max-width:560px){ .report-grid{ grid-template-columns:minmax(0,1fr); } }
+
+.report-card{
+  display:flex; flex-direction:column; min-width:0; margin:0;
+  background:var(--surface); border:1px solid var(--border); border-radius:.75rem;
+  box-shadow:0 1px 2px rgba(22,18,31,.05);
+}
+:root[data-bs-theme="dark"] .report-card{ box-shadow:0 1px 2px rgba(0,0,0,.5); }
+.report-head{ padding:.9rem 1.05rem .7rem; }
+.report-title{ font-size:.92rem; font-weight:600; margin:0; letter-spacing:-.012em; color:var(--text); }
+/* One line saying what the report contains. Four titles in a row and nothing
+   else is a menu you have to have memorised. */
+.report-about{ font-size:.74rem; color:var(--muted); margin:.15rem 0 0; }
+/* `margin-top:auto` pins the controls to the foot, so cards of different
+   description lengths still line their buttons up across the row. */
+.report-body{ padding:0 1.05rem 1.05rem; margin-top:auto; }
+
+/* ---- The period ---------------------------------------------------------- */
+.report-period{ display:flex; gap:.4rem; margin-bottom:.55rem; }
+.period-seg{
+  display:flex; flex:none; padding:2px; border-radius:.55rem;
+  background:var(--surface-2); border:1px solid var(--border-strong);
+}
+.period-seg label{
+  position:relative; cursor:pointer; margin:0; white-space:nowrap;
+  font-size:.76rem; font-weight:500; padding:.26rem .68rem; border-radius:.4rem;
+  color:var(--muted); transition:.12s;
+}
+.period-seg input{ position:absolute; opacity:0; pointer-events:none; }
+.period-seg label:has(input:checked){
+  background:var(--surface); color:var(--text); font-weight:600;
+  box-shadow:0 1px 2px rgba(22,18,31,.10);
+}
+.period-seg label:focus-within{ outline:2px solid var(--primary); outline-offset:1px; }
+
+.report-period select,
+.report-dept{
+  font:inherit; font-size:.78rem; padding:.3rem .5rem; min-width:0;
+  border:1px solid var(--border-strong); border-radius:.5rem;
+  background:var(--surface); color:var(--text);
+}
+.report-period select{ flex:1 1 0; }
+.report-period .period-month{ flex:1.3 1 0; }
+.report-dept{ width:100%; margin-bottom:.55rem; }
+
+/* Year selected: the month field is not merely ignored, it is gone. */
+.report-card:has(.per-annual:checked) .period-month{ display:none; }
+
+/* Without :has() nothing hides. The month field stays visible and the server
+   ignores it when the period is annual — the harmless failure. */
+
+.report-snap{
+  font-size:.74rem; color:var(--muted); margin:0 0 .55rem;
+  padding:.32rem .55rem; border:1px dashed var(--border-strong);
+  border-radius:.5rem; display:inline-block;
+}
+
+/* ---- The buttons --------------------------------------------------------- */
+/* One row: View, then the two formats. View takes the wider column. */
+.report-acts{ display:grid; grid-template-columns:1.5fr 1fr 1fr; gap:.4rem; }
+.report-acts svg{
+  width:.9rem; height:.9rem; flex:none; fill:none; stroke:currentColor;
+  stroke-width:1.75; stroke-linecap:round; stroke-linejoin:round;
+}
+
+.report-acts .btn-view{
+  font:inherit; font-size:.82rem; font-weight:600; cursor:pointer;
+  padding:.45rem .6rem; border-radius:.55rem; border:1px solid transparent;
+  display:flex; align-items:center; justify-content:center; gap:.4rem;
+  background:var(--primary); color:#fff; transition:.12s;
+}
+.report-acts .btn-view:hover{ filter:brightness(1.08); transform:translateY(-1px); }
+.report-acts .btn-view:active{ transform:none; filter:brightness(.94); }
+
+.report-acts .btn-fmt{
+  font:inherit; font-size:.76rem; font-weight:600; cursor:pointer; text-decoration:none;
+  padding:.45rem .3rem; border-radius:.5rem;
+  color:var(--fmt); background:color-mix(in srgb,var(--fmt) 12%,transparent);
+  border:1px solid color-mix(in srgb,var(--fmt) 38%,transparent);
+  display:flex; align-items:center; justify-content:center; gap:.35rem; transition:.12s;
+}
+.report-acts .btn-fmt:hover{
+  color:var(--fmt); border-color:var(--fmt); transform:translateY(-1px);
+  background:color-mix(in srgb,var(--fmt) 20%,transparent);
+}
+.report-acts .btn-fmt:active{
+  transform:none; background:color-mix(in srgb,var(--fmt) 26%,transparent);
+}
+.fmt-pdf{ --fmt:var(--fmt-pdf); }
+.fmt-xls{ --fmt:var(--fmt-xls); }
+
+/* In a page header there is no View — you are already looking at it. */
+.report-acts-head{ display:flex; gap:.4rem; }
 
 /* ============================================================================
    PAGE HEADER — title, subtitle, actions, and the way back

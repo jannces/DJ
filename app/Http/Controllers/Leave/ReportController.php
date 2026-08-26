@@ -27,6 +27,10 @@ class ReportController extends Controller
             'groups' => ReportService::visibleTo($request->user()),
             'labels' => ReportService::GROUPS,
             'periods' => ReportService::PERIODS,
+            // Six years back and one forward — the same range the service
+            // clamps to, so the dropdown cannot offer a year that gets
+            // silently rewritten on the way in.
+            'years' => range((int) now()->year + 1, (int) now()->year - 5),
             'departments' => Department::orderBy('name')->get(),
             'types' => LeaveType::orderBy('name')->get(),
         ]);
@@ -55,10 +59,14 @@ class ReportController extends Controller
         // says nothing about which month each one covers.
         $filename = $report.'-'.str_replace(' ', '-', strtolower($data['period'])).'-'.now()->format('Ymd');
 
+        // Two formats. CSV is gone from the backend as well as the button —
+        // leaving the endpoint live would have been a half-removal, and an
+        // export route nothing links to is exactly the kind of thing that
+        // outlives the decision to drop it. `?format=csv` now falls through to
+        // the on-screen view like any other unrecognised format.
         return match ($format) {
             'pdf' => Pdf::loadView('reports.pdf', ['data' => $data])->setPaper('a4', 'landscape')->download($filename.'.pdf'),
             'xlsx' => Excel::download(new GenericReportExport($data), $filename.'.xlsx'),
-            'csv' => Excel::download(new GenericReportExport($data), $filename.'.csv', \Maatwebsite\Excel\Excel::CSV),
             default => view('reports.view', ['data' => $data,
                 'departments' => Department::orderBy('name')->get(),
                 'types' => LeaveType::orderBy('name')->get()]),
