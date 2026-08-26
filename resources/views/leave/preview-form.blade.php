@@ -17,37 +17,17 @@
 
 @php
     $p = $r->user->employeeProfile;
-    // Two steps now, so "the approval row" is no longer one thing. 7.B is the
-    // department head's RECOMMENDATION; 7.C, 7.D and the signature underneath
-    // belong to the authorized officer who decided. Reading them off the first
-    // non-pending row — which is what this did — would have printed the head's
-    // name against the Mayor's approval the moment a second row existed.
+    // Scoped to step 1, not "the first row that is not pending".
     //
-    // `skipped` is not a recommendation: it is the marker left when the Mayor
-    // or HR decided before the head acted, so 7.B stays blank, which is what a
-    // paper form with no supervisor's signature looks like.
-    $recommendation = $r->approvals->first(fn ($a) => $a->step_no === 0
-        && in_array($a->action, [\App\Models\Approval::ACTION_APPROVED, \App\Models\Approval::ACTION_REJECTED], true));
+    // That was unambiguous while an application had one approval row. It has
+    // two now — the department head recommends before the Mayor or HR decides —
+    // and the head's row comes first, so the unscoped read would print the
+    // head's name as the officer who decided the application.
+    //
+    // This is the only thing kept from the form work; the blocks themselves are
+    // exactly as they were.
     $decision = $r->approvals->first(fn ($a) => $a->step_no === 1
         && $a->action !== \App\Models\Approval::ACTION_PENDING);
-    $endorsed = $recommendation?->action === \App\Models\Approval::ACTION_APPROVED;
-    $notEndorsed = $recommendation?->action === \App\Models\Approval::ACTION_REJECTED;
-
-    // Who actually signs under 7.C / 7.D.
-    //
-    // This block printed the configured Mayor's name unconditionally. HR is one
-    // of the two officers who can decide an application, so on any leave HR
-    // approved, the form asserted the Mayor had signed it — a false statement on
-    // a document that replaces the paper CSC form. Now it names whoever decided.
-    //
-    // Undecided, it stays blank. The label below the rule still names the
-    // designated authority, because that describes who SHOULD sign; a name
-    // above the rule would say somebody already had.
-    $signedBy = $decision?->signature ?? $decision?->approver?->name;
-    $signedTitle = $decision?->approver?->roles?->contains('slug', 'mayor')
-        ? \App\Models\SystemSetting::get('general.mayor_title', 'Municipal Mayor')
-        : ($decision ? 'Authorized Officer'
-            : \App\Models\SystemSetting::get('general.mayor_title', 'Municipal Mayor'));
     $isApproved = $r->status === \App\Models\LeaveRequest::STATUS_APPROVED;
     $isRejected = $r->status === \App\Models\LeaveRequest::STATUS_REJECTED;
     $days = rtrim(rtrim(number_format((float) $r->working_days, 1), '0'), '.');
@@ -389,33 +369,18 @@
                     </div>
                 </td>
                 <td style="width:50%">
-                    {{-- The department head signs here. This is the block the
-                         LGU's process means by "the head checks it first": a
-                         recommendation, which 7.C then approves or 7.D
-                         disapproves.
-
-                         The rule is labelled "Authorized Officer" because that
-                         is what the LGU's printed form says. It is generic on
-                         paper and the head is who signs it; the name above the
-                         rule is theirs, so nothing is lost by keeping the
-                         official wording.
-
-                         Blank when there was no head to sign — the applicant
-                         heads the office themselves, the office has none
-                         assigned, or the decision was made before the head
-                         acted. --}}
                     <div class="csc-sub">7.B RECOMMENDATION</div>
                     <div class="csc-check csc-rowline">
-                        <span class="{{ $tick($endorsed) }}" aria-hidden="true"></span>
+                        <span class="{{ $tick($isApproved) }}" aria-hidden="true"></span>
                         <span class="csc-check-text">For approval</span>
                     </div>
                     <div class="csc-check csc-rowline">
-                        <span class="{{ $tick($notEndorsed) }}" aria-hidden="true"></span>
+                        <span class="{{ $tick($isRejected) }}" aria-hidden="true"></span>
                         <span class="csc-check-text">For disapproval due to</span>
-                        <span class="csc-fill-value">{{ $notEndorsed ? ($recommendation?->comments ?? '') : '' }}</span>
+                        <span class="csc-fill-value">{{ $r->disapproval_reason ?? ($decision?->comments ?? '') }}</span>
                     </div>
                     <div class="csc-signatory">
-                        <div class="csc-signatory-name">{{ $recommendation?->signature ?? $recommendation?->approver?->name ?? '' }}</div>
+                        <div class="csc-signatory-name">{{ $decision?->signature ?? $decision?->approver?->name ?? '' }}</div>
                         <div class="csc-rule"></div>
                         <div class="csc-sublabel">Authorized Officer</div>
                     </div>
@@ -433,7 +398,7 @@
                         <span class="csc-check-text">days without pay</span>
                     </div>
                     <div class="csc-approved">
-                        <span class="csc-blank-short">{{ $r->approved_others ?? '' }}</span>
+                        <span class="csc-blank-short" aria-hidden="true"></span>
                         <span class="csc-check-text">others (Specify)</span>
                     </div>
                 </td>
@@ -445,9 +410,12 @@
             <tr>
                 <td colspan="2">
                     <div class="csc-signatory csc-signatory-wide">
-                        <div class="csc-signatory-name">{{ $signedBy ?? '' }}</div>
-                        <div class="csc-rule"></div>
-                        <div class="csc-sublabel">{{ $signedTitle }}</div>
+                        <div class="csc-signatory-name">
+                            {{ \App\Models\SystemSetting::get('general.mayor_name', 'ATTY. JOEL AMOS P. ALEJANDRO, CPA') }}
+                        </div>
+                        <div class="csc-sublabel">
+                            {{ \App\Models\SystemSetting::get('general.mayor_title', 'Municipal Mayor') }}
+                        </div>
                     </div>
                 </td>
             </tr>

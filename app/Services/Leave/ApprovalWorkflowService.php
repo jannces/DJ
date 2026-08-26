@@ -277,10 +277,6 @@ class ApprovalWorkflowService
                 'status' => LeaveRequest::STATUS_APPROVED,
                 'days_with_pay' => $extra['days_with_pay'] ?? $request->working_days,
                 'days_without_pay' => $extra['days_without_pay'] ?? 0,
-                // 7.C's third blank. Free text, and only ever set by a
-                // deciding officer — a recommendation does not approve
-                // anything, so it cannot fill in what was approved.
-                'approved_others' => $extra['approved_others'] ?? null,
                 'decided_at' => now(),
             ]);
             $this->credits->deductForApproval($request, $actor);

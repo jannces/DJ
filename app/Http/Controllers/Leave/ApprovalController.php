@@ -60,7 +60,6 @@ class ApprovalController extends Controller
             'comments' => ['nullable', 'string', 'max:1000'],
             'days_with_pay' => ['nullable', 'numeric', 'min:0'],
             'days_without_pay' => ['nullable', 'numeric', 'min:0'],
-            'approved_others' => ['nullable', 'string', 'max:150'],
             'signature' => ['nullable', 'string', 'max:150'],
         ]);
 
@@ -68,7 +67,6 @@ class ApprovalController extends Controller
             'comments' => $data['comments'] ?? null,
             'days_with_pay' => $data['days_with_pay'] ?? null,
             'days_without_pay' => $data['days_without_pay'] ?? null,
-            'approved_others' => $data['approved_others'] ?? null,
             'signature' => $data['signature'] ?? $request->user()->name,
         ];
 

@@ -14,37 +14,17 @@
 @php
     $p = $r->user->employeeProfile;
     $details = $r->details ?? [];
-    // Two steps now, so "the approval row" is no longer one thing. 7.B is the
-    // department head's RECOMMENDATION; 7.C, 7.D and the signature underneath
-    // belong to the authorized officer who decided. Reading them off the first
-    // non-pending row — which is what this did — would have printed the head's
-    // name against the Mayor's approval the moment a second row existed.
+    // Scoped to step 1, not "the first row that is not pending".
     //
-    // `skipped` is not a recommendation: it is the marker left when the Mayor
-    // or HR decided before the head acted, so 7.B stays blank, which is what a
-    // paper form with no supervisor's signature looks like.
-    $recommendation = $r->approvals->first(fn ($a) => $a->step_no === 0
-        && in_array($a->action, [\App\Models\Approval::ACTION_APPROVED, \App\Models\Approval::ACTION_REJECTED], true));
+    // That was unambiguous while an application had one approval row. It has
+    // two now — the department head recommends before the Mayor or HR decides —
+    // and the head's row comes first, so the unscoped read would print the
+    // head's name as the officer who decided the application.
+    //
+    // This is the only thing kept from the form work; the blocks themselves are
+    // exactly as they were.
     $decision = $r->approvals->first(fn ($a) => $a->step_no === 1
         && $a->action !== \App\Models\Approval::ACTION_PENDING);
-    $endorsed = $recommendation?->action === \App\Models\Approval::ACTION_APPROVED;
-    $notEndorsed = $recommendation?->action === \App\Models\Approval::ACTION_REJECTED;
-
-    // Who actually signs under 7.C / 7.D.
-    //
-    // This block printed the configured Mayor's name unconditionally. HR is one
-    // of the two officers who can decide an application, so on any leave HR
-    // approved, the form asserted the Mayor had signed it — a false statement on
-    // a document that replaces the paper CSC form. Now it names whoever decided.
-    //
-    // Undecided, it stays blank. The label below the rule still names the
-    // designated authority, because that describes who SHOULD sign; a name
-    // above the rule would say somebody already had.
-    $signedBy = $decision?->signature ?? $decision?->approver?->name;
-    $signedTitle = $decision?->approver?->roles?->contains('slug', 'mayor')
-        ? \App\Models\SystemSetting::get('general.mayor_title', 'Municipal Mayor')
-        : ($decision ? 'Authorized Officer'
-            : \App\Models\SystemSetting::get('general.mayor_title', 'Municipal Mayor'));
     $isApproved = $r->status === \App\Models\LeaveRequest::STATUS_APPROVED;
     $isRejected = $r->status === \App\Models\LeaveRequest::STATUS_REJECTED;
     $days = rtrim(rtrim(number_format((float) $r->working_days, 1), '0'), '.');
@@ -273,19 +253,15 @@
         </div>
       </td>
       <td style="width:50%">
-        {{-- The department head signs 7.B. Their recommendation is not the
-             decision: 7.C and 7.D below carry that.
-
-             "Authorized Officer" is the LGU's own wording on the printed form
-             — generic on paper, and the head is who signs it. Blank when there
-             was no head to sign. --}}
+        {{-- One authorized officer decides — Mayor, Vice Mayor or HR. There is
+             no Department Head step, so none is printed. --}}
         <div class="sub">7.B RECOMMENDATION</div>
         <table class="rows">
-          <tr><td class="b">{!! $box($endorsed) !!}</td><td>For approval</td></tr>
-          <tr><td class="b">{!! $box($notEndorsed) !!}</td><td>For disapproval due to {!! $rule($notEndorsed ? $recommendation?->comments : null) !!}</td></tr>
+          <tr><td class="b">{!! $box($isApproved) !!}</td><td>For approval</td></tr>
+          <tr><td class="b">{!! $box($isRejected) !!}</td><td>For disapproval due to {!! $rule($r->disapproval_reason ?? $decision?->comments) !!}</td></tr>
         </table>
         <div class="sign">
-          <div class="signname">{{ $recommendation?->signature ?? $recommendation?->approver?->name ?? '' }}</div>
+          <div class="signname">{{ $decision?->signature ?? $decision?->approver?->name ?? '' }}</div>
           <div class="signline"></div>
           <div class="lbl">Authorized Officer</div>
         </div>
@@ -296,7 +272,7 @@
         <div class="sub">7.C APPROVED FOR:</div>
         <div><span class="blank">{{ $r->days_with_pay !== null ? rtrim(rtrim(number_format((float) $r->days_with_pay, 1), '0'), '.') : '' }}</span> days with pay</div>
         <div><span class="blank">{{ $r->days_without_pay !== null ? rtrim(rtrim(number_format((float) $r->days_without_pay, 1), '0'), '.') : '' }}</span> days without pay</div>
-        <div><span class="blank">{{ $r->approved_others ?? '' }}</span> others (Specify)</div>
+        <div><span class="blank"></span> others (Specify)</div>
       </td>
       <td>
         <div class="sub">7.D DISAPPROVED DUE TO:</div>
@@ -306,9 +282,8 @@
     <tr>
       <td colspan="2">
         <div class="sign">
-          <div class="signname">{{ $signedBy ?? '' }}</div>
-          <div class="signline"></div>
-          <div class="lbl">{{ $signedTitle }}</div>
+          <div class="signname">{{ \App\Models\SystemSetting::get('general.mayor_name', 'ATTY. JOEL AMOS P. ALEJANDRO, CPA') }}</div>
+          <div class="lbl">{{ \App\Models\SystemSetting::get('general.mayor_title', 'Municipal Mayor') }}</div>
         </div>
       </td>
     </tr>

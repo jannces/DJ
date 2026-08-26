@@ -78,13 +78,6 @@
                             <div class="col"><label class="form-label small">Days without pay</label>
                                 <input type="number" step="0.5" name="days_without_pay" class="form-control" value="0"></div>
                         </div>
-                        {{-- 7.C's third blank. Free text — monetization,
-                             commutation, a partial day — not a fourth count. --}}
-                        <div class="mb-2">
-                            <label class="form-label small">Others (specify)</label>
-                            <input name="approved_others" class="form-control" maxlength="150"
-                                   placeholder="Leave blank unless 7.C needs it">
-                        </div>
                     @endif
                     <div class="mb-2"><label class="form-label">Comments / remarks</label>
                         <textarea name="comments" class="form-control" rows="2"></textarea></div>
