@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Department;
 use App\Models\EmployeeProfile;
-use App\Models\IntrusionLog;
 use App\Models\LeaveBalance;
 use App\Models\LeaveRequest;
 use App\Models\LeaveType;
@@ -12,7 +11,14 @@ use App\Models\User;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 
-/** Builds role-scoped dashboard datasets (counters + chart series). */
+/**
+ * Builds role-scoped LEAVE dashboard datasets (counters + chart series).
+ *
+ * Security figures moved to SecurityDashboardService. The intrusion trend used
+ * to live here because the plain Dashboard drew it too; it no longer does, and
+ * a leave service holding one security query was the shape that let the
+ * duplicate exist in the first place.
+ */
 class DashboardService
 {
     /**
@@ -23,50 +29,482 @@ class DashboardService
     public const OPEN_STATUSES = ['pending', 'dept_review', 'hr_review', 'final_review', 'returned'];
 
     /**
-     * How many distinct chart colours the stylesheet defines. Slots are keyed
-     * to a row's own primary key rather than to its rank or its position in the
-     * list, both of which move: a leave type keeps its colour when the ranking
-     * shifts between the month and the year view, or when a retired type enters
-     * or leaves the chart.
+     * A leave balance is "running low" at this many days or fewer.
+     *
+     * Absolute, not a proportion. The warning used to fire under 65% remaining,
+     * which treats 65% of three days and 65% of fifteen as the same situation;
+     * they are not, and only one of them is worth interrupting somebody over.
      */
-    public const TONES = 8;
+    public const LOW_BALANCE_DAYS = 3;
 
+    /** An application waiting longer than this has been waiting too long. */
+    public const STALE_AFTER_DAYS = 5;
+
+    /** An office with this share of its staff away at once cannot function. */
+    public const COVERAGE_RISK = 0.4;
+
+    /**
+     * Two panes, gated separately, and somebody may hold both.
+     *
+     *   · leave.view-own          — their own credits and applications. An HR
+     *                               officer files leave like anybody else, so
+     *                               this is theirs too.
+     *   · leave.requests.view-all — everyone's, for whoever has authority over
+     *                               it: HR, the Mayor, the Vice Mayor.
+     *
+     * The second gate is the correction. These aggregates used to hang off
+     * `users.manage` / `security.dashboard`, which is held only by the System
+     * Administrator — who holds no leave permission at all. So the one role
+     * with no business reading leave figures was the only role that could, and
+     * the three roles with authority over leave saw nothing. Moving the gate
+     * fixes both halves without adding a permission.
+     *
+     * The System Administrator is sent to the Security Dashboard instead; see
+     * DashboardController. The sidebar is untouched either way.
+     */
     public function forUser(User $user): array
     {
-        $data = ['cards' => []];
+        $data = [];
 
-        // Employee self-service cards. The dashboard is now the single place an
-        // employee sees leave credits, so it also carries the credit ledger that
-        // the retired "My Balances" page used to show — same queries, one home.
         if ($user->hasPermission('leave.view-own')) {
-            $data['cards'] += [
-                'my_pending' => LeaveRequest::where('user_id', $user->id)->whereIn('status', self::OPEN_STATUSES)->count(),
-                'my_approved' => LeaveRequest::where('user_id', $user->id)->where('status', 'approved')->count(),
-                'my_rejected' => LeaveRequest::where('user_id', $user->id)->where('status', 'rejected')->count(),
-            ];
-            $data['my_balances'] = LeaveBalance::with('leaveType')->where('user_id', $user->id)->get();
-            $data['my_credit_history'] = $user->leaveHistory()->with('leaveType')->latest()->limit(100)->get();
-            $data['my_requests'] = LeaveRequest::with('leaveType')
-                ->where('user_id', $user->id)->latest()->limit(8)->get();
+            $data['mine'] = $this->ownPane($user);
         }
 
-        // Leave analytics for the administrator's Dashboard — the plain one,
-        // not the Security Dashboard, which rendered two counters before this.
-        //
-        // Gated on the administration permissions rather than on a leave one:
-        // these are read-only aggregates about the installation, and the
-        // administrator holds none of the leave permissions.
-        if ($user->hasPermission('security.dashboard') || $user->hasPermission('users.manage')) {
-            $data['leave_analytics'] = true;
-            $data['an_users'] = $this->registeredUsers();
-            $data['an_outcome'] = $this->applicationsByOutcome((int) now()->year);
-            $data['an_on_leave'] = $this->onLeaveWindows();
-            $data['an_types_month'] = $this->mostAppliedTypes(now()->startOfMonth(), now()->endOfMonth(), 'this month');
-            $data['an_types_year'] = $this->mostAppliedTypes(now()->startOfYear(), now()->endOfYear(), 'this year');
-            $data['an_departments'] = $this->applicationsByDepartment(now()->startOfYear(), now()->endOfYear());
+        if ($user->hasPermission('leave.requests.view-all')) {
+            $data['management'] = $this->managementPane();
         }
 
         return $data;
+    }
+
+    // =====================================================================
+    //  My leave — the employee's dashboard, and HR's first tab
+    // =====================================================================
+
+    /**
+     * One person's own leave. No charts beyond the credit bars: "how many days
+     * do I have left" is a number, and plotting it would be decoration.
+     */
+    public function ownPane(User $user): array
+    {
+        $balances = LeaveBalance::with('leaveType')
+            ->where('user_id', $user->id)
+            ->get()
+            ->sortBy(fn ($b) => $b->leaveType?->id ?? PHP_INT_MAX)
+            ->values();
+
+        $open = LeaveRequest::where('user_id', $user->id)
+            ->whereIn('status', self::OPEN_STATUSES)
+            ->orderBy('date_filed')
+            ->get(['date_filed']);
+
+        $takenThisYear = LeaveRequest::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->whereBetween('start_date', [now()->startOfYear(), now()->endOfYear()])
+            ->get(['working_days']);
+
+        return [
+            'kpis' => [
+                $this->balanceKpi($balances, 'VL', 'Vacation left', 'sun'),
+                $this->balanceKpi($balances, 'SL', 'Sick left', 'pulse'),
+                [
+                    'label' => 'Waiting on a decision',
+                    'value' => $open->count(),
+                    'sub' => $open->isEmpty()
+                        ? 'nothing outstanding'
+                        : 'oldest filed '.$this->plural((int) $open->first()->date_filed->diffInDays(now()), 'day').' ago',
+                    'icon' => 'hour',
+                    'tone' => $open->isEmpty() ? 'good' : 'warn',
+                ],
+                [
+                    'label' => 'Taken this year',
+                    'value' => $this->trim((float) $takenThisYear->sum('working_days')),
+                    'sub' => 'days, across '.$this->plural($takenThisYear->count(), 'request'),
+                    'icon' => 'calchk',
+                    'tone' => 'info',
+                ],
+            ],
+            'balances' => $balances->map(fn ($b) => $this->balanceRow($b))->all(),
+            'requests' => LeaveRequest::with('leaveType')
+                ->where('user_id', $user->id)->latest()->limit(8)->get(),
+            'credit_history' => $user->leaveHistory()->with('leaveType')->latest()->limit(100)->get(),
+        ];
+    }
+
+    /**
+     * One credit bar, in whichever of its five states applies.
+     *
+     * The fifth is why this is a method and not an inline percentage: a type
+     * with nothing accrued at all — Terminal Leave, or Maternity for somebody
+     * it does not apply to — divides by zero, and the bar rendered `NaN%` wide.
+     * "Not accrued" is also a different claim from "none left", so it gets its
+     * own state rather than being flattened into an empty bar.
+     */
+    private function balanceRow(LeaveBalance $balance): array
+    {
+        $used = (float) $balance->used;
+        $left = (float) $balance->balance;
+        $total = $used + $left;
+
+        return [
+            'name' => $balance->leaveType?->name ?? 'Unknown',
+            'code' => $balance->leaveType?->code ?? '',
+            'used' => $used,
+            'left' => $left,
+            'total' => $total,
+            'used_pct' => $total > 0 ? round($used / $total * 100, 1) : 0,
+            'left_pct' => $total > 0 ? round($left / $total * 100, 1) : 0,
+            'state' => match (true) {
+                $total <= 0 => 'none',
+                $left <= 0 => 'spent',
+                $left <= self::LOW_BALANCE_DAYS => 'low',
+                default => 'ok',
+            },
+            'readout' => match (true) {
+                $total <= 0 => 'not accrued',
+                $left <= 0 => 'none left',
+                default => $this->trim($left).' left',
+            },
+        ];
+    }
+
+    private function balanceKpi($balances, string $code, string $label, string $icon): array
+    {
+        $balance = $balances->first(fn ($b) => $b->leaveType?->code === $code);
+        $left = (float) ($balance->balance ?? 0);
+        $earned = (float) ($balance->earned ?? 0);
+
+        if ($balance === null || $earned <= 0) {
+            return [
+                'label' => $label, 'value' => '—', 'icon' => $icon, 'tone' => 'info',
+                'sub' => 'no credits accrued',
+            ];
+        }
+
+        return [
+            'label' => $label,
+            'value' => $this->trim($left),
+            'sub' => 'of '.$this->trim($earned).' earned',
+            'icon' => $icon,
+            'tone' => match (true) {
+                $left <= 0 => 'bad',
+                $left <= self::LOW_BALANCE_DAYS => 'warn',
+                default => 'good',
+            },
+        ];
+    }
+
+    // =====================================================================
+    //  Leave management — HR's second tab, and the approvers'
+    // =====================================================================
+
+    public function managementPane(): array
+    {
+        $outcome = $this->applicationsByOutcome((int) now()->year);
+        $onLeave = $this->onLeaveWindows();
+        $queue = $this->waitingQueue();
+        $decided = $this->decisionsThisMonth();
+
+        $thisMonth = $outcome['months'][now()->month - 1]['total'];
+        $lastYear = $this->filedInMonth(now()->copy()->subYear());
+
+        return [
+            'kpis' => [
+                [
+                    'label' => 'Waiting on a decision',
+                    'value' => $queue['total'],
+                    'lead' => $queue['stale'] > 0 ? (string) $queue['stale'] : null,
+                    'sub' => $queue['stale'] > 0
+                        ? 'older than '.self::STALE_AFTER_DAYS.' days'
+                        : 'none older than '.self::STALE_AFTER_DAYS.' days',
+                    'icon' => 'inbox',
+                    'tone' => $queue['stale'] > 0 ? 'warn' : ($queue['total'] > 0 ? 'info' : 'good'),
+                ],
+                [
+                    'label' => 'On leave today',
+                    'value' => $onLeave['today'],
+                    'sub' => 'across '.$this->plural($onLeave['offices_today'], 'office'),
+                    'icon' => 'walk',
+                    'tone' => 'info',
+                ],
+                [
+                    'label' => 'Filed this month',
+                    'value' => $thisMonth,
+                    'sub' => $lastYear.' in '.now()->copy()->subYear()->format('F Y'),
+                    'icon' => 'file',
+                    'tone' => 'info',
+                ],
+                [
+                    'label' => 'Decided this month',
+                    'value' => $decided['count'],
+                    'sub' => $decided['median'] !== null
+                        ? 'median '.$decided['median'].' days to decide'
+                        : 'nothing decided yet',
+                    'icon' => 'gavel',
+                    'tone' => 'good',
+                ],
+            ],
+            'outcome' => $outcome,
+            'filed_by_month' => [
+                'labels' => array_column($outcome['months'], 'label'),
+                'data' => array_column($outcome['months'], 'total'),
+            ],
+            'types_month' => $this->mostAppliedTypes(now()->startOfMonth(), now()->endOfMonth(), 'this month'),
+            'types_year' => $this->mostAppliedTypes(now()->startOfYear(), now()->endOfYear(), 'this year'),
+            'departments' => $this->applicationsByDepartment(now()->startOfYear(), now()->endOfYear()),
+
+            // The three additions. All read columns that already existed.
+            'worklist' => $queue['rows'],
+            'coverage' => $this->coverageRisk(),
+            'mandatory' => $this->mandatoryLeaveCompliance(),
+        ];
+    }
+
+    /** Applications filed in the calendar month $when falls in. */
+    public function filedInMonth(CarbonInterface $when): int
+    {
+        return LeaveRequest::whereBetween('date_filed', [
+            $when->copy()->startOfMonth(), $when->copy()->endOfMonth(),
+        ])->count();
+    }
+
+    /**
+     * The applications nobody has decided yet, oldest first.
+     *
+     * The counter says seven; this says which seven. A number tells an officer
+     * that there is a backlog and leaves them to go and find it — the same
+     * query, run twice, once by the dashboard and once by the person reading
+     * it.
+     */
+    public function waitingQueue(int $limit = 6): array
+    {
+        $open = LeaveRequest::with(['leaveType', 'user.employeeProfile'])
+            ->whereIn('status', self::OPEN_STATUSES)
+            ->orderBy('date_filed')
+            ->get();
+
+        $rows = $open->take($limit)->map(function (LeaveRequest $request) {
+            $age = (int) $request->date_filed->startOfDay()->diffInDays(now()->startOfDay());
+            $profile = $request->user?->employeeProfile;
+
+            return [
+                'id' => $request->id,
+                'reference' => $request->reference_no,
+                'who' => $profile
+                    ? trim($profile->last_name.', '.$profile->first_name)
+                    : ($request->user?->name ?? 'Unknown'),
+                'what' => ($request->leaveType?->name ?? 'Leave').' · '
+                    .$request->start_date->format('j M')
+                    .($request->start_date->isSameDay($request->end_date) ? '' : '–'.$request->end_date->format('j M')),
+                'age' => $age,
+                'stale' => $age > self::STALE_AFTER_DAYS,
+            ];
+        })->all();
+
+        return [
+            'total' => $open->count(),
+            'stale' => $open->filter(
+                fn ($r) => $r->date_filed->startOfDay()->diffInDays(now()->startOfDay()) > self::STALE_AFTER_DAYS
+            )->count(),
+            'rows' => $rows,
+        ];
+    }
+
+    /**
+     * How many applications were decided this month, and how long it took.
+     *
+     * The median, not the mean: one application that sat for forty days while
+     * somebody was on leave themselves drags an average far enough to make a
+     * healthy month look broken.
+     */
+    public function decisionsThisMonth(): array
+    {
+        $decided = LeaveRequest::whereIn('status', ['approved', 'rejected'])
+            ->whereNotNull('decided_at')
+            ->whereBetween('decided_at', [now()->startOfMonth(), now()->endOfMonth()])
+            ->get(['date_filed', 'decided_at']);
+
+        if ($decided->isEmpty()) {
+            return ['count' => 0, 'median' => null];
+        }
+
+        $days = $decided
+            ->map(fn ($r) => (float) $r->date_filed->startOfDay()->diffInDays($r->decided_at->startOfDay()))
+            ->sort()->values();
+
+        $middle = intdiv($days->count(), 2);
+        $median = $days->count() % 2 === 1
+            ? $days[$middle]
+            : ($days[$middle - 1] + $days[$middle]) / 2;
+
+        return ['count' => $decided->count(), 'median' => round($median, 1)];
+    }
+
+    /**
+     * The worst single day of approved absence in each office over the next
+     * fortnight, as a share of that office's headcount.
+     *
+     * The only forward-looking figure on the page. Everything else reports what
+     * already happened, which cannot be acted on; four of six Treasury staff
+     * being away in the same week can be, but only before the week arrives.
+     *
+     * The office is the applicant's CURRENT department, not the
+     * `office_snapshot` on the application. The snapshot records where they
+     * were when they filed, which is the right answer for the printed form and
+     * the wrong one here: if somebody transferred last month, it is their new
+     * office that will be a person short next week. The snapshot is the
+     * fallback for an applicant with no employee record at all, so those
+     * absences are still counted somewhere rather than dropped.
+     */
+    public function coverageRisk(int $days = 14): array
+    {
+        $from = today();
+        $to = today()->addDays($days - 1);
+
+        $requests = LeaveRequest::query()
+            ->leftJoin('employee_profiles', 'employee_profiles.user_id', '=', 'leave_requests.user_id')
+            ->leftJoin('departments', 'departments.id', '=', 'employee_profiles.department_id')
+            ->where('leave_requests.status', 'approved')
+            ->whereDate('leave_requests.start_date', '<=', $to)
+            ->whereDate('leave_requests.end_date', '>=', $from)
+            ->get([
+                'leave_requests.user_id', 'leave_requests.start_date', 'leave_requests.end_date',
+                'leave_requests.office_snapshot', 'departments.name as department_name',
+            ]);
+
+        $headcount = EmployeeProfile::query()
+            ->leftJoin('departments', 'departments.id', '=', 'employee_profiles.department_id')
+            ->selectRaw('departments.name as department_name, count(*) as total')
+            ->groupBy('departments.name')
+            ->pluck('total', 'department_name');
+
+        // office => Y-m-d => [user ids]
+        $byOffice = [];
+        foreach ($requests as $request) {
+            $office = $request->department_name ?: ($request->office_snapshot ?: 'Unassigned');
+            $start = $request->start_date->lt($from) ? $from->copy() : $request->start_date->copy();
+            $end = $request->end_date->gt($to) ? $to->copy() : $request->end_date->copy();
+
+            for ($d = $start; $d->lte($end); $d->addDay()) {
+                $byOffice[$office][$d->toDateString()][] = (int) $request->user_id;
+            }
+        }
+
+        $rows = [];
+        foreach (Department::orderBy('id')->get(['name']) as $department) {
+            $rows[] = $this->coverageRow($department->name, $byOffice[$department->name] ?? [], (int) ($headcount[$department->name] ?? 0));
+        }
+
+        // An office that only exists in a snapshot — renamed, or since removed —
+        // still has people away in it.
+        foreach ($byOffice as $office => $daysOut) {
+            if (! collect($rows)->contains('office', $office)) {
+                $rows[] = $this->coverageRow($office, $daysOut, (int) ($headcount[$office] ?? 0));
+            }
+        }
+
+        usort($rows, fn ($a, $b) => [$b['share'], $b['out']] <=> [$a['share'], $a['out']]);
+
+        return $rows;
+    }
+
+    private function coverageRow(string $office, array $daysOut, int $headcount): array
+    {
+        $peak = 0;
+        $when = null;
+
+        foreach ($daysOut as $day => $ids) {
+            $count = count(array_unique($ids));
+            if ($count > $peak) {
+                $peak = $count;
+                $when = $day;
+            }
+        }
+
+        $share = $headcount > 0 ? $peak / $headcount : 0.0;
+
+        return [
+            'office' => $office,
+            'out' => $peak,
+            'staff' => $headcount,
+            'share' => round($share, 3),
+            'pct' => (int) round($share * 100),
+            'when' => $when ? Carbon::parse($when)->format('j M') : null,
+            'at_risk' => $share >= self::COVERAGE_RISK,
+        ];
+    }
+
+    /**
+     * Mandatory (Forced) Leave that has not been taken.
+     *
+     * The CSC requires five days a year and they do not carry over, so an
+     * employee who has filed none of theirs in November is about to lose them
+     * and HR is the office accountable when that happens. Nothing in the system
+     * tracked it.
+     */
+    public function mandatoryLeaveCompliance(): array
+    {
+        $type = LeaveType::where('code', 'FL')->first();
+
+        if ($type === null) {
+            return ['tracked' => false, 'outstanding' => 0, 'months_left' => 0, 'by_office' => []];
+        }
+
+        $balances = LeaveBalance::query()
+            ->leftJoin('employee_profiles', 'employee_profiles.user_id', '=', 'leave_balances.user_id')
+            ->leftJoin('departments', 'departments.id', '=', 'employee_profiles.department_id')
+            ->where('leave_balances.leave_type_id', $type->id)
+            ->get([
+                'leave_balances.used', 'leave_balances.earned',
+                'departments.name as department_name',
+            ]);
+
+        $outstanding = $balances->filter(fn ($b) => (float) $b->used <= 0 && (float) $b->earned > 0);
+
+        $counts = $outstanding->countBy(fn ($b) => $b->department_name ?: 'Unassigned');
+
+        $rows = Department::orderBy('id')->get(['name'])->map(fn ($d) => [
+            'label' => $d->name,
+            'name' => $d->name,
+            'value' => (int) ($counts[$d->name] ?? 0),
+            'note' => null,
+            'muted' => false,
+        ])->all();
+
+        if (($counts['Unassigned'] ?? 0) > 0) {
+            $rows[] = [
+                'label' => 'Unassigned', 'name' => 'No department on record',
+                'value' => (int) $counts['Unassigned'], 'note' => null, 'muted' => true,
+            ];
+        }
+
+        usort($rows, function ($a, $b) {
+            if ($a['muted'] !== $b['muted']) {
+                return $a['muted'] <=> $b['muted'];
+            }
+
+            return [$b['value'], $a['label']] <=> [$a['value'], $b['label']];
+        });
+
+        return [
+            'tracked' => true,
+            'outstanding' => $outstanding->count(),
+            'months_left' => 12 - (int) now()->month + 1,
+            'by_office' => $rows,
+        ];
+    }
+
+    // ------------------------------------------------------------- formatting
+
+    /** 12.50 → "12.5", 9.00 → "9". Days are not currency. */
+    private function trim(float $value): string
+    {
+        return rtrim(rtrim(number_format($value, 2, '.', ''), '0'), '.') ?: '0';
+    }
+
+    private function plural(int $count, string $noun): string
+    {
+        return $count.' '.$noun.($count === 1 ? '' : 's');
     }
 
     /** Accounts on the system, split into those with an employee record and those without. */
@@ -159,12 +597,32 @@ class DashboardService
         $to = $weekEnd->gt($monthEnd) ? $weekEnd->copy() : $monthEnd->copy();
 
         $byDay = $this->onLeaveByDay($from, $to);
+        $todayIds = $byDay[now()->toDateString()] ?? [];
 
         return [
-            'today' => count($byDay[now()->toDateString()] ?? []),
+            'today' => count($todayIds),
+            'offices_today' => $this->officesOf($todayIds),
             'week' => $this->windowFrom($byDay, $weekStart, $weekEnd),
             'month' => $this->windowFrom($byDay, $monthStart, $monthEnd),
         ];
+    }
+
+    /**
+     * How many distinct offices a set of employees belongs to.
+     *
+     * Four people away is one number; four people away from one office and four
+     * spread over four are different situations, and only the first is a
+     * staffing problem.
+     */
+    private function officesOf(array $userIds): int
+    {
+        if ($userIds === []) {
+            return 0;
+        }
+
+        return EmployeeProfile::whereIn('user_id', array_unique($userIds))
+            ->whereNotNull('department_id')
+            ->distinct()->count('department_id');
     }
 
     /**
@@ -240,11 +698,12 @@ class DashboardService
      * Applications, not days: "most applied for" and "most days taken" are
      * different questions and only one of them was asked.
      *
-     * The colour slot is keyed to the type's own id — not to its rank, and not
-     * to its position in this list, which shifts as retired types come and go
-     * between windows. So a type keeps its colour whichever view you are on.
-     * There are more leave types than slots, so two can share a colour, which
-     * is harmless: every column is labelled with its code and its count.
+     * No colour slot. The rows carry no per-row hue any more: sort order
+     * already encodes the ranking, so painting each row would repeat it in a
+     * second channel and imply a category difference that is not there — and it
+     * repainted the whole chart every time the ranking moved between the month
+     * and the year view. The stylesheet gives the top row the system's violet
+     * and everything else grey.
      */
     public function mostAppliedTypes(CarbonInterface $from, CarbonInterface $to, string $period = ''): array
     {
@@ -271,7 +730,6 @@ class DashboardService
                 'note' => $value > 0
                     ? $share.'% of applications '.$period
                     : 'Nothing filed '.$period,
-                'tone' => $type->id % self::TONES,
                 'muted' => ! $type->active,
             ];
         })->all();
@@ -326,7 +784,6 @@ class DashboardService
                 'per_head' => $perHead,
                 'note' => $headcount.($headcount === 1 ? ' employee' : ' employees')
                     .($perHead !== null ? ' · '.$perHead.' per head' : ''),
-                'tone' => $department->id % self::TONES,
                 'muted' => false,
             ];
         })->all();
@@ -343,7 +800,6 @@ class DashboardService
                 'per_head' => $strayStaff > 0 ? round($strayFilings / $strayStaff, 1) : null,
                 'note' => $strayStaff.($strayStaff === 1 ? ' employee' : ' employees')
                     .' with no department on record',
-                'tone' => null,
                 'muted' => true,
             ];
         }
@@ -361,30 +817,4 @@ class DashboardService
         return $rows;
     }
 
-    /**
-     * Intrusion events per day for the last seven days.
-     *
-     * Lives here because the Security Dashboard is the only page that draws it —
-     * the plain Dashboard used to draw the identical series from its own copy of
-     * this loop.
-     */
-    public function intrusionsByDay(int $days = 7): array
-    {
-        $from = today()->subDays($days - 1);
-
-        $counts = IntrusionLog::query()
-            ->where('created_at', '>=', $from->copy()->startOfDay())
-            ->selectRaw('date(created_at) as day, count(*) as total')
-            ->groupBy('day')
-            ->pluck('total', 'day');
-
-        $labels = [];
-        $data = [];
-        for ($d = $from->copy(); $d->lte(today()); $d->addDay()) {
-            $labels[] = $d->format('D');
-            $data[] = (int) ($counts[$d->toDateString()] ?? 0);
-        }
-
-        return ['labels' => $labels, 'data' => $data];
-    }
 }

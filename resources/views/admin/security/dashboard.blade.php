@@ -1,81 +1,219 @@
 @extends('layouts.app')
 @section('title', 'Security Dashboard')
 @section('content')
-<h1 class="h4 mb-3">Security Dashboard</h1>
-<div class="row g-3 mb-4">
-    @foreach ([
-        ['Blocked IPs','blocked_ips','bi-slash-circle','danger'],
-        ['Intrusions (total)','intrusions_total','bi-bug','secondary'],
-        ["Today's attacks",'intrusions_today','bi-calendar-day','warning'],
-        ['This week','intrusions_week','bi-calendar-week','info'],
-        ['This month','intrusions_month','bi-calendar-month','primary'],
-        ['Failed logins today','failed_logins_today','bi-key','dark'],
-    ] as [$label,$key,$icon,$color])
-        <div class="col-6 col-lg-2">
-            <div class="card h-100"><div class="card-body text-center">
-                <i class="bi {{ $icon }} text-{{ $color }}" style="font-size:1.5rem"></i>
-                <div class="h4 mb-0 mt-1">{{ $stats[$key] }}</div>
-                <div class="text-muted small">{{ $label }}</div>
-            </div></div>
-        </div>
+
+{{--
+  The System Administrator's only dashboard.
+
+  Both sidebar entries — `Dashboard` and `Security Dashboard` — arrive here, and
+  neither was moved, renamed or repointed: /dashboard redirects for this role in
+  DashboardController. config/menu.php is untouched.
+
+  No leave figures at all. The administrator holds no leave permission and never
+  did; the plain Dashboard was showing them anyway because the analytics hung
+  off `users.manage`.
+
+  Every chart is HTML, CSS and inline SVG. The two canvases that used to be here
+  are gone, which also retires the runaway-growth bug they had: a responsive
+  canvas in a container sized by its own contents grew on every resize tick,
+  forever.
+--}}
+
+<div class="dash">
+
+<div class="kpi-grid">
+    @foreach ($kpis as $kpi)
+        @include('dashboard._kpi', ['kpi' => $kpi])
     @endforeach
 </div>
 
-<div class="row g-3 mb-4">
-    {{-- The canvases need a parent with a real height. Charts are configured
-         system-wide with maintainAspectRatio off (public/js/app.js), so a
-         responsive canvas takes 100% of its container — and a container sized
-         by its own contents then grows on every resize tick, forever. --}}
-    <div class="col-lg-8"><div class="card h-100"><div class="card-header fw-semibold">Attacks (last 7 days)</div>
-        <div class="card-body"><div class="chart-box"><canvas id="trend"></canvas></div></div></div></div>
-    <div class="col-lg-4"><div class="card h-100"><div class="card-header fw-semibold">By category</div>
-        <div class="card-body"><div class="chart-box chart-box-sm"><canvas id="cats"></canvas></div></div></div></div>
+<div class="dash-split">
+    {{-- ---------- Attempts per day ---------- --}}
+    {{-- Seven days, not four weeks: attacks have no weekly rhythm to read a
+         week against, and a spike matters on the day it happens. --}}
+    <div class="dash-frame">
+        <div class="dash-head">
+            <p class="dash-title">Intrusion attempts per day</p>
+            <span class="dash-link">last 7 days</span>
+        </div>
+        <div class="dash-body">
+            @include('dashboard._vbars', ['series' => $trend])
+        </div>
+    </div>
+
+    {{-- ---------- The three attacks ---------- --}}
+    {{-- The only chart on the system with a categorical colour scale, because
+         here the type IS the subject rather than a ranking. Three hues,
+         validated in both themes: worst adjacent colour-blind separation 9.2 ΔE
+         light and 9.4 dark against a target of 8.
+
+         The stored category sits under each label so the mapping is visible
+         rather than assumed. `xss` and `traversal` are grouped as input
+         manipulation HERE and nowhere else — the detector keeps recording them
+         separately and Intrusion Logs keeps showing which. --}}
+    <div class="dash-frame">
+        <div class="dash-head">
+            <p class="dash-title">Attempts by type</p>
+            <span class="dash-link">last 30 days</span>
+        </div>
+        <div class="dash-body">
+            @include('dashboard._hbars', ['rows' => $attacks, 'series' => true])
+            <p class="dash-note">
+                All three raise an alert: the topbar bell for an administrator who is
+                signed in, an email for one who is not.
+            </p>
+        </div>
+    </div>
 </div>
 
-<div class="row g-3">
-    <div class="col-lg-4"><div class="card h-100"><div class="card-header fw-semibold">Top attackers</div>
-        <ul class="list-group list-group-flush">
-            @forelse ($topAttackers as $a)
-                <li class="list-group-item d-flex justify-content-between small"><code>{{ $a->ip }}</code><span class="badge bg-danger">{{ $a->total }}</span></li>
-            @empty <li class="list-group-item text-muted small">No events.</li> @endforelse
-        </ul></div></div>
-    <div class="col-lg-4"><div class="card h-100"><div class="card-header fw-semibold">Most targeted pages</div>
-        <ul class="list-group list-group-flush">
-            @forelse ($targetedPages as $p)
-                <li class="list-group-item d-flex justify-content-between small"><span class="text-truncate">/{{ $p->route }}</span><span class="badge bg-warning text-dark">{{ $p->total }}</span></li>
-            @empty <li class="list-group-item text-muted small">No events.</li> @endforelse
-        </ul></div></div>
-    <div class="col-lg-4"><div class="card h-100"><div class="card-header fw-semibold">Recent alerts</div>
-        <ul class="list-group list-group-flush" style="max-height:320px;overflow:auto">
-            @forelse ($recent as $r)
-                <li class="list-group-item small">
-                    <span class="badge bg-{{ ['low'=>'secondary','medium'=>'warning','high'=>'danger','critical'=>'dark'][$r->severity] ?? 'secondary' }}">{{ $r->category }}</span>
-                    <code>{{ $r->ip }}</code>
-                    <div class="text-muted">{{ $r->created_at->diffForHumans() }} · /{{ $r->route }}</div>
-                </li>
-            @empty <li class="list-group-item text-muted small">No events.</li> @endforelse
-        </ul></div></div>
+<div class="dash-split">
+    {{-- ---------- Where it comes from ---------- --}}
+    <div class="dash-frame">
+        <div class="dash-head">
+            <p class="dash-title">Busiest source addresses</p>
+            <a href="{{ route('security.blocked-ips') }}" class="dash-link">Blocked IPs &rarr;</a>
+        </div>
+        <div class="dash-body">
+            @include('dashboard._hbars', [
+                'rows' => $attackers, 'mono' => true,
+                'empty' => 'No intrusion events in the last 30 days.',
+            ])
+            <p class="dash-note">
+                An address is a weak identity on a municipal LAN &mdash; DHCP reuses them and
+                a whole office can sit behind one &mdash; so this card is titled by what it
+                counts, not by who it blames. The tag answers the only question that
+                follows: is it already dealt with.
+            </p>
+        </div>
+    </div>
+
+    {{-- ---------- What it aims at ---------- --}}
+    <div class="dash-frame">
+        <div class="dash-head">
+            <p class="dash-title">Most targeted pages</p>
+            <span class="dash-link">last 30 days</span>
+        </div>
+        <div class="dash-body">
+            @include('dashboard._hbars', [
+                'rows' => $routes, 'mono' => true,
+                'empty' => 'No intrusion events in the last 30 days.',
+            ])
+            <p class="dash-note">What an attacker aims at says what they think is worth having.</p>
+        </div>
+    </div>
 </div>
 
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    // Bars, not a line: attacks per day are seven discrete counts, so a day
-    // with none belongs as an absent bar. A line dipping to the axis and back
-    // reads as though something happened when nothing did.
-    const trend = @json($trend);
-    new Chart(document.getElementById('trend'), {
-        type: 'bar',
-        data: { labels: trend.labels, datasets: [{ label: 'Events', data: trend.data, backgroundColor: '#be123c', borderRadius: 4, maxBarThickness: 44 }] },
-        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
-    });
-    const cats = @json($byCategory);
-    new Chart(document.getElementById('cats'), {
-        type: 'doughnut',
-        data: { labels: Object.keys(cats), datasets: [{ data: Object.values(cats), backgroundColor: ['#be123c','#f5c518','#6d28d9','#0ea5e9','#7c3aed','#dc2626','#059669','#475569','#d97706'] }] },
-        options: { plugins: { legend: { position: 'bottom' } } }
-    });
-});
-</script>
-@endpush
+{{-- ---------- Sign-ins ---------- --}}
+{{-- Four weeks, unlike the seven-day chart above, because sign-ins DO have a
+     weekly rhythm. One week shows the shape but cannot say whether this week is
+     unusual; four lets this Monday be read against the last three. --}}
+<div class="dash-frame">
+    <div class="dash-head">
+        <p class="dash-title">Successful sign-ins per day</p>
+        <span class="dash-link">last 4 weeks</span>
+    </div>
+    <div class="dash-body">
+        @include('dashboard._line', ['series' => $signins, 'peakLabel' => 'high'])
+    </div>
+</div>
+
+{{-- ==================================================================== --}}
+{{-- The three additions                                                  --}}
+{{-- ==================================================================== --}}
+
+<div class="dash-split">
+    {{-- ---------- Unreviewed events ---------- --}}
+    {{-- `intrusion_logs.handled` existed and was cleared for every row the
+         moment this page rendered, so it recorded a page view rather than a
+         decision. This is that column doing the job its name claims, and
+         reviewing is now an action.
+
+         payload_excerpt is deliberately absent. It is the most interesting
+         field in that table and it is attacker-controlled text; it belongs on
+         the detail page, escaped — not on a screen somebody glances at forty
+         times a day. --}}
+    <div class="dash-frame">
+        <div class="dash-head">
+            <p class="dash-title">
+                Unreviewed events
+                @if ($queue['total'] > 0)<span class="dash-count">{{ $queue['total'] }}</span>@endif
+            </p>
+            @if ($queue['total'] > 0)
+                <form method="POST" action="{{ route('security.intrusions.review') }}" class="d-inline">
+                    @csrf
+                    <button type="submit" class="dash-link">Mark all reviewed</button>
+                </form>
+            @endif
+        </div>
+        <div class="dash-body">
+            @forelse ($queue['rows'] as $row)
+                <div class="wl-r">
+                    <span class="wl-ref">{{ $row['when'] }}</span>
+                    <span class="wl-m">
+                        <b><i class="sev sev-{{ $row['severity'] }}"></i>{{ $row['label'] }}</b>
+                        <small>{{ $row['detail'] }}</small>
+                    </span>
+                    <span class="wl-age wl-mono">{{ $row['ip'] }}</span>
+                    <form method="POST" action="{{ route('security.intrusions.review') }}" class="wl-act">
+                        @csrf
+                        <input type="hidden" name="id" value="{{ $row['id'] }}">
+                        <button type="submit" title="Mark reviewed">&checkmark;</button>
+                    </form>
+                </div>
+            @empty
+                <p class="dash-empty">Everything has been reviewed.</p>
+            @endforelse
+            @if ($queue['total'] > count($queue['rows']))
+                <p class="dash-note">
+                    {{ $queue['total'] - count($queue['rows']) }} more outstanding &mdash;
+                    <a href="{{ route('security.intrusions') }}">open Intrusion Logs</a>.
+                </p>
+            @endif
+        </div>
+    </div>
+
+    {{-- ---------- Failures by reason ---------- --}}
+    {{-- Thirty-two failures is one number. Twenty-three of them against
+         usernames that do not exist is a diagnosis: somebody is guessing
+         accounts, not passwords, and that is a different attack. --}}
+    <div class="dash-frame">
+        <div class="dash-head">
+            <p class="dash-title">Failed sign-ins by reason</p>
+            <span class="dash-link">last 7 days</span>
+        </div>
+        <div class="dash-body">
+            @include('dashboard._hbars', [
+                'rows' => $failures,
+                'empty' => 'No failed sign-ins in the last 7 days.',
+            ])
+            <p class="dash-note">
+                The attempt-level detail behind the &ldquo;Brute force&rdquo; row above, which
+                counts lockouts rather than attempts.
+            </p>
+        </div>
+    </div>
+</div>
+
+{{-- ---------- Privilege changes ---------- --}}
+{{-- A system whose case rests on auditability should show its own role and
+     permission edits to the person making them. --}}
+<div class="dash-frame">
+    <div class="dash-head">
+        <p class="dash-title">Privilege changes</p>
+        <a href="{{ route('audit.index') }}" class="dash-link">Audit log &rarr;</a>
+    </div>
+    <div class="dash-body">
+        @forelse ($privileges as $row)
+            <div class="wl-r">
+                <span class="wl-ref">{{ $row['when'] }}</span>
+                <span class="wl-m">{{ $row['what'] }} <b>{{ $row['target'] }}</b></span>
+                <span class="wl-age">{{ $row['who'] }}</span>
+            </div>
+        @empty
+            <p class="dash-empty">No role, permission or account changes in the last 7 days.</p>
+        @endforelse
+    </div>
+</div>
+
+</div>{{-- /.dash --}}
 @endsection

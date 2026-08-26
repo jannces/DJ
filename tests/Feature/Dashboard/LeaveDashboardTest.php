@@ -12,17 +12,18 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * The System Administrator's Dashboard — the plain one, not the Security
- * Dashboard.
+ * The leave dashboards: an employee's own, and the management pane HR, the
+ * Mayor and the Vice Mayor see beside it.
  *
- * It rendered two counters before this. DashboardService was already computing
- * intrusions today, devices online and devices offline for the same page, and
- * the view discarded all three because they were not in its KPI map. The leave
- * analytics are read-only aggregates about the installation, gated with those
- * system counters rather than on a leave permission — the administrator holds
- * none of the leave permissions and still does not.
+ * The gate is the correction this file mostly records. The analytics used to
+ * hang off `users.manage` / `security.dashboard` — held only by the System
+ * Administrator, who holds no leave permission at all. So the one role with no
+ * business reading leave figures was the only role that could, and the three
+ * roles with authority over leave saw nothing. The gate is now
+ * `leave.requests.view-all`, which is exactly the set of people who already
+ * have the underlying data on the All Leave Requests page. No new permission.
  */
-class AdminDashboardTest extends TestCase
+class LeaveDashboardTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -43,6 +44,12 @@ class AdminDashboardTest extends TestCase
         return $this->get('/dashboard');
     }
 
+    /** The role that actually holds leave.requests.view-all. */
+    private function manager(): \Illuminate\Testing\TestResponse
+    {
+        return $this->visit('hr');
+    }
+
     private function file(User $user, string $status, string $start, string $end, ?string $filed = null): LeaveRequest
     {
         return LeaveRequest::factory()->create([
@@ -55,25 +62,74 @@ class AdminDashboardTest extends TestCase
         ]);
     }
 
-    public function test_the_administrator_dashboard_carries_the_analytics(): void
+    public function test_the_roles_with_authority_over_leave_get_the_analytics(): void
     {
-        $this->visit('system-admin')
+        foreach (['hr', 'mayor', 'vice-mayor'] as $role) {
+            $this->visit($role)
+                ->assertOk()
+                ->assertSee('Waiting on a decision')
+                ->assertSee('Applications filed per month')
+                ->assertSee('Most applied leave type')
+                ->assertSee('Applications by office', false);
+        }
+    }
+
+    /**
+     * The administrator loses a screen, not information. They were never
+     * entitled to the leave figures — everything they administer is on the
+     * security screen, and /dashboard now takes them there.
+     *
+     * The sidebar is untouched: `Dashboard` and `Security Dashboard` both stay
+     * where they are and both arrive at the same page.
+     */
+    public function test_the_administrator_is_sent_to_their_own_dashboard(): void
+    {
+        $this->actingAs($this->makeUser('system-admin'));
+        session(['otp_verified' => true]);
+
+        $this->get('/dashboard')->assertRedirect(route('security.dashboard'));
+
+        $this->followingRedirects()->get('/dashboard')
             ->assertOk()
-            ->assertSee('Registered users')
-            ->assertSee('Applications by outcome')
-            ->assertSee('Employees on leave')
-            ->assertSee('Most applied leave type')
-            ->assertSee('Applications by department');
+            ->assertSee('Intrusions this week')
+            ->assertDontSee('Most applied leave type')
+            ->assertDontSee('Applications by office', false);
     }
 
     public function test_an_employee_sees_none_of_it(): void
     {
         $this->visit('employee')
             ->assertOk()
-            ->assertDontSee('Applications by outcome')
-            ->assertDontSee('Applications by department')
+            ->assertDontSee('Applications by office', false)
+            ->assertDontSee('Waiting longest')
+            ->assertDontSee('Coverage risk')
             // ...but keeps their own page.
-            ->assertSee('Credit summary');
+            ->assertSee('Credits remaining, by type', false);
+    }
+
+    /**
+     * HR files leave like anybody else, so they get both panes behind one
+     * Dashboard link — two tabs, not a thirteenth item in a rail that already
+     * scrolls. config/menu.php is not edited.
+     */
+    public function test_hr_gets_both_panes_under_one_menu_item(): void
+    {
+        $html = $this->manager()->assertOk()->getContent();
+
+        $this->assertStringContainsString('id="pane-mine"', $html);
+        $this->assertStringContainsString('id="pane-mgt"', $html);
+        $this->assertStringContainsString('Credits remaining, by type', $html, 'HR lost their own leave');
+        $this->assertStringContainsString('Applications filed per month', $html);
+
+        // The rail did not grow an entry for the second pane. Counted against
+        // an employee's rail rather than against a fixed number, so the
+        // assertion still means something if the layout ever renders the menu
+        // in two places.
+        $this->assertSame(
+            substr_count($this->visit('employee')->getContent(), '<span>Dashboard</span>'),
+            substr_count($html, '<span>Dashboard</span>'),
+            'the second pane added a menu item; it is a tab, not a destination'
+        );
     }
 
     /**
@@ -82,34 +138,55 @@ class AdminDashboardTest extends TestCase
      * the Reports module, which is where a "give me the numbers for period X"
      * question belongs.
      */
-    public function test_the_approver_roles_are_left_as_they_were(): void
+    /**
+     * Nobody without the permission reaches the management pane, whatever else
+     * they hold. The department head approves leave but does not hold
+     * leave.requests.view-all, and this is a read of everyone's records.
+     */
+    public function test_the_pane_follows_the_permission_and_not_the_job_title(): void
     {
-        foreach (['hr', 'mayor', 'vice-mayor'] as $role) {
-            $this->visit($role)
-                ->assertOk()
-                ->assertDontSee('Applications by outcome');
+        foreach (['employee', 'department-head'] as $role) {
+            $user = $this->makeUser($role);
+
+            $this->assertSame(
+                $user->hasPermission('leave.requests.view-all'),
+                str_contains($this->visit($role)->assertOk()->getContent(), 'Applications filed per month'),
+                $role.' sees the management pane exactly when it holds the permission'
+            );
         }
     }
 
     /**
-     * The pie is part-to-whole, so a slice that renders as a wedge of the wrong
-     * size is a lie the reader cannot check. The shares must add up.
+     * Outcome is part-to-whole, so a segment rendered at the wrong width is a
+     * lie the reader cannot check. The widths must add to 100.
+     *
+     * A bar rather than the pie this replaced: both answer "what proportion
+     * ended up approved", but a bar survives a fourth status arriving without
+     * turning into a colour wheel, and lengths are compared more accurately
+     * than wedge angles.
      */
-    public function test_the_outcome_slices_add_up_to_the_whole(): void
+    public function test_the_outcome_segments_add_up_to_the_whole(): void
     {
         $employee = $this->makeUser('employee');
         foreach (['approved', 'approved', 'approved', 'rejected'] as $status) {
             $this->file($employee, $status, now()->toDateString(), now()->toDateString());
         }
 
-        $html = $this->visit('system-admin')->assertOk()->getContent();
+        $html = $this->manager()->assertOk()->getContent();
 
-        // Three approved of four filed, one rejected.
-        $this->assertStringContainsString('>75%<', $html);
-        $this->assertStringContainsString('>25%<', $html);
+        preg_match('#<div class="sb">(.*?)</div>#s', $html, $bar);
+        $this->assertNotEmpty($bar, 'the outcome bar is missing');
 
-        preg_match_all('/class="pie-slice [^"]*"/', $html, $matches);
-        $this->assertCount(2, $matches[0], 'a bucket with nothing in it gets no slice');
+        preg_match_all('/width:([\d.]+)%/', $bar[1], $widths);
+        $this->assertSame([75.0, 25.0], array_map('floatval', $widths[1]),
+            'three approved of four filed, one rejected');
+        $this->assertCount(2, $widths[1], 'a bucket with nothing in it gets no segment');
+
+        // The key still names all three, so a zero reads as "none" rather than
+        // vanishing from the card.
+        foreach (['Approved', 'Rejected', 'Waiting'] as $label) {
+            $this->assertStringContainsString($label, $html);
+        }
     }
 
     public function test_the_outcome_chart_columns_add_up_to_the_year(): void
@@ -294,17 +371,49 @@ class AdminDashboardTest extends TestCase
     }
 
     /**
-     * Colour is keyed to the row's own identity, not to its rank, so switching
-     * between This month and This year does not repaint the whole chart.
+     * Colour does not follow the ranking, because sort order already carries
+     * it. Exactly one row per chart is the hero; the rest are grey.
+     *
+     * This replaces a per-row colour slot. Painting each row repeated the
+     * ranking in a second channel, implied a category difference that was not
+     * there, and repainted the whole chart every time the ranking moved between
+     * This month and This year.
      */
-    public function test_a_leave_type_keeps_its_colour_when_the_ranking_changes(): void
+    public function test_only_the_leading_row_carries_a_colour(): void
+    {
+        $employee = $this->makeUser('employee');
+        $this->file($employee, 'approved', now()->toDateString(), now()->toDateString());
+
+        $html = $this->manager()->assertOk()->getContent();
+
+        // One hero per chart, and never one on a chart whose leader is zero.
+        preg_match_all('/<div class="hb-r"\s*\n?\s*data-hero/', $html, $heroes);
+        $this->assertNotEmpty($heroes[0], 'no chart is naming its leader');
+
+        $this->assertStringNotContainsString('tone-', $html,
+            'the per-row colour slots are back; the ranking is now encoded twice');
+    }
+
+    /** The service no longer hands the view a colour slot to key off. */
+    public function test_the_chart_rows_carry_no_colour_slot(): void
+    {
+        $rows = app(DashboardService::class)
+            ->mostAppliedTypes(now()->startOfMonth(), now()->endOfMonth(), 'this month');
+
+        $this->assertArrayNotHasKey('tone', $rows[0]);
+    }
+
+    public function test_a_leave_type_keeps_its_place_when_the_ranking_changes(): void
     {
         $employee = $this->makeUser('employee');
         $sl = LeaveType::where('code', 'SL')->firstOrFail();
 
-        // VL leads the year, SL leads the month.
-        $this->file($employee, 'approved',
-            now()->startOfYear()->toDateString(), now()->startOfYear()->toDateString());
+        // VL leads the year, SL leads the month. Three VL at the start of the
+        // year so it still leads once the month's two SL are counted into it.
+        foreach ([0, 1, 2] as $offset) {
+            $day = now()->startOfYear()->addDays($offset)->toDateString();
+            $this->file($employee, 'approved', $day, $day);
+        }
         foreach ([0, 1] as $offset) {
             LeaveRequest::factory()->create([
                 'user_id' => $employee->id,
@@ -321,11 +430,13 @@ class AdminDashboardTest extends TestCase
         $year = collect($service->mostAppliedTypes(now()->startOfYear(), now()->endOfYear(), 'y'));
 
         $this->assertSame('SL', $month->first()['label']);
-        $this->assertSame(
-            $month->firstWhere('label', 'SL')['tone'],
-            $year->firstWhere('label', 'SL')['tone'],
-            'a leave type that moves down the ranking must keep its colour'
-        );
+        $this->assertSame('VL', $year->first()['label']);
+
+        // The same type appears in both windows with its own count — the
+        // ranking moves, the type does not disappear.
+        $this->assertSame(2, $month->firstWhere('label', 'SL')['value']);
+        $this->assertSame(2, $year->firstWhere('label', 'SL')['value']);
+        $this->assertSame(3, $year->firstWhere('label', 'VL')['value']);
     }
 
     /**
@@ -338,17 +449,46 @@ class AdminDashboardTest extends TestCase
         $this->file($this->makeUser('employee'), 'approved',
             now()->toDateString(), now()->toDateString());
 
-        $html = $this->visit('system-admin')->assertOk()->getContent();
+        $html = $this->manager()->assertOk()->getContent();
 
         $this->assertStringNotContainsString('<canvas', $html);
-        // Outcome is a pie, leave types are sideways bars, departments are
-        // columns — three forms, no canvas between them.
-        $this->assertStringContainsString('<svg class="pie"', $html);
-        $this->assertStringContainsString('class="pie-slice', $html);
-        $this->assertStringContainsString('class="hbar-fill"', $html);
-        $this->assertStringContainsString('class="bar-fill"', $html);
-        // Every chart carries a table, so none of it is readable by colour alone.
+
+        // Three forms: filing over the year is a line, outcome is one split
+        // bar, leave types and offices are sideways bars.
+        $this->assertStringContainsString('class="ln"', $html);
+        $this->assertStringContainsString('class="hb-f"', $html);
+        $this->assertStringContainsString('<div class="sb">', $html);
+
+        // The outcome chart carries its table, so it is not readable by colour
+        // alone.
         $this->assertStringContainsString('Show the numbers', $html);
+    }
+
+    /**
+     * A line with no numbers on it says only "up" and "down".
+     *
+     * And the ticks have to be whole: these are counts, so a near-empty month
+     * must not label its axis 1 · 0.5 · 0.
+     */
+    public function test_the_line_chart_labels_its_own_axis(): void
+    {
+        $this->file($this->makeUser('employee'), 'approved',
+            now()->toDateString(), now()->toDateString());
+
+        $html = $this->manager()->assertOk()->getContent();
+
+        preg_match('#<div class="ln-y">(.*?)</div>#s', $html, $axis);
+        $this->assertNotEmpty($axis, 'the line chart has no vertical axis');
+
+        preg_match_all('/<span>([\d.]+)<\/span>/', $axis[1], $ticks);
+        $this->assertNotEmpty($ticks[1]);
+
+        foreach ($ticks[1] as $tick) {
+            $this->assertSame($tick, (string) (int) $tick,
+                'a count has no half: the axis must round to whole numbers');
+        }
+
+        $this->assertSame('0', end($ticks[1]), 'the scale must be zero-based');
     }
 
     /**
@@ -367,20 +507,44 @@ class AdminDashboardTest extends TestCase
             $this->file($employee, $status, now()->toDateString(), now()->toDateString());
         }
 
-        $html = $this->visit('system-admin')->assertOk()->getContent();
+        $html = $this->manager()->assertOk()->getContent();
         $css = file_get_contents(public_path('css/app.css'));
 
-        preg_match_all('/\b(?:slice|tone|key)-[a-z0-9]+/', $html, $matches);
+        preg_match_all('/\b(?:sb-(?:approved|rejected|pending)|tag-(?:blocked|open))\b/', $html, $matches);
         $used = array_unique($matches[0]);
         $this->assertNotEmpty($used, 'the charts should be painting something');
 
         foreach ($used as $class) {
             $this->assertMatchesRegularExpression(
-                '/\.'.preg_quote($class, '/').'\s*\{[^}]*(fill|background|--tone)\s*:/',
+                '/\.'.preg_quote($class, '/').'\s*\{[^}]*(fill|background)\s*:/',
                 $css,
                 ".{$class} is used by a chart but the stylesheet gives it no colour"
             );
         }
+    }
+
+    /**
+     * The app puts `data-bs-theme` on <html> from localStorage('lms-theme') and
+     * falls back to the operating system only on a first visit. A chart keyed
+     * to prefers-color-scheme would therefore stay light while the topbar
+     * toggle turned the page around it dark — dark cards, light charts.
+     */
+    public function test_the_chart_colours_follow_the_apps_toggle_not_the_operating_system(): void
+    {
+        // Comments are stripped: the layer explains the trap in prose, and the
+        // explanation must not be what satisfies the assertion.
+        $css = preg_replace('#/\*.*?\*/#s', '', file_get_contents(public_path('css/app.css')));
+
+        $this->assertStringNotContainsString('prefers-color-scheme', $css,
+            'a chart keyed to the OS will disagree with the topbar toggle');
+
+        foreach (['--ch-hero', '--ch-mute', '--ch-grid', '--k-good', '--k-warn', '--k-bad'] as $token) {
+            $this->assertSame(2, substr_count($css, $token.':'),
+                $token.' needs a light step and a dark one, and no more');
+        }
+
+        $this->assertMatchesRegularExpression('/\[data-bs-theme="dark"\][^{]*\{[^}]*--ch-hero:/s', $css,
+            'the chart tokens have no dark step under the attribute the app actually sets');
     }
 
     /**
@@ -437,18 +601,75 @@ class AdminDashboardTest extends TestCase
             'the columns must still add up to every application filed');
     }
 
-    /** The period switches are radios revealed with :has(), not scripted tabs. */
-    public function test_the_period_switches_are_plain_radio_inputs(): void
+    /**
+     * Both switches — the period one and the two dashboard panes — are radio
+     * inputs revealed with :has(). No script, and the second pane needs no
+     * route of its own.
+     */
+    public function test_the_switches_are_plain_radio_inputs(): void
     {
-        $html = $this->visit('system-admin')->assertOk()->getContent();
+        $html = $this->manager()->assertOk()->getContent();
 
-        foreach (['onleave-today', 'onleave-week', 'onleave-month', 'types-month', 'types-year'] as $id) {
+        foreach (['types-month', 'types-year', 'pane-mine', 'pane-mgt'] as $id) {
             $this->assertStringContainsString('id="'.$id.'"', $html);
         }
 
+        // The layout carries Bootstrap and the shared bundle, so the page has
+        // scripts. What matters is that nothing scripted knows these ids exist.
+        preg_match_all('#<script\b[^>]*>(.*?)</script>#s', $html, $scripts);
+        foreach ($scripts[1] as $script) {
+            foreach (['pane-mine', 'pane-mgt', 'types-month'] as $id) {
+                $this->assertStringNotContainsString($id, $script,
+                    'the panes must not need a script to switch');
+            }
+        }
+
         $css = file_get_contents(public_path('css/app.css'));
-        $this->assertStringContainsString('#an-onleave:has(#onleave-week:checked)', $css);
-        $this->assertStringContainsString('@supports not selector(:has(*))', $css,
-            'a browser without :has() must still be shown one pane, not none');
+        $this->assertStringContainsString('#dash-tabs:has(#pane-mgt:checked)', $css);
+        $this->assertStringContainsString('#an-types:has(#types-year:checked)', $css);
+        // A browser without :has() (pre-2023) cannot do the reveal, so each
+        // switch names the pane it falls back to. Asserted per switch rather
+        // than by counting @supports blocks — the leave form has one of its own.
+        $fallbacks = implode(' ', $this->supportsBlocks($css));
+        foreach (['#an-types .pane-month', '#dash-tabs .pane-mine'] as $selector) {
+            $this->assertStringContainsString($selector, $fallbacks,
+                $selector.' has no fallback, so a browser without :has() shows no pane at all');
+        }
+    }
+
+    /**
+     * The bodies of every `@supports not selector(:has(*))` block.
+     *
+     * Brace-matched rather than matched with a regex: the blocks contain nested
+     * rules, so `[^}]*` stops at the first inner close and silently finds
+     * nothing.
+     *
+     * @return array<int,string>
+     */
+    private function supportsBlocks(string $css): array
+    {
+        $needle = '@supports not selector(:has(*))';
+        $blocks = [];
+        $at = 0;
+
+        while (($found = strpos($css, $needle, $at)) !== false) {
+            $open = strpos($css, '{', $found);
+            $depth = 0;
+
+            for ($i = $open; $i < strlen($css); $i++) {
+                $depth += ($css[$i] === '{') ? 1 : (($css[$i] === '}') ? -1 : 0);
+                if ($depth === 0) {
+                    $blocks[] = preg_replace('/\s+/', ' ', substr($css, $open + 1, $i - $open - 1));
+                    $at = $i;
+                    break;
+                }
+            }
+
+            $at = max($at, $found + 1);
+        }
+
+        $this->assertNotEmpty($blocks, 'nothing guards the :has() reveals at all');
+
+        return $blocks;
     }
 }

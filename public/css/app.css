@@ -1694,76 +1694,20 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 
 
 /* ============================================================================
-   DASHBOARD ANALYTICS — bar charts, day lines, period switches
+   DASHBOARD ANALYTICS — period switches, and the frame the charts sit in
    ----------------------------------------------------------------------------
-   The administrator's panels draw their charts in HTML, CSS and inline SVG
-   rather than on a canvas. Three reasons, in order of how much they matter:
+   The charts themselves are in the DASHBOARD CHARTS layer at the foot of this
+   sheet. What is left here is the apparatus around them: the period switch,
+   the two-column arrangement, the table every chart carries, and the print
+   rules.
 
-     · no JavaScript, which is the standing rule for this system;
-     · they print, and a leave report that cannot print is half a report;
-     · there is no canvas, so they cannot repeat the runaway-growth bug the
-       Security Dashboard charts had (see CHART CONTAINERS above).
-
-   Two chart forms, chosen by what the number is. A part-to-whole split with a
-   handful of slices (applications by outcome) is a pie. Discrete counts per
-   bucket (leave types, departments) are bars: a bucket with nothing in it
-   should read as an absent column, not as a gap in the axis.
-
-   COLOUR. Every value below was checked against a colour-blindness simulation
-   rather than picked by eye. One hue per chart, never one per column: the
-   column height already carries the magnitude, so a second encoding in colour
-   would imply a category difference that is not there — and it would repaint
-   the survivors each time the ranking changed between the month and year
-   views. The hue identifies the panel instead.
+   The eight-tone colour scheme this layer used to define is gone, along with
+   the pie, the column chart and the tooltip that went with it. One hue per
+   chart replaced one hue per row: the bar length already carries the magnitude
+   and the sort order already carries the rank, so a colour per row repeated the
+   ranking in a second channel and repainted the whole chart whenever the
+   ranking moved between windows.
    ========================================================================== */
-
-/* ---- Chart colours ------------------------------------------------------- */
-/* Eight slots, computed rather than chosen. Every adjacent pair clears the
-   colour-blindness target — 15.1 ΔE in light, 9.8 ΔE in dark under a
-   deuteranopia simulation — every step sits inside the lightness band and above
-   the chroma floor, and the two lists are the same eight hue families, with the
-   dark steps re-derived against the dark surface rather than lightened from the
-   light ones. One step in each list falls just under 3:1 against its surface;
-   that is allowed only because every column prints its value above it and every
-   chart carries a table, so nothing here is read by colour alone. */
-.tone-0{ --tone:#188daa; }
-.tone-1{ --tone:#aa2718; }
-.tone-2{ --tone:#18aa4e; }
-.tone-3{ --tone:#aa187e; }
-.tone-4{ --tone:#6baa18; }
-.tone-5{ --tone:#5b1bbb; }
-.tone-6{ --tone:#aa7e18; }
-.tone-7{ --tone:#2c4c96; }
-:root[data-bs-theme="dark"] .tone-0{ --tone:#29a3c2; }
-:root[data-bs-theme="dark"] .tone-1{ --tone:#c64739; }
-:root[data-bs-theme="dark"] .tone-2{ --tone:#57a875; }
-:root[data-bs-theme="dark"] .tone-3{ --tone:#c6399c; }
-:root[data-bs-theme="dark"] .tone-4{ --tone:#7ba249; }
-:root[data-bs-theme="dark"] .tone-5{ --tone:#7139c6; }
-:root[data-bs-theme="dark"] .tone-6{ --tone:#a68330; }
-:root[data-bs-theme="dark"] .tone-7{ --tone:#3963c6; }
-
-/* Outcome series — the pie. These are status colours, not categorical slots:
-   approved is green, rejected is red, awaiting is amber, because that is what
-   those words mean everywhere else in the system. The obvious dark trio
-   (#34d399 / #fbbf24 / #fb7185) puts green and red 4.6 ΔE apart under a
-   deuteranopia simulation, which is indistinguishable; these clear 8 ΔE on
-   every pair in both themes. Solid fills — a gradient on a wedge reads as a
-   lighting effect and makes two slices of the same colour look different. */
-:root{
-  --seg-approved:#0f9d58; --seg-rejected:#c02222; --seg-pending:#d4a017;
-  --grid-line:#dcd8e8;
-}
-:root[data-bs-theme="dark"]{
-  --seg-approved:#30a689; --seg-rejected:#cc3347; --seg-pending:#bc882f;
-  --grid-line:#3a3154;
-}
-.key-approved{ background:var(--seg-approved); }
-.key-rejected{ background:var(--seg-rejected); }
-.key-pending{ background:var(--seg-pending); }
-.slice-approved{ fill:var(--seg-approved); }
-.slice-rejected{ fill:var(--seg-rejected); }
-.slice-pending{ fill:var(--seg-pending); }
 
 /* ---- Period switch: a radio group, revealed with :has() ------------------ */
 .an-switch{ display:flex; gap:.3rem; flex-wrap:wrap; }
@@ -1780,178 +1724,17 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .an-switch label:focus-within{ outline:2px solid var(--primary); outline-offset:2px; }
 
 .an-pane{ display:none; }
-#an-onleave:has(#onleave-today:checked) .pane-today,
-#an-onleave:has(#onleave-week:checked)  .pane-week,
-#an-onleave:has(#onleave-month:checked) .pane-month,
-#an-types:has(#types-month:checked)     .pane-month,
-#an-types:has(#types-year:checked)      .pane-year{ display:block; }
+#an-types:has(#types-month:checked) .pane-month,
+#an-types:has(#types-year:checked)  .pane-year{ display:block; }
 
 /* Without :has() no pane would ever show. Fall back to the first one. */
 @supports not selector(:has(*)){
   .an-switch{ display:none; }
-  #an-onleave .pane-today,
   #an-types .pane-month{ display:block; }
 }
 
-/* ---- Shared plot frame --------------------------------------------------- */
-.bar-plot{
-  display:grid; grid-template-columns:2.4rem minmax(0,1fr); gap:.55rem;
-}
-.chart-axis{
-  display:flex; flex-direction:column; justify-content:space-between;
-  align-items:flex-end; padding-bottom:1.5rem; line-height:1;
-  font-size:.66rem; color:var(--muted-2); font-variant-numeric:tabular-nums;
-}
-/* The plot area itself: one hairline per tick, and a firmer baseline. Four
-   explicit layers rather than a repeating gradient, which drops the line at the
-   axis and rounds another away at some heights. */
-.bar-cols{
-  position:relative; height:var(--plot-h,220px); padding-bottom:1.5rem;
-  border-bottom:1px solid var(--border-strong); min-width:0;
-  background-image:
-    linear-gradient(var(--grid-line),var(--grid-line)),
-    linear-gradient(var(--grid-line),var(--grid-line)),
-    linear-gradient(var(--grid-line),var(--grid-line)),
-    linear-gradient(var(--grid-line),var(--grid-line));
-  background-size:100% 1px;
-  background-position:0 0, 0 25%, 0 50%, 0 75%;
-  background-repeat:no-repeat;
-}
-.chart-label{
-  position:absolute; bottom:-1.4rem; left:0; right:0; text-align:center;
-  font-size:.65rem; color:var(--muted); white-space:nowrap; overflow:hidden;
-  text-overflow:ellipsis;
-}
-
-/* Hover readout. Positioned over the plot, so it outranks the marks. */
-.chart-tip{
-  position:absolute; bottom:100%; left:50%; transform:translate(-50%,-.45rem);
-  background:var(--text); color:var(--bg); font-size:.7rem; line-height:1.4;
-  font-weight:500; padding:.4rem .6rem; border-radius:.4rem;
-  white-space:nowrap; opacity:0; pointer-events:none; transition:opacity .12s;
-  z-index:5; box-shadow:0 6px 18px rgb(0 0 0 / .18);
-}
-.bar-col:hover > .chart-tip{ opacity:1; }
-
-/* ---- Vertical bars (single hue per chart) -------------------------------- */
-.bar-cols{ display:flex; align-items:flex-end; gap:.4rem; }
-@media (min-width:1200px){ .bar-cols{ gap:.55rem; } }
-.bar-col{
-  flex:1; min-width:0; height:100%; position:relative;
-  display:flex; flex-direction:column; justify-content:flex-end;
-}
-.bar-fill{
-  display:block; min-height:3px; border-radius:4px 4px 0 0;
-  background:var(--tone,var(--primary));
-  transition:filter .15s;
-}
-/* A type or department with nothing filed still gets a column, so the empty
-   ones read as "none" rather than "missing": a hairline stub and a grey zero. */
-.bar-col.is-zero .bar-fill{ background:var(--border-strong); }
-.bar-col.is-zero .bar-value{ color:var(--muted-2); font-weight:600; }
-.bar-col.is-muted .bar-fill{
-  background:linear-gradient(180deg,
-    var(--muted) 0%, color-mix(in srgb,var(--muted) 55%,transparent) 100%);
-}
-.bar-col:hover .bar-fill{ filter:brightness(1.12) saturate(1.1); }
-.bar-value{
-  font-size:.72rem; font-weight:700; text-align:center; color:var(--text-2);
-  font-variant-numeric:tabular-nums; margin-bottom:.3rem;
-}
-.bar-col.is-muted .bar-value{ color:var(--muted); }
-
-/* ---- Pie (applications by outcome) --------------------------------------- */
-.pie-wrap{ display:flex; align-items:center; gap:1.75rem; flex-wrap:wrap; }
-.pie{ flex:none; max-width:100%; overflow:visible; }
-/* A hairline of the card's own surface between slices, so two adjacent wedges
-   never touch and read as one. */
-.pie-slice{
-  stroke:var(--dash-surface,var(--surface)); stroke-width:1.2;
-  transition:opacity .15s;
-}
-.pie:hover .pie-slice{ opacity:.55; }
-.pie .pie-slice:hover{ opacity:1; }
-.pie-label{
-  font-size:8px; font-weight:700; fill:var(--text-2);
-  pointer-events:none; letter-spacing:-.02em;
-}
-.pie-key{ flex:1; min-width:11rem; display:flex; flex-direction:column; gap:.1rem; }
-.pie-total{ margin-bottom:.65rem; }
-.pie-total-value{
-  display:block; font-size:1.6rem; font-weight:700; letter-spacing:-.03em;
-  line-height:1.1; font-variant-numeric:tabular-nums; color:var(--text);
-}
-.pie-total-label{ font-size:.74rem; color:var(--muted); }
-.pie-row{
-  display:grid; grid-template-columns:.7rem minmax(0,1fr) auto 2.6rem;
-  align-items:center; gap:.6rem; padding:.32rem 0; font-size:.82rem;
-  border-bottom:1px solid var(--border);
-}
-.pie-row:last-child{ border-bottom:0; }
-.pie-dot{ width:.7rem; height:.7rem; border-radius:3px; }
-.pie-name{ color:var(--text-2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.pie-value{ font-weight:700; font-variant-numeric:tabular-nums; }
-.pie-share{ text-align:right; color:var(--muted); font-variant-numeric:tabular-nums; }
-
-/* ---- Sideways bars ------------------------------------------------------- */
-/* The same chart turned ninety degrees, for the case columns cannot serve: a
-   long list of long names. Sixteen leave types under sixteen columns leaves
-   room for a code and nothing else. */
-.hbar{
-  display:grid; grid-template-columns:minmax(6rem,12rem) minmax(0,1fr) 2.4rem;
-  align-items:center; gap:.75rem; position:relative;
-  padding:.3rem 0; font-size:.82rem;
-}
-.hbar-name{
-  display:flex; align-items:baseline; gap:.45rem; min-width:0;
-  color:var(--text-2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-}
-.hbar-name b{
-  font-size:.66rem; font-weight:700; letter-spacing:.04em; flex:none;
-  color:var(--tone,var(--muted)); font-variant-numeric:tabular-nums;
-}
-/* The gridlines live on the track, so they line up with the bars exactly
-   without a second element having to guess where the scale starts. One 1px
-   layer per tick — a repeating gradient drops the line at the origin and
-   rounds another away on a narrow track. */
-.hbar-track{
-  position:relative; height:1.05rem; border-radius:3px; overflow:hidden;
-  background-image:
-    linear-gradient(var(--grid-line),var(--grid-line)),
-    linear-gradient(var(--grid-line),var(--grid-line)),
-    linear-gradient(var(--grid-line),var(--grid-line)),
-    linear-gradient(var(--grid-line),var(--grid-line)),
-    linear-gradient(var(--grid-line),var(--grid-line));
-  background-size:1px 100%;
-  background-position:0 0, 25% 0, 50% 0, 75% 0, 100% 0;
-  background-repeat:no-repeat;
-}
-.hbar-fill{
-  display:block; height:100%; min-width:2px; border-radius:0 3px 3px 0;
-  background:var(--tone,var(--primary));
-  transition:filter .15s;
-}
-.hbar:hover .hbar-fill{ filter:brightness(1.12) saturate(1.1); }
-.hbar-value{
-  text-align:right; font-weight:700; font-variant-numeric:tabular-nums;
-  color:var(--text-2);
-}
-.hbar.is-muted .hbar-fill{ background:var(--muted); }
-.hbar.is-zero .hbar-fill{ background:var(--border-strong); }
-.hbar.is-zero .hbar-value,.hbar.is-zero .hbar-name{ color:var(--muted-2); }
-.hbar:hover > .chart-tip{ opacity:1; }
-.hbar .chart-tip{ left:auto; right:0; transform:translate(0,-.35rem); }
-/* The scale sits in the same grid as the rows, so its ticks land on the
-   gridlines rather than near them. */
-.hbar-scale{ padding-top:.35rem; }
-.hbar-ticks{
-  display:flex; justify-content:space-between;
-  font-size:.66rem; color:var(--muted-2); font-variant-numeric:tabular-nums;
-}
-
 /* ---- Two-column arrangement ---------------------------------------------- */
-/* Summary panels left, the long leave-type list right, where its height has
-   somewhere to go instead of pushing everything else down the page. */
+/* Two panels side by side, collapsing to one column on a narrow screen. */
 .dash-split{
   display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr);
   gap:1rem; align-items:start;
@@ -1959,8 +1742,9 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 @media (max-width:992px){ .dash-split{ grid-template-columns:minmax(0,1fr); } }
 .dash-col{ display:flex; flex-direction:column; gap:1rem; min-width:0; }
 .dash-col .dash-frame{ margin-bottom:0; }
+.dash-split > .dash-frame{ margin-bottom:0; }
 
-/* ---- "Show the numbers": the table view every chart carries -------------- */
+/* ---- "Show the numbers": the table view a chart carries ------------------ */
 .an-numbers{ margin-top:1rem; }
 .an-numbers summary{
   cursor:pointer; font-size:.76rem; color:var(--muted); list-style:none;
@@ -1972,13 +1756,12 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .an-numbers[open] summary::before{ content:"\25BE"; }
 .an-numbers .table-responsive{ margin-top:.6rem; }
 
-/* ---- Layout helpers ------------------------------------------------------ */
 /* ---- Print --------------------------------------------------------------- */
 @media print{
   /* Only one pane of a switch is on screen; on paper show them all, since
      nobody can click a radio on a printout. */
   .an-pane{ display:block !important; }
-  .an-switch,.chart-tip{ display:none !important; }
+  .an-switch{ display:none !important; }
   .dash-frame{ break-inside:avoid; page-break-inside:avoid; }
 }
 
@@ -2370,3 +2153,375 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .otp-foot button[disabled]{ color:#A9A3B4; cursor:default; }
 .otp-foot .otp-cancel{ color:#77727F; }
 .otp-tick{ font-family:ui-monospace, Consolas, monospace; font-size:.95em; }
+
+
+/* ============================================================================
+   DASHBOARD CHARTS — one layer, replacing the eight-tone scheme
+   ----------------------------------------------------------------------------
+   Every chart on every dashboard is HTML, CSS and inline SVG. No canvas, no
+   script: they print, and there is no responsive canvas to repeat the
+   runaway-growth bug the Security Dashboard had.
+
+   COLOUR. One hue per chart, never one per bar. The bar length already carries
+   the magnitude and the sort order already carries the rank, so a colour per
+   row would repeat the ranking in a second channel and imply a category
+   difference that is not there — and it would repaint the whole chart whenever
+   the ranking moved between the month and the year view. The top row is the
+   system's violet, the rest are grey.
+
+   Two charts opt out, because in them colour carries real meaning:
+     · outcome — approved/rejected/waiting are statuses, and green/red/amber is
+       what those words mean everywhere else in this system;
+     · attacks by type — the type IS the subject, so the three hues are a
+       categorical set and were validated as one.
+
+   THEMING. Every token below is defined on bare :root and redefined under
+   [data-bs-theme="dark"] — never under prefers-color-scheme. The app puts
+   `data-bs-theme` on <html> from localStorage('lms-theme') and falls back to
+   the OS only on a first visit; a chart keyed to the OS would stay light while
+   the topbar toggle turned the page around it dark. There is no
+   prefers-color-scheme anywhere in this stylesheet, and a test says so.
+   ========================================================================== */
+
+:root{
+  /* the hero/context pair every ranked chart runs on */
+  --ch-hero:#5b3fd6;
+  --ch-mute:#C9C6D4;
+  --ch-grid:#EEEDF2;
+
+  /* the three attacks — a categorical set, validated together */
+  --ch-s1:#5b3fd6;   /* SQL injection */
+  --ch-s2:#eb6834;   /* input manipulation */
+  --ch-s3:#1baf7a;   /* brute force */
+
+  /* KPI roles: the number and its icon share one of these four */
+  --k-info:#5B21B6;  /* a plain count, no judgement attached */
+  --k-good:#166B4B;
+  --k-warn:#8A6410;
+  --k-bad:#B3342C;
+
+  /* the same four as a fill, for a bar or a dot rather than text */
+  --k-good-f:#1F8A5F;
+  --k-warn-f:#C79A2E;
+  --k-bad-f:#C7453B;
+}
+:root[data-bs-theme="dark"], [data-bs-theme="dark"]{
+  /* Re-derived against the dark card, not lightened from the light steps. */
+  --ch-hero:#8b7ae8;
+  --ch-mute:#3A3746;
+  --ch-grid:#211F29;
+
+  --ch-s1:#8b7ae8;
+  --ch-s2:#d95926;
+  --ch-s3:#199e70;
+
+  --k-info:#A78BFA;
+  --k-good:#5FC49A;
+  --k-warn:#DFA95F;
+  --k-bad:#F0857C;
+
+  --k-good-f:#2E8F68;
+  --k-warn-f:#B0862F;
+  --k-bad-f:#C2564E;
+}
+
+/* ---- KPI card ------------------------------------------------------------ */
+/* Four roles and nothing outside them, so a red number means the same thing on
+   the security screen as it does on HR's. */
+.kpi[data-tone]{ --tone:var(--k-info); }
+.kpi[data-tone="good"]{ --tone:var(--k-good); }
+.kpi[data-tone="warn"]{ --tone:var(--k-warn); }
+.kpi[data-tone="bad"]{  --tone:var(--k-bad); }
+
+.dash .kpi{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:.75rem; padding:.9rem 1rem; min-width:0;
+  /* The retired connected strip put a divider on every card. Each metric is
+     its own frame now, and a hairline down the right of a bordered card reads
+     as a rendering fault. */
+  border-right:1px solid var(--border);
+}
+.kpi-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:.5rem; }
+.kpi-lb{
+  font-size:.7rem; font-weight:600; letter-spacing:.07em; text-transform:uppercase;
+  color:var(--muted); margin:0 0 .3rem;
+}
+/* Stroked, never filled: at this size a filled glyph is a solid block of colour
+   that pulls harder than the number beside it, and the number is the data. */
+.kpi-ic{
+  width:1.15rem; height:1.15rem; flex:none; fill:none;
+  stroke:var(--tone,var(--muted)); stroke-width:1.7;
+  stroke-linecap:round; stroke-linejoin:round;
+}
+.kpi-v{
+  font-size:1.85rem; font-weight:650; letter-spacing:-.03em; line-height:1;
+  margin:0; color:var(--tone,var(--text)); font-variant-numeric:tabular-nums;
+}
+.kpi-s{ font-size:.75rem; color:var(--muted); margin:.35rem 0 0; }
+.kpi-s b{ font-weight:600; color:var(--text-2); }
+
+/* ---- Panel captions ------------------------------------------------------ */
+.dash-note{
+  font-size:.73rem; color:var(--muted); margin:.9rem 0 0; line-height:1.55;
+}
+.dash-note a{ color:var(--primary); }
+.dash-count{
+  font-size:.68rem; font-weight:700; margin-left:.4rem; padding:.08rem .35rem;
+  border-radius:3px; background:var(--danger-soft); color:var(--danger);
+  vertical-align:.1em;
+}
+
+/* ---- Horizontal bars ----------------------------------------------------- */
+/* No gridlines: every bar prints its value at its end, so a grid measures
+   nothing the number does not already say. */
+.hb{ display:grid; gap:.38rem; }
+.hb-r{
+  display:grid; grid-template-columns:minmax(6rem,11rem) minmax(0,1fr) 2.4rem;
+  gap:.6rem; align-items:center;
+}
+.hb-l{
+  font-size:.76rem; color:var(--text-2); min-width:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.hb-mono{ font-family:ui-monospace,Consolas,monospace; font-size:.72rem; }
+.hb-t{ height:.85rem; background:var(--ch-grid); border-radius:3px; overflow:hidden; }
+.hb-f{ display:block; height:100%; background:var(--ch-mute); border-radius:0 3px 3px 0; }
+.hb-r[data-hero] .hb-f{ background:var(--ch-hero); }
+.hb-r[data-hero] .hb-l{ color:var(--text); font-weight:600; }
+.hb-v{
+  font-family:ui-monospace,Consolas,monospace; font-size:.74rem;
+  text-align:right; color:var(--text-2); font-variant-numeric:tabular-nums;
+}
+.hb-r[data-hero] .hb-v{ color:var(--text); font-weight:700; }
+/* The one categorical scale in the system. */
+.hb-r[data-series="sqli"]  .hb-f{ background:var(--ch-s1); }
+.hb-r[data-series="input"] .hb-f{ background:var(--ch-s2); }
+.hb-r[data-series="brute"] .hb-f{ background:var(--ch-s3); }
+.hb-r[data-series] .hb-l{ color:var(--text); font-weight:600; }
+/* The stored category, under the label it maps to. */
+.hb-sub{
+  font-size:.68rem; color:var(--muted); margin:-.15rem 0 .35rem;
+  padding-left:calc(11rem + .6rem);
+}
+@media (max-width:640px){ .hb-sub{ padding-left:0; } }
+/* A rule where the zeros begin. It is a fact about the period, not a chart
+   artefact, and every row below it still prints its count. */
+.hb-zero{ display:flex; align-items:center; gap:.6rem; margin:.5rem 0 .35rem; }
+.hb-zero::after{ content:""; flex:1 1 auto; height:1px; background:var(--border-strong); }
+.hb-zero span{
+  font-size:.66rem; letter-spacing:.05em; text-transform:uppercase;
+  color:var(--muted); white-space:nowrap;
+}
+.tag-s{
+  font-size:.62rem; font-weight:600; padding:.08rem .3rem; border-radius:3px;
+  margin-left:.4rem; vertical-align:.05em; white-space:nowrap;
+}
+.tag-blocked{ background:var(--danger-soft); color:var(--danger); }
+.tag-open{ background:var(--warning-soft); color:var(--warning); }
+
+/* ---- Vertical bars ------------------------------------------------------- */
+.vb{
+  display:flex; align-items:flex-end; gap:.35rem; height:8.5rem;
+  border-bottom:1px solid var(--border-strong);
+}
+.vb-c{
+  flex:1 1 0; display:flex; flex-direction:column; justify-content:flex-end;
+  align-items:center; gap:.3rem; height:100%;
+}
+.vb-b{ width:100%; background:var(--ch-mute); border-radius:3px 3px 0 0; min-height:2px; }
+.vb-c[data-hero] .vb-b{ background:var(--ch-hero); }
+.vb-n{
+  font-family:ui-monospace,Consolas,monospace; font-size:.68rem; color:var(--muted);
+  font-variant-numeric:tabular-nums;
+}
+.vb-c[data-hero] .vb-n{ color:var(--text); font-weight:700; }
+.vb-x{ display:flex; gap:.35rem; margin-top:.3rem; }
+.vb-x span{ flex:1 1 0; text-align:center; font-size:.66rem; color:var(--muted); }
+
+/* ---- Line ---------------------------------------------------------------- */
+/* Direct-labelled at the peak instead of a legend box: one series needs no key,
+   and a box in the corner costs a corner. */
+.ln-wrap{ display:grid; grid-template-columns:2.4rem minmax(0,1fr); gap:.45rem; }
+.ln-y{
+  display:flex; flex-direction:column; justify-content:space-between;
+  height:8.5rem; text-align:right;
+  font-family:ui-monospace,Consolas,monospace; font-size:.66rem;
+  color:var(--muted); font-variant-numeric:tabular-nums;
+}
+/* The first and last ticks sit ON the top and bottom gridlines, so they are
+   nudged inward by half a line rather than centred on their own box. */
+.ln-y span{ line-height:1; transform:translateY(-.33em); }
+.ln-y span:last-child{ transform:translateY(.33em); }
+.ln{ position:relative; }
+.ln svg{ display:block; width:100%; height:8.5rem; overflow:visible; }
+.ln .gl{ stroke:var(--ch-grid); stroke-width:1; }
+.ln .ax{ stroke:var(--border-strong); stroke-width:1; }
+.ln .p1{
+  fill:none; stroke:var(--ch-hero); stroke-width:2;
+  stroke-linecap:round; stroke-linejoin:round;
+}
+.ln-peak{ position:absolute; transform:translateX(-50%); white-space:nowrap; }
+.ln-peak[data-first]{ transform:none; }
+.ln-peak[data-last]{ transform:translateX(-100%); }
+.ln-lab{ font-size:.7rem; font-weight:600; color:var(--ch-hero); }
+/* Each label is placed at its own point's x. In equal-width slots a label sits
+   at (i+0.5)/n while its point sits at i/(n-1) — invisible at twelve points and
+   most of a week off at twenty-eight. */
+.ln-x{ position:relative; height:1rem; margin:.35rem 0 0 2.85rem; }
+.ln-x span{
+  position:absolute; top:0; font-size:.66rem; color:var(--muted);
+  white-space:nowrap; transform:translateX(-50%);
+}
+.ln-x span[data-first]{ transform:none; }
+.ln-x span[data-last]{ transform:translateX(-100%); }
+
+/* ---- Status split bar ---------------------------------------------------- */
+.sb{
+  display:flex; height:1.5rem; border-radius:4px; overflow:hidden; gap:2px;
+  background:var(--surface);
+}
+.sb i{ display:block; height:100%; }
+.sb-empty{ background:var(--ch-grid); }
+.sb-approved{ background:var(--k-good-f); }
+.sb-rejected{ background:var(--k-bad-f); }
+.sb-pending{  background:var(--k-warn-f); }
+.sb-key{
+  display:flex; gap:1rem; flex-wrap:wrap; margin-top:.6rem;
+  font-size:.74rem; color:var(--text-2);
+}
+.sb-key span{ display:flex; align-items:center; gap:.35rem; }
+.sb-key b{ font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; }
+.dot-s{ width:.6rem; height:.6rem; border-radius:2px; flex:none; display:block; }
+
+/* ---- Credit bars: five states -------------------------------------------- */
+/* Grey is used, colour is what remains — the bar answers "how much is left",
+   which is the question an employee about to file actually has. */
+.bal-r{
+  display:grid; grid-template-columns:minmax(6rem,9.5rem) minmax(0,1fr) auto;
+  gap:.7rem; align-items:center; margin-bottom:.5rem;
+}
+.bal-l{ font-size:.78rem; color:var(--text-2); min-width:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.bal-t{
+  height:.6rem; border-radius:3px; background:var(--ch-grid);
+  overflow:hidden; display:flex;
+}
+.bal-u{ background:var(--ch-mute); }
+.bal-k{ background:var(--ch-hero); }
+.bal-v{
+  font-family:ui-monospace,Consolas,monospace; font-size:.73rem;
+  color:var(--text-2); white-space:nowrap;
+}
+/* Three days or fewer left, on the absolute figure — 65% of three days and 65%
+   of fifteen are not the same situation. */
+.bal-r[data-state="low"] .bal-k{ background:var(--k-warn-f); }
+.bal-r[data-state="low"] .bal-v{ color:var(--k-warn); font-weight:600; }
+/* Spent, not missing: an all-grey bar would read as no data. */
+.bal-r[data-state="spent"] .bal-u{ background:var(--k-bad-f); }
+.bal-r[data-state="spent"] .bal-v{ color:var(--k-bad); font-weight:600; }
+/* Nothing accrued — "not applicable", which is a different claim from zero. */
+.bal-r[data-state="none"] .bal-t{ background:transparent; border:1px dashed var(--border-strong); }
+.bal-r[data-state="none"] .bal-l,
+.bal-r[data-state="none"] .bal-v{ color:var(--muted); }
+
+/* ---- Worklists: a queue you can start from, not a number ----------------- */
+.wl-r{
+  display:grid; grid-template-columns:6.2rem minmax(0,1fr) auto;
+  gap:.7rem; align-items:baseline;
+  padding:.45rem .1rem; border-bottom:1px solid var(--border); font-size:.78rem;
+}
+.wl-r:last-of-type{ border-bottom:0; }
+.wl-r:has(.wl-act){ grid-template-columns:4.4rem minmax(0,1fr) auto auto; }
+.wl-ref{
+  font-family:ui-monospace,Consolas,monospace; font-size:.71rem; color:var(--muted);
+}
+.wl-m{ color:var(--text-2); min-width:0; }
+.wl-m b{ color:var(--text); font-weight:600; }
+.wl-m small{ display:block; color:var(--muted); font-size:.92em; }
+.wl-age{ font-size:.72rem; white-space:nowrap; color:var(--text-2); }
+.wl-mono{ font-family:ui-monospace,Consolas,monospace; font-size:.71rem; }
+.wl-age.hot{ color:var(--k-bad); font-weight:600; }
+.wl-act{ margin:0; }
+.wl-act button{
+  font:inherit; border:1px solid var(--border-strong); background:var(--surface);
+  color:var(--muted); border-radius:.35rem; padding:.05rem .4rem; cursor:pointer;
+  line-height:1.4;
+}
+.wl-act button:hover{ color:var(--success); border-color:var(--success); }
+.sev{
+  display:inline-block; width:.5rem; height:.5rem; border-radius:50%;
+  margin-right:.35rem; background:var(--ch-mute);
+}
+/* Every signature in the detector records at high severity, lockouts included,
+   so these dots are one colour today. That is the code being honest; graded
+   severity is a change to the detector, not to this sheet. */
+.sev-high, .sev-critical{ background:var(--k-bad-f); }
+.sev-medium{ background:var(--k-warn-f); }
+
+/* ---- Coverage risk ------------------------------------------------------- */
+.cv-r{
+  display:grid; grid-template-columns:minmax(6rem,11rem) minmax(0,1fr) 4.2rem;
+  gap:.6rem; align-items:center;
+}
+.cv-t{ height:.85rem; background:var(--ch-grid); border-radius:3px; overflow:hidden; }
+.cv-f{ display:block; height:100%; background:var(--ch-mute); border-radius:0 3px 3px 0; }
+.cv-r[data-risk] .cv-f{ background:var(--k-bad-f); }
+.cv-r[data-risk] .hb-l{ color:var(--text); font-weight:600; }
+.cv-v{
+  font-family:ui-monospace,Consolas,monospace; font-size:.72rem;
+  text-align:right; color:var(--text-2);
+}
+.cv-r[data-risk] .cv-v{ color:var(--k-bad); font-weight:600; }
+.cv-when{
+  font-size:.68rem; color:var(--muted);
+  margin:-.1rem 0 .5rem; padding-left:calc(11rem + .6rem);
+}
+@media (max-width:640px){ .cv-when{ padding-left:0; } }
+
+/* ---- Two big figures side by side ---------------------------------------- */
+.dash-figures{
+  display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:.9rem; margin-bottom:1rem;
+}
+.hero-n{
+  font-size:2.4rem; font-weight:650; letter-spacing:-.035em; line-height:1;
+  margin:0; font-variant-numeric:tabular-nums;
+}
+.hero-n.is-bad{ color:var(--k-bad); }
+.hero-s{ font-size:.76rem; color:var(--muted); margin:.4rem 0 0; }
+
+/* ---- The Dashboard's two panes ------------------------------------------- */
+/* Radio inputs revealed with :has(), like the period switches — one Dashboard
+   link, two views, no script and no second route. The sidebar is not touched. */
+.dash-tabs{
+  display:flex; gap:.3rem; margin-bottom:1.1rem;
+  padding-bottom:.9rem; border-bottom:1px solid var(--border);
+}
+.dash-tabs label{
+  cursor:pointer; font-size:.82rem; font-weight:500; margin:0;
+  padding:.4rem .85rem; border-radius:.5rem;
+  border:1px solid transparent; background:transparent; color:var(--muted);
+  transition:.15s;
+}
+.dash-tabs label:hover{ color:var(--text); background:var(--surface-2); }
+.dash-tabs input{ position:absolute; opacity:0; pointer-events:none; }
+.dash-tabs label:has(input:checked){
+  background:var(--surface); border-color:var(--border-strong); color:var(--text);
+}
+.dash-tabs label:focus-within{ outline:2px solid var(--primary); outline-offset:2px; }
+
+#dash-tabs:has(#pane-mine:checked) .pane-mine,
+#dash-tabs:has(#pane-mgt:checked)  .pane-mgt{ display:block; }
+
+/* Without :has() neither pane would ever show. Fall back to the first. */
+@supports not selector(:has(*)){
+  .dash-tabs{ display:none; }
+  #dash-tabs .pane-mine{ display:block; }
+}
+
+@media print{
+  /* Nobody can click a radio on a printout: show every pane. */
+  .dash-tabs{ display:none !important; }
+  .an-pane{ display:block !important; }
+  .wl-act{ display:none !important; }
+}

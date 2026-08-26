@@ -6,13 +6,15 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * The Security Dashboard, and the layout invariant its charts depend on.
+ * The System Administrator's only dashboard.
  *
- * Charts are configured system-wide with `maintainAspectRatio = false`
- * (public/js/app.js), so a responsive canvas sizes itself to 100% of its
- * parent's height. If that parent has no height of its own — a bare card body,
- * say — the two size each other and the chart grows on every resize tick,
- * without limit. Both charts on this page did exactly that.
+ * Its two canvases are gone: every chart here is HTML, CSS and inline SVG now,
+ * like the leave dashboards. That retires the bug they had — charts are
+ * configured system-wide with `maintainAspectRatio = false` (public/js/app.js),
+ * so a responsive canvas takes 100% of its parent's height, and a parent sized
+ * by its own contents grew on every resize tick, without limit. The guard
+ * against a canvas reappearing anywhere in the system is kept at the foot of
+ * this file.
  */
 class SecurityDashboardTest extends TestCase
 {
@@ -43,23 +45,108 @@ class SecurityDashboardTest extends TestCase
         $this->asSysadmin()->get('/security')->assertOk();
     }
 
-    public function test_both_charts_sit_in_a_sized_container(): void
+    public function test_the_screen_draws_no_canvas_at_all(): void
     {
         $html = $this->asSysadmin()->get('/security')->assertOk()->getContent();
 
-        // Each canvas must be wrapped, or it grows forever.
-        foreach (['trend', 'cats'] as $id) {
-            $this->assertMatchesRegularExpression(
-                '/class="chart-box[^"]*"[^>]*>\s*<canvas id="'.$id.'"/',
-                $html,
-                "the #{$id} chart has no sized container and will grow without limit"
-            );
+        $this->assertStringNotContainsString('<canvas', $html);
+
+        // Three forms, chosen by what the number is: attempts per day are
+        // discrete daily counts (columns), sign-ins run four weeks (a line),
+        // and the rankings are sideways bars.
+        $this->assertStringContainsString('class="vb"', $html);
+        $this->assertStringContainsString('class="ln"', $html);
+        $this->assertStringContainsString('class="hb-f"', $html);
+    }
+
+    /**
+     * The paper names three attacks and the dashboard shows those three, with
+     * the stored category under each so the mapping is visible rather than
+     * assumed.
+     *
+     * `xss` and `traversal` are grouped as input manipulation in the summary
+     * only — the detector keeps recording them separately and Intrusion Logs
+     * keeps showing which, so no forensic detail is lost.
+     */
+    public function test_the_attack_chart_carries_the_papers_three_and_no_others(): void
+    {
+        $html = $this->asSysadmin()->get('/security')->assertOk()->getContent();
+
+        foreach (['SQL injection', 'Input manipulation', 'Brute force'] as $label) {
+            $this->assertStringContainsString($label, $html);
         }
 
-        // The height attribute is overwritten by a responsive chart; leaving it
-        // in suggests it does something.
-        $this->assertStringNotContainsString('<canvas id="trend" height=', $html);
-        $this->assertStringNotContainsString('<canvas id="cats" height=', $html);
+        // The mapping, on screen.
+        $this->assertStringContainsString('xss + traversal', $html);
+        $this->assertStringContainsString('accounts locked', $html);
+
+        // Exactly three rows in that chart. Order is by count, so the set is
+        // what is fixed, not the sequence.
+        preg_match_all('/data-series="([a-z]+)"/', $html, $series);
+        $found = array_values(array_unique($series[1]));
+        sort($found);
+        $this->assertSame(['brute', 'input', 'sqli'], $found);
+    }
+
+    /** Counts lockouts, not attempts — and says so. */
+    public function test_brute_force_counts_the_lockouts_the_threshold_wrote(): void
+    {
+        \App\Models\IntrusionLog::create([
+            'category' => 'auth_fail', 'severity' => 'high', 'route' => 'login',
+            'method' => 'POST', 'matched_rule' => 'lockout_threshold',
+            'ip' => '192.168.1.42',
+        ]);
+        \App\Models\IntrusionLog::create([
+            'category' => 'xss', 'severity' => 'high', 'route' => 'employees/search',
+            'method' => 'GET', 'ip' => '192.168.1.87',
+        ]);
+
+        $rows = collect(app(\App\Services\Security\SecurityDashboardService::class)->attacksByType());
+
+        $this->assertSame(1, $rows->firstWhere('key', 'brute')['value']);
+        $this->assertSame(1, $rows->firstWhere('key', 'input')['value']);
+        $this->assertSame(0, $rows->firstWhere('key', 'sqli')['value']);
+    }
+
+    /** An address at the top raises one question: has it been dealt with. */
+    public function test_the_busiest_addresses_say_whether_they_are_still_open(): void
+    {
+        foreach (['192.168.1.87', '192.168.1.87', '192.168.4.11'] as $ip) {
+            \App\Models\IntrusionLog::create([
+                'category' => 'sqli', 'severity' => 'high', 'route' => 'login',
+                'method' => 'GET', 'ip' => $ip,
+            ]);
+        }
+        \App\Models\BlockedIp::create([
+            'ip' => '192.168.1.87', 'reason' => 'auto', 'source' => 'auto', 'active' => true,
+        ]);
+
+        $rows = app(\App\Services\Security\SecurityDashboardService::class)->topAttackers();
+
+        $this->assertSame('192.168.1.87', $rows[0]['label']);
+        $this->assertSame(2, $rows[0]['value']);
+        $this->assertTrue($rows[0]['blocked']);
+        $this->assertFalse($rows[1]['blocked']);
+
+        $html = $this->asSysadmin()->get('/security')->assertOk()->getContent();
+        $this->assertStringContainsString('tag-blocked', $html);
+        $this->assertStringContainsString('tag-open', $html);
+    }
+
+    /**
+     * `payload_excerpt` is attacker-controlled text and the most interesting
+     * field in that table. It belongs on the detail page, escaped — not on a
+     * screen somebody glances at forty times a day.
+     */
+    public function test_the_attackers_own_text_never_reaches_this_screen(): void
+    {
+        \App\Models\IntrusionLog::create([
+            'category' => 'sqli', 'severity' => 'high', 'route' => 'login', 'method' => 'GET',
+            'payload_excerpt' => "CANARY' OR 1=1 --", 'ip' => '192.168.1.87',
+        ]);
+
+        $this->assertStringNotContainsString('CANARY',
+            $this->asSysadmin()->get('/security')->assertOk()->getContent());
     }
 
     /**
@@ -70,29 +157,42 @@ class SecurityDashboardTest extends TestCase
      */
     public function test_the_intrusion_trend_lives_only_on_the_security_dashboard(): void
     {
-        $dashboard = $this->asSysadmin()->get('/dashboard')->assertOk()->getContent();
-        $this->assertStringNotContainsString('chartIntrusions', $dashboard);
-        $this->assertStringNotContainsString('Intrusion attempts', $dashboard);
+        // HR holds leave.requests.view-all and reaches the leave dashboard; the
+        // security figures are not theirs and never were.
+        $this->actingAs($this->makeUser('hr'));
+        session(['otp_verified' => true]);
+        $leave = $this->get('/dashboard')->assertOk()->getContent();
 
-        $security = $this->get('/security')->assertOk()->getContent();
-        $this->assertStringContainsString('id="trend"', $security);
-        $this->assertStringContainsString('Attacks (last 7 days)', $security);
+        $this->assertStringNotContainsString('chartIntrusions', $leave);
+        $this->assertStringNotContainsString('Intrusion attempts', $leave);
+
+        $security = $this->asSysadmin()->get('/security')->assertOk()->getContent();
+        $this->assertStringContainsString('Intrusion attempts per day', $security);
     }
 
     /**
      * Bars, not a line. Attacks per day are seven discrete counts, so a day
      * with none belongs as an absent bar — a line dipping to the axis and back
      * reads as though something happened when nothing did.
+     *
+     * Sign-ins are the opposite case and get the line: they run four weeks and
+     * do have a weekly rhythm, so the shape between the points is real.
      */
     public function test_the_seven_day_trend_is_drawn_as_bars(): void
     {
         $html = $this->asSysadmin()->get('/security')->assertOk()->getContent();
 
-        $this->assertMatchesRegularExpression(
-            "/getElementById\('trend'\).*?type:\s*'bar'/s",
-            $html,
-            'the 7-day trend should be a bar chart'
-        );
+        preg_match('#Intrusion attempts per day.*?</div>\s*</div>#s', $html, $panel);
+        $this->assertNotEmpty($panel);
+        $this->assertStringContainsString('class="vb"', $panel[0]);
+        $this->assertStringNotContainsString('<polyline', $panel[0]);
+
+        // Seven columns, spelled Mon/Tue/Wed — M/T/W/T/F is ambiguous twice
+        // over in five letters.
+        preg_match('#<div class="vb-x">(.*?)</div>#s', $html, $labels);
+        preg_match_all('/<span>(\w+)<\/span>/', $labels[1], $days);
+        $this->assertCount(7, $days[1]);
+        $this->assertSame(now()->format('D'), end($days[1]), 'the last column must be today');
     }
 
     /** Seven days, one query — not one count per day. */
@@ -101,7 +201,7 @@ class SecurityDashboardTest extends TestCase
         $this->asSysadmin();
 
         \DB::enableQueryLog();
-        app(\App\Services\DashboardService::class)->intrusionsByDay();
+        app(\App\Services\Security\SecurityDashboardService::class)->intrusionsByDay();
         $queries = \DB::getQueryLog();
         \DB::disableQueryLog();
 

@@ -130,12 +130,47 @@ class EmployeeInterfaceTest extends TestCase
 
         $this->asEmployee()->get('/dashboard')
             ->assertOk()
-            // Balances now surface through the credit summary and the ledger,
-            // not as leave-type KPI cards.
-            ->assertSee('Credit summary')
-            ->assertSee('13.00')
+            // Balances surface as the credit bars and the ledger, not as one
+            // KPI card per leave type.
+            ->assertSee('Credits remaining, by type')
+            ->assertSee('Vacation Leave')
+            ->assertSee('13 left')
             ->assertSee('Credit history')
+            ->assertSee('13.00')
             ->assertSee('Approved Vacation Leave (LV-TEST-1)');
+    }
+
+    /**
+     * The five states one credit bar has to survive.
+     *
+     * The last two are the ones that were wrong: a type with nothing accrued
+     * divided by zero and rendered the bar NaN% wide, and "nothing left" used
+     * to look identical to "no data" because both drew an empty grey track.
+     */
+    public function test_a_credit_bar_says_which_of_its_five_states_it_is_in(): void
+    {
+        $codes = ['VL' => [0, 15], 'SL' => [6, 9], 'SPL' => [2.5, 2.5], 'FL' => [5, 0], 'TL' => [0, 0]];
+
+        foreach ($codes as $code => [$used, $left]) {
+            LeaveBalance::create([
+                'user_id' => $this->employee->id,
+                'leave_type_id' => LeaveType::where('code', $code)->firstOrFail()->id,
+                'earned' => $used + $left, 'used' => $used, 'balance' => $left,
+            ]);
+        }
+
+        $html = $this->asEmployee()->get('/dashboard')->assertOk()->getContent();
+
+        foreach (['ok', 'low', 'spent', 'none'] as $state) {
+            $this->assertStringContainsString('data-state="'.$state.'"', $html,
+                'no bar is in the '.$state.' state');
+        }
+
+        $this->assertStringNotContainsString('NaN', $html,
+            'a type with no accrued credits is dividing by zero again');
+        $this->assertStringContainsString('not accrued', $html,
+            '"not accrued" is a different claim from "none left" and must say so');
+        $this->assertStringContainsString('none left', $html);
     }
 
     public function test_employee_dashboard_shows_application_state_counters(): void
@@ -151,30 +186,31 @@ class EmployeeInterfaceTest extends TestCase
 
         $this->asEmployee()->get('/dashboard')
             ->assertOk()
-            // Counters describe the employee's own applications, and say so:
-            // a back-office user sees these below the organisation-wide figures,
-            // where a bare "Approved" would be ambiguous.
-            ->assertSee('My pending')
-            ->assertSee('My approved')
-            ->assertSee('My rejected')
-            // Three counters only — no days-taken card.
-            ->assertDontSee('Days taken')
-            // ...not their leave-type balances.
-            ->assertDontSee('credits used');
+            // Four counters, each answering something an employee about to file
+            // would actually ask.
+            ->assertSee('Vacation left')
+            ->assertSee('Sick left')
+            ->assertSee('Waiting on a decision')
+            ->assertSee('Taken this year')
+            // Nothing about anybody else's leave: this pane is gated on
+            // leave.view-own and an employee holds nothing wider.
+            ->assertDontSee('Applications by office')
+            ->assertDontSee('Coverage risk')
+            ->assertDontSee('Waiting longest');
     }
 
     public function test_employee_dashboard_draws_no_charts(): void
     {
         $html = $this->asEmployee()->get('/dashboard')->assertOk()->getContent();
 
-        // The trend chart, the leave-type donut and the days-taken sparkline are
-        // an administrator view; a personal dashboard shows records, not graphs.
-        foreach (['chartMain', 'chartMix', 'chartSpark', 'Leave type breakdown'] as $absent) {
+        // "How many days do I have left" is a number. Plotting it would be
+        // decoration, and the aggregate charts are somebody else's screen.
+        foreach (['chartMain', 'chartMix', 'chartSpark', '<canvas', 'class="ln"', 'class="vb"'] as $absent) {
             $this->assertStringNotContainsString($absent, $html);
         }
 
-        // The credit summary stays.
-        $this->assertStringContainsString('Credit summary', $html);
+        // The credit bars stay — they are a readout, not a chart.
+        $this->assertStringContainsString('Credits remaining, by type', $html);
     }
 
     public function test_notifications_appear_once_in_the_top_bar(): void

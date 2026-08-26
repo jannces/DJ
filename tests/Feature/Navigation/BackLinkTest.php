@@ -108,9 +108,11 @@ class BackLinkTest extends TestCase
     {
         $this->signIn('system-admin');
 
+        // Followed through: /dashboard redirects a System Administrator to the
+        // Security Dashboard, which the sidebar also reaches directly.
         foreach (['/dashboard', '/users', '/roles', '/security', '/reports'] as $url) {
             $this->assertStringNotContainsString('class="back-link"',
-                $this->get($url)->assertOk()->getContent(),
+                $this->followingRedirects()->get($url)->assertOk()->getContent(),
                 "{$url} is reachable from the sidebar and should not offer a way 'back'");
         }
     }

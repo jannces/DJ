@@ -133,13 +133,20 @@ class SidebarScrollTest extends TestCase
         );
     }
 
-    /** The whole menu reaches the page, whatever height the browser has. */
+    /**
+     * The whole menu reaches the page, whatever height the browser has.
+     *
+     * Followed through the redirect: /dashboard sends a System Administrator to
+     * the Security Dashboard, which is their only one. The rail is the same
+     * rail on either page — no item was added, removed, renamed or repointed —
+     * and this asserts it arrives complete wherever the role lands.
+     */
     public function test_every_permitted_item_is_rendered_into_the_rail(): void
     {
         $this->actingAs($this->makeUser('system-admin'));
         session(['otp_verified' => true]);
 
-        $html = $this->get('/dashboard')->assertOk()->getContent();
+        $html = $this->followingRedirects()->get('/dashboard')->assertOk()->getContent();
 
         foreach (['Dashboard', 'Users', 'Roles &amp; Permissions', 'Authorized Devices',
             'Security Dashboard', 'Blocked IPs', 'Intrusion Logs', 'Audit Logs',

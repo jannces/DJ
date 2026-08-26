@@ -63,6 +63,8 @@ Route::middleware('permission:security.blocked-ips')->group(function () {
 });
 Route::middleware('permission:security.intrusions')->group(function () {
     Route::get('security/intrusions', [SecurityController::class, 'intrusions'])->name('security.intrusions');
+    // Reviewing is an action, not a side effect of opening a page.
+    Route::post('security/intrusions/review', [SecurityController::class, 'reviewIntrusions'])->name('security.intrusions.review');
 });
 
 // Audit / activity logs
