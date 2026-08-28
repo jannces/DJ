@@ -8,7 +8,7 @@
     <title>@yield('title', 'Sign in') — {{ config('app.name', 'LGU Alicia LMS') }}</title>
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <link rel="stylesheet" href="{{ \App\Support\Asset::url('css/app.css') }}">
     <script>document.documentElement.setAttribute('data-bs-theme', localStorage.getItem('lms-theme') || 'light');</script>
 </head>
 <body>

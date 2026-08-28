@@ -191,14 +191,61 @@ class IntrusionDetectionService
         }
     }
 
+    /**
+     * Requests from this address in the current clock minute, against the
+     * configured limit.
+     *
+     * Two things were wrong here, and the second was the serious one.
+     *
+     * The key was `ids.rate.{ip}` with a one-minute lifetime rewritten by
+     * every request, so it only expired after a full minute of complete
+     * silence from that address. The bell asks for new alerts every fifteen
+     * seconds on every open tab, so silence never came: the count climbed past
+     * the limit and then flagged *every* request from that address for as long
+     * as the tab stayed open. That is the 284 identical `rate` events in the
+     * log, one every fifteen seconds.
+     *
+     * And because each of those calls maybeAutoBlock(), which trips at five
+     * events in ten minutes, a real employee on the LAN would have been given
+     * a 24-hour IP block about a minute into the stuck state -- for leaving
+     * the leave portal open. Loopback is trusted, so the one machine this
+     * never happened to was the administrator's.
+     *
+     * The bucket is keyed by the minute now, so it retires on its own whether
+     * or not the address goes quiet.
+     */
     private function rateAnomaly(Request $request): bool
     {
+        if ($this->isRateExempt($request)) {
+            return false;
+        }
+
         $limit = (int) SystemSetting::get('security.rate_limit_per_minute', 120);
-        $key = 'ids.rate.'.$request->ip();
+        $key = 'ids.rate.'.$request->ip().'.'.now()->format('YmdHi');
         $count = (int) Cache::get($key, 0) + 1;
-        Cache::put($key, $count, now()->addMinute());
+        Cache::put($key, $count, now()->addMinutes(2));
 
         return $count > $limit;
+    }
+
+    /**
+     * The system polling itself is not evidence of anything.
+     *
+     * Only the bell's own endpoint is exempt, and only from *counting* -- it
+     * is still scanned for signatures like every other request, and it now
+     * carries a real throttle, which is a bound rather than a detector. The
+     * token-authenticated API endpoints stay counted: those are the ones
+     * something outside the LGU could reach.
+     *
+     * Matched on path rather than route name: the IDS is global middleware and
+     * runs before the router has resolved anything, so $request->route() is
+     * still null here.
+     */
+    private function isRateExempt(Request $request): bool
+    {
+        $paths = (array) config('security.rate_exempt_paths', []);
+
+        return $paths !== [] && $request->is(...$paths);
     }
 
     /**

@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/sweetalert2/sweetalert2.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <link rel="stylesheet" href="{{ \App\Support\Asset::url('css/app.css') }}">
     <script>
         document.documentElement.setAttribute('data-bs-theme',
             localStorage.getItem('lms-theme') ||
@@ -47,7 +47,7 @@
 <script src="{{ asset('vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
 <script src="{{ asset('vendor/sweetalert2/sweetalert2.all.min.js') }}"></script>
 <script src="{{ asset('vendor/chartjs/chart.umd.min.js') }}"></script>
-<script src="{{ asset('js/app.js') }}"></script>
+<script src="{{ \App\Support\Asset::url('js/app.js') }}"></script>
 @stack('scripts')
 </body>
 </html>
