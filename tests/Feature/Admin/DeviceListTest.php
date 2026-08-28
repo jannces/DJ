@@ -49,9 +49,9 @@ class DeviceListTest extends TestCase
         $this->assertStringContainsString('Register device', $html);
         $this->assertStringContainsString('HR-PC-01', $html);
 
-        // The button sits above the container, on the left — the same place on
-        // every list, so it is never hunted for. What narrows the list stays
-        // inside, above the rows it narrows.
+        // The button sits above the container, on the right — the same place
+        // on every list, so it is never hunted for. What narrows the list
+        // stays inside, above the rows it narrows.
         $this->assertMatchesRegularExpression(
             '#<div class="list-actions">\s*<a href="[^"]*/devices/create"#',
             $html,

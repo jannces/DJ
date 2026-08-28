@@ -62,11 +62,11 @@ class RecordPanelTest extends TestCase
     /**
      * @dataProvider pages
      *
-     * Same place on every list: above the container, on the left. It was on
+     * Same place on every list: above the container, on the right. It was on
      * the title row on some pages and inside the container on others, which
      * read as unplanned rather than as a choice.
      */
-    public function test_the_add_button_sits_above_the_container_on_the_left(
+    public function test_the_add_button_sits_above_the_container(
         string $url, string $panel, string $label
     ): void {
         $html = $this->get($url)->assertOk()->getContent();

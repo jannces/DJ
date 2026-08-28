@@ -2775,11 +2775,14 @@ span.dash-link{ justify-content:flex-start; }
 }
 .list-head .btn i{ margin-right:.35rem; }
 
-/* The button that adds a record sits above its container, on the left: it acts
+/* The button that adds a record sits above its container, on the right: it acts
    on the list as a whole rather than on anything inside it, and it is the same
-   place on every list so it is never hunted for. */
+   place on every list so it is never hunted for. Its own row rather than the
+   title row, because a page may already have something there — Authorized
+   Devices carries the enforcement badge. */
 .list-actions{
-  display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; margin-bottom:.75rem;
+  display:flex; align-items:center; justify-content:flex-end;
+  gap:.5rem; flex-wrap:wrap; margin-bottom:.75rem;
 }
 .list-actions .btn i{ margin-right:.35rem; }
 
