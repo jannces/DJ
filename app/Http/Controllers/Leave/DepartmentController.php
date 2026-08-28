@@ -13,15 +13,31 @@ class DepartmentController extends Controller
 {
     public function index(): View
     {
-        $departments = Department::withCount('employees')->with('head')->orderBy('name')->paginate(15);
-        $heads = User::whereHas('roles', fn ($q) => $q->where('slug', 'department-head'))->get();
-
-        return view('hr.departments', compact('departments', 'heads'));
+        return view('hr.departments', $this->listing());
     }
 
+    /**
+     * One query shape, so index, create and edit cannot show different lists.
+     *
+     * @return array{departments:mixed, heads:mixed}
+     */
+    private function listing(): array
+    {
+        return [
+            'departments' => Department::withCount('employees')->with('head')->orderBy('name')->paginate(15),
+            'heads' => User::whereHas('roles', fn ($q) => $q->where('slug', 'department-head'))->get(),
+        ];
+    }
+
+    /**
+     * The list, with the New panel open.
+     *
+     * A real URL behind the button, so the page works with the script and
+     * without it — see PositionController::create().
+     */
     public function create(): View
     {
-        return redirect()->route('departments.index');
+        return view('hr.departments', $this->listing() + ['opening' => true]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -38,11 +54,7 @@ class DepartmentController extends Controller
 
     public function edit(Department $department): View
     {
-        return view('hr.departments', [
-            'departments' => Department::withCount('employees')->with('head')->orderBy('name')->paginate(15),
-            'heads' => User::whereHas('roles', fn ($q) => $q->where('slug', 'department-head'))->get(),
-            'editing' => $department,
-        ]);
+        return view('hr.departments', $this->listing() + ['editing' => $department]);
     }
 
     public function update(Request $request, Department $department): RedirectResponse

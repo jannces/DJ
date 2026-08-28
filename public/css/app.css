@@ -2756,3 +2756,32 @@ span.dash-link{ justify-content:flex-start; }
    there is the most spare room for a label to sit at the wrong end of. */
 .btn.w-100,
 .dash-link.w-100{ display:inline-flex; align-items:center; }
+
+
+/* ============================================================================
+   LIST PAGES WITH A FLOATING RECORD PANEL
+   ----------------------------------------------------------------------------
+   Positions, Departments and Holidays used to pin their form to the left third
+   of the page, on screen whether or not anybody was adding anything — a two- or
+   three-field form holding a third of the width of a list read every day. The
+   form is behind the button now and the table has the page.
+
+   Not every form: the panel suits a record you can hold in your head. The New
+   User form is twenty-one fields across four sections and stays a page.
+   ========================================================================== */
+.list-head{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:1rem; flex-wrap:wrap; margin-bottom:1rem;
+}
+.list-head .btn i{ margin-right:.35rem; }
+
+/* Counts in a list read as numbers, right-aligned under a right-aligned head. */
+.table th.num, .table td.num{
+  text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap;
+}
+
+/* The panel is Bootstrap's modal; only the footer needs saying. Cancel is a
+   link back to the clean list rather than a dismiss, because the page may have
+   arrived at an /edit URL and shutting the panel there would strand you on a
+   URL whose panel is closed. */
+.modal-footer .btn{ min-width:7rem; }

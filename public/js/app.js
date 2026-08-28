@@ -136,6 +136,16 @@
       };
       poll(); setInterval(poll, Number(bell.dataset.interval || 15) * 1000);
     }
+
+    // A record panel the server said to open: the page is editing a record, or
+    // the last submission was rejected and the errors are inside the panel.
+    //
+    // It has to be the server's decision, not the click's. A rejected form
+    // redirects back to the page it came from, so a panel that only opened on
+    // a click would be shut on arrival — errors invisible, typed values gone.
+    document.querySelectorAll('.modal[data-open-on-load]').forEach(function (el) {
+      bootstrap.Modal.getOrCreateInstance(el).show();
+    });
   });
 })();
 
