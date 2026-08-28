@@ -21,7 +21,7 @@ class BalanceController extends Controller
         $users = User::whereHas('employeeProfile')
             ->with(['employeeProfile.department', 'leaveBalances.leaveType'])
             ->when($request->string('q')->toString(), fn ($q, $s) => $q->where('name', 'like', "%{$s}%"))
-            ->orderBy('name')->paginate(15)->withQueryString();
+            ->orderBy('name')->paginate(config('lists.per_page'))->withQueryString();
         $types = LeaveType::where('deductible', true)->orWhereIn('code', ['VL', 'SL'])->get();
 
         return view('hr.balances', compact('users', 'types'));

@@ -13,7 +13,7 @@ class HolidayController extends Controller
 {
     public function index(): View
     {
-        $holidays = Holiday::orderBy('date')->paginate(20);
+        $holidays = Holiday::orderBy('date')->paginate(config('lists.per_page'));
 
         return view('hr.holidays', compact('holidays'));
     }

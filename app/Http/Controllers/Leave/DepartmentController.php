@@ -24,7 +24,7 @@ class DepartmentController extends Controller
     private function listing(): array
     {
         return [
-            'departments' => Department::withCount('employees')->with('head')->orderBy('name')->paginate(15),
+            'departments' => Department::withCount('employees')->with('head')->orderBy('name')->paginate(config('lists.per_page')),
             'heads' => User::whereHas('roles', fn ($q) => $q->where('slug', 'department-head'))->get(),
         ];
     }

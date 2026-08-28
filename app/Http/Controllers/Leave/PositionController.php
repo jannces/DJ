@@ -18,7 +18,7 @@ class PositionController extends Controller
     /** One query shape, so index, create and edit cannot show different lists. */
     private function listing()
     {
-        return Position::withCount('employees')->orderBy('title')->paginate(15);
+        return Position::withCount('employees')->orderBy('title')->paginate(config('lists.per_page'));
     }
 
     /**

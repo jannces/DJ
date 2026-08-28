@@ -13,7 +13,7 @@ class ActivityLogController extends Controller
     {
         $logs = ActivityLog::with('user')
             ->when($request->string('user')->toString(), fn ($q, $u) => $q->whereHas('user', fn ($w) => $w->where('name', 'like', "%{$u}%")))
-            ->latest()->paginate(30)->withQueryString();
+            ->latest()->paginate(config('lists.per_page'))->withQueryString();
 
         return view('admin.activity.index', compact('logs'));
     }

@@ -12,13 +12,15 @@
 
 <div class="list-head">
     <h1 class="h4 mb-0">Holiday Calendar</h1>
-    <a href="{{ route('holidays.index') }}" class="btn btn-lgu btn-sm"
-       data-bs-toggle="modal" data-bs-target="#holiday-new">
-        <i class="bi bi-plus-lg"></i>Add holiday
-    </a>
 </div>
 
 <div class="card">
+    <div class="list-toolbar">
+        <a href="{{ route('holidays.index') }}" class="btn btn-lgu btn-sm"
+           data-bs-toggle="modal" data-bs-target="#holiday-new">
+            <i class="bi bi-plus-lg"></i>Add holiday
+        </a>
+    </div>
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
             <thead><tr><th>Date</th><th>Name</th><th>Scope</th><th></th></tr></thead>

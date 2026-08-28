@@ -47,7 +47,7 @@ class ApprovalController extends Controller
         }
 
         return view('leave.review', [
-            'requests' => $query->latest()->paginate(15),
+            'requests' => $query->latest()->paginate(config('lists.per_page')),
             'title' => $decides ? 'Leave Approvals' : 'Department Review',
             'decides' => $decides,
         ]);

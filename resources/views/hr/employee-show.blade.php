@@ -37,6 +37,7 @@
                 @empty <tr><td colspan="5" class="text-muted text-center py-3">No requests.</td></tr> @endforelse
                 </tbody>
             </table></div>
+            <div class="card-body">{{ $requests->links() }}</div>
         </div>
     </div>
 </div>

@@ -18,7 +18,7 @@ class EmployeeController extends Controller
                     ->orWhereHas('employeeProfile', fn ($e) => $e->where('employee_no', 'like', "%{$s}%")));
             })
             ->when($request->string('department')->toString(), fn ($q, $d) => $q->whereHas('employeeProfile', fn ($w) => $w->where('department_id', $d)))
-            ->orderBy('name')->paginate(15)->withQueryString();
+            ->orderBy('name')->paginate(config('lists.per_page'))->withQueryString();
         $departments = \App\Models\Department::orderBy('name')->get();
 
         return view('hr.employees', compact('employees', 'departments'));
@@ -28,9 +28,11 @@ class EmployeeController extends Controller
     {
         abort_unless($user->employeeProfile, 404);
         $user->load('employeeProfile.department', 'employeeProfile.position', 'roles', 'leaveBalances.leaveType');
-        $requests = $user->leaveRequests()->with('leaveType')->latest()->limit(30)->get();
-        $history = $user->leaveHistory()->with('leaveType')->latest()->limit(50)->get();
+        // Paged rather than capped: a long-serving employee's older requests
+        // were simply unreachable past the thirtieth.
+        $requests = $user->leaveRequests()->with('leaveType')->latest()
+            ->paginate(config('lists.per_page'));
 
-        return view('hr.employee-show', compact('user', 'requests', 'history'));
+        return view('hr.employee-show', compact('user', 'requests'));
     }
 }

@@ -33,7 +33,7 @@ class LeaveRequestController extends Controller
         $requests = LeaveRequest::with('leaveType')
             ->where('user_id', $request->user()->id)
             ->status($request->string('status')->toString() ?: null)
-            ->latest()->paginate(12)->withQueryString();
+            ->latest()->paginate(config('lists.per_page'))->withQueryString();
 
         return view('leave.index', compact('requests'));
     }
@@ -238,7 +238,7 @@ class LeaveRequestController extends Controller
         $requests = LeaveRequest::with('leaveType', 'user')
             ->when($request->string('status')->toString(), fn ($q, $s) => $q->where('status', $s))
             ->when($request->string('type')->toString(), fn ($q, $t) => $q->whereHas('leaveType', fn ($w) => $w->where('code', $t)))
-            ->latest()->paginate(20)->withQueryString();
+            ->latest()->paginate(config('lists.per_page'))->withQueryString();
         $types = LeaveType::orderBy('name')->get();
 
         return view('leave.all', compact('requests', 'types'));

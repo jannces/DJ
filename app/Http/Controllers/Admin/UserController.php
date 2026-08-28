@@ -46,7 +46,7 @@ class UserController extends Controller
             $query->onlyTrashed();
         }
 
-        $users = $query->orderBy('name')->paginate(15)->withQueryString();
+        $users = $query->orderBy('name')->paginate(config('lists.per_page'))->withQueryString();
 
         return view('admin.users.index', compact('users'));
     }

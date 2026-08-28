@@ -73,14 +73,14 @@ class SecurityController extends Controller
             ->when($request->string('category')->toString(), fn ($q, $c) => $q->where('category', $c))
             ->when($request->string('severity')->toString(), fn ($q, $s) => $q->where('severity', $s))
             ->when($request->string('ip')->toString(), fn ($q, $ip) => $q->where('ip', 'like', "%{$ip}%"))
-            ->latest()->paginate(25)->withQueryString();
+            ->latest()->paginate(config('lists.per_page'))->withQueryString();
 
         return view('admin.security.intrusions', compact('logs'));
     }
 
     public function blockedIps(): View
     {
-        $blocked = BlockedIp::with('blocker')->latest()->paginate(20);
+        $blocked = BlockedIp::with('blocker')->latest()->paginate(config('lists.per_page'));
 
         return view('admin.security.blocked-ips', compact('blocked'));
     }

@@ -19,18 +19,20 @@
     // submission was rejected — otherwise the errors would be behind a closed
     // panel and the typed values would be gone.
     $openEdit = (bool) $editing;
-    $openNew = ! $editing && ($opening ?? false || $errors->any());
+    $openNew = ! $editing && (($opening ?? false) || $errors->any());
 @endphp
 
 <div class="list-head">
     <h1 class="h4 mb-0">Positions</h1>
-    <a href="{{ route('positions.create') }}" class="btn btn-lgu btn-sm"
-       data-bs-toggle="modal" data-bs-target="#position-new">
-        <i class="bi bi-plus-lg"></i>New position
-    </a>
 </div>
 
 <div class="card">
+    <div class="list-toolbar">
+        <a href="{{ route('positions.create') }}" class="btn btn-lgu btn-sm"
+           data-bs-toggle="modal" data-bs-target="#position-new">
+            <i class="bi bi-plus-lg"></i>New position
+        </a>
+    </div>
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
             <thead><tr><th>Title</th><th>Salary grade</th><th class="num">Employees</th><th></th></tr></thead>

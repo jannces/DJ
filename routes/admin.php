@@ -50,6 +50,7 @@ Route::middleware('permission:users.manage')->group(function () {
 // Authorized devices
 Route::middleware('permission:devices.manage')->group(function () {
     Route::get('devices', [DeviceController::class, 'index'])->name('devices.index');
+    Route::get('devices/create', [DeviceController::class, 'create'])->name('devices.create');
     Route::post('devices', [DeviceController::class, 'store'])->name('devices.store');
     Route::put('devices/{device}', [DeviceController::class, 'update'])->name('devices.update');
     Route::post('devices/{device}/toggle', [DeviceController::class, 'toggle'])->name('devices.toggle');
