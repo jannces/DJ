@@ -1930,18 +1930,36 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .page-head-main{ min-width:0; }
 .page-head-actions{ display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
 
+/* A real button, visible without being hovered.
+   It had a transparent border and no background, so it only became a control
+   once the pointer was already on it — which is no use to somebody looking for
+   the way back, and no use at all on a touch screen, where there is no hover to
+   discover it with. It now carries the same surface, border and shadow as
+   "Save role"; hover changes it, it does not create it. */
 .back-link{
-  display:inline-flex; align-items:center; gap:.4rem; align-self:flex-start;
-  font-size:.78rem; font-weight:600; color:var(--muted); text-decoration:none;
-  padding:.28rem .6rem .28rem .45rem; border-radius:.45rem;
-  border:1px solid transparent; transition:color var(--dur) var(--ease),
-    background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+  display:inline-flex; align-items:center; justify-content:center; gap:.4rem;
+  align-self:flex-start;
+  font-size:.78rem; font-weight:600; text-decoration:none;
+  padding:.34rem .7rem .34rem .55rem; border-radius:.5rem;
+  color:var(--text-2);
+  border:1px solid var(--border-strong); background-color:var(--surface);
+  background-image:linear-gradient(180deg, rgba(255,255,255,.55), rgba(0,0,0,.03));
+  box-shadow:0 1px 2px rgba(22,18,31,.10), inset 0 1px 0 rgba(255,255,255,.7);
+  transition:transform .12s var(--ease), box-shadow .12s var(--ease),
+    color .12s var(--ease), border-color .12s var(--ease);
 }
 .back-link:hover,.back-link:focus-visible{
-  color:var(--primary); background:color-mix(in srgb,var(--primary) 9%,transparent);
-  border-color:var(--border-strong);
+  color:var(--primary); border-color:var(--primary);
+  transform:translateY(-1px);
+  box-shadow:0 4px 10px rgba(22,18,31,.14), inset 0 1px 0 rgba(255,255,255,.8);
 }
+.back-link:active{ transform:translateY(0); box-shadow:inset 0 2px 4px rgba(22,18,31,.15); }
 .back-link i{ font-size:.9rem; line-height:1; }
+
+:root[data-bs-theme="dark"] .back-link{
+  background-image:linear-gradient(180deg, rgba(255,255,255,.07), rgba(0,0,0,.18));
+  box-shadow:0 1px 2px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06);
+}
 
 @media print{ .back-link,.page-head-actions{ display:none !important; } }
 
@@ -2699,3 +2717,42 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   background:var(--surface-2); color:var(--muted); margin-left:.3rem;
   vertical-align:.08em;
 }
+
+
+/* ============================================================================
+   BUTTON LABELS ARE CENTRED
+   ----------------------------------------------------------------------------
+   A button whose label sits against one edge reads as a mistake, and several
+   did. The cause is the same everywhere: `display:flex` was set to line an icon
+   up with its text, and flex has no equivalent of `text-align:center` — the
+   `text-align:center` that Bootstrap's `.btn` relies on stops applying the
+   moment the element becomes a flex container, so the content packs to
+   `flex-start` and the label drifts left of a full-width button.
+
+   `justify-content:center` is the flex answer to the same question. Applied to
+   the shapes that opt into flex, and to `.btn` itself, which this stylesheet
+   restyles but which Bootstrap may render as a flex box.
+
+   `.btn-group > .btn` is left alone: a segmented control divides its width
+   evenly and each label is already centred in its own segment.
+   ========================================================================== */
+.btn{ text-align:center; }
+.btn.d-flex,
+.btn.d-inline-flex,
+.btn.w-100{ justify-content:center; }
+
+/* Anything of ours that is a flex button lines its label up the same way. */
+.dash-link,
+.back-link,
+.report-acts .btn-view,
+.report-acts .btn-fmt,
+.wl-act button,
+.otp-foot button{ justify-content:center; }
+
+/* A caption is not a button and keeps its own alignment. */
+span.dash-link{ justify-content:flex-start; }
+
+/* A full-width button is the one that shows the fault most plainly, because
+   there is the most spare room for a label to sit at the wrong end of. */
+.btn.w-100,
+.dash-link.w-100{ display:inline-flex; align-items:center; }

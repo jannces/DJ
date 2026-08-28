@@ -20,7 +20,7 @@
 --}}
 
 <x-page-head class="mb-3" :title="'Edit role: '.$role->name"
-    :back-url="route('roles.index')" back-label="Roles &amp; Permissions" />
+    :back-url="route('roles.index')" back-label="Roles & Permissions" />
 
 <form method="POST" action="{{ route('roles.update', $role) }}">
     @csrf
