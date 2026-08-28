@@ -59,6 +59,31 @@ class RecordPanelTest extends TestCase
             'the panel is open before anybody asked for it');
     }
 
+    /**
+     * @dataProvider pages
+     *
+     * Same place on every list: above the container, on the left. It was on
+     * the title row on some pages and inside the container on others, which
+     * read as unplanned rather than as a choice.
+     */
+    public function test_the_add_button_sits_above_the_container_on_the_left(
+        string $url, string $panel, string $label
+    ): void {
+        $html = $this->get($url)->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '#<div class="list-actions">\s*<a [^>]*>\s*<i class="bi bi-plus-lg"></i>'.preg_quote($label, '#').'#',
+            $html,
+            $url.'\'s add button is not above the container'
+        );
+        // Above it, not inside it.
+        $this->assertLessThan(
+            strpos($html, '<div class="card">'),
+            strpos($html, '<div class="list-actions">'),
+            $url.'\'s add button is inside the container'
+        );
+    }
+
     // ------------------------------------------------- the part that matters
 
     public function test_a_rejected_position_reopens_the_panel_with_what_was_typed(): void

@@ -15,13 +15,14 @@
     <h1 class="h4 mb-0">Departments</h1>
 </div>
 
+<div class="list-actions">
+    <a href="{{ route('departments.create') }}" class="btn btn-lgu btn-sm"
+       data-bs-toggle="modal" data-bs-target="#department-new">
+        <i class="bi bi-plus-lg"></i>New department
+    </a>
+</div>
+
 <div class="card">
-    <div class="list-toolbar">
-        <a href="{{ route('departments.create') }}" class="btn btn-lgu btn-sm"
-           data-bs-toggle="modal" data-bs-target="#department-new">
-            <i class="bi bi-plus-lg"></i>New department
-        </a>
-    </div>
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
             <thead><tr><th>Name</th><th>Code</th><th>Department Head</th><th class="num">Employees</th><th></th></tr></thead>

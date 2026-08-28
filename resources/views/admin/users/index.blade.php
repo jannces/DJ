@@ -1,9 +1,17 @@
 @extends('layouts.app')
 @section('title', 'Users')
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="list-head">
     <h1 class="h4 mb-0">User Accounts</h1>
-    <a href="{{ route('users.create') }}" class="btn btn-lgu btn-sm"><i class="bi bi-person-plus me-1"></i>New user</a>
+</div>
+
+{{-- New user stays a page rather than a panel: twenty-one fields across four
+     sections is not something to read through a modal. The button sits where
+     every other list's add button sits. --}}
+<div class="list-actions">
+    <a href="{{ route('users.create') }}" class="btn btn-lgu btn-sm">
+        <i class="bi bi-person-plus"></i>New user
+    </a>
 </div>
 
 <form class="card card-body mb-3" method="GET" data-no-loader>

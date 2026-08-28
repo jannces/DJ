@@ -49,11 +49,18 @@ class DeviceListTest extends TestCase
         $this->assertStringContainsString('Register device', $html);
         $this->assertStringContainsString('HR-PC-01', $html);
 
-        // The button is inside the container, above the list it adds to.
+        // The button sits above the container, on the left — the same place on
+        // every list, so it is never hunted for. What narrows the list stays
+        // inside, above the rows it narrows.
         $this->assertMatchesRegularExpression(
-            '#<div class="list-toolbar">\s*<a href="[^"]*/devices/create"#',
+            '#<div class="list-actions">\s*<a href="[^"]*/devices/create"#',
             $html,
-            'the button is not in the toolbar at the top of the container'
+            'the add button is not above the container'
+        );
+        $this->assertMatchesRegularExpression(
+            '#<div class="card">\s*<div class="list-toolbar">#',
+            $html,
+            'the search is not inside the container'
         );
 
         preg_match('#<div class="modal fade" id="device-new"[^>]*>#s', $html, $m);

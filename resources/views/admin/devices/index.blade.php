@@ -26,13 +26,15 @@
     </div>
 @endunless
 
+<div class="list-actions">
+    <a href="{{ route('devices.create') }}" class="btn btn-lgu btn-sm"
+       data-bs-toggle="modal" data-bs-target="#device-new">
+        <i class="bi bi-plus-lg"></i>Register device
+    </a>
+</div>
+
 <div class="card">
     <div class="list-toolbar">
-        <a href="{{ route('devices.create') }}" class="btn btn-lgu btn-sm"
-           data-bs-toggle="modal" data-bs-target="#device-new">
-            <i class="bi bi-plus-lg"></i>Register device
-        </a>
-
         <form method="GET" class="toolbar-filters" data-no-loader>
             <div class="input-group input-group-sm" style="max-width:280px">
                 <input name="q" value="{{ request('q') }}" class="form-control"

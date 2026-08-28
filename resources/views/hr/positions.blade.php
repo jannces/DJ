@@ -26,13 +26,14 @@
     <h1 class="h4 mb-0">Positions</h1>
 </div>
 
+<div class="list-actions">
+    <a href="{{ route('positions.create') }}" class="btn btn-lgu btn-sm"
+       data-bs-toggle="modal" data-bs-target="#position-new">
+        <i class="bi bi-plus-lg"></i>New position
+    </a>
+</div>
+
 <div class="card">
-    <div class="list-toolbar">
-        <a href="{{ route('positions.create') }}" class="btn btn-lgu btn-sm"
-           data-bs-toggle="modal" data-bs-target="#position-new">
-            <i class="bi bi-plus-lg"></i>New position
-        </a>
-    </div>
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
             <thead><tr><th>Title</th><th>Salary grade</th><th class="num">Employees</th><th></th></tr></thead>
