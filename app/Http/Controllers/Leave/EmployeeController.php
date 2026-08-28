@@ -18,10 +18,14 @@ class EmployeeController extends Controller
                     ->orWhereHas('employeeProfile', fn ($e) => $e->where('employee_no', 'like', "%{$s}%")));
             })
             ->when($request->string('department')->toString(), fn ($q, $d) => $q->whereHas('employeeProfile', fn ($w) => $w->where('department_id', $d)))
+            ->when($request->string('position')->toString(), fn ($q, $p) => $q->whereHas('employeeProfile', fn ($w) => $w->where('position_id', $p)))
             ->orderBy('name')->paginate(config('lists.per_page'))->withQueryString();
-        $departments = \App\Models\Department::orderBy('name')->get();
 
-        return view('hr.employees', compact('employees', 'departments'));
+        return view('hr.employees', [
+            'employees' => $employees,
+            'departments' => \App\Models\Department::orderBy('name')->pluck('name', 'id'),
+            'positions' => \App\Models\Position::orderBy('title')->pluck('title', 'id'),
+        ]);
     }
 
     public function show(Request $request, User $user): View

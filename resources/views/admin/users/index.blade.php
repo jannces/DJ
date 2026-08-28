@@ -14,34 +14,17 @@
     </a>
 </div>
 
-<form class="card card-body mb-3" method="GET" data-no-loader>
-    <div class="row g-2 align-items-end">
-        <div class="col-md-4">
-            <label class="form-label small">Search</label>
-            <input name="q" value="{{ request('q') }}" class="form-control form-control-sm" placeholder="name, email, username">
-        </div>
-        <div class="col-md-3">
-            <label class="form-label small">Status</label>
-            <select name="status" class="form-select form-select-sm">
-                <option value="">Any</option>
-                @foreach (['active','inactive','blocked'] as $s)
-                    <option value="{{ $s }}" @selected(request('status')===$s)>{{ ucfirst($s) }}</option>
-                @endforeach
-            </select>
-        </div>
-        <div class="col-md-3">
-            <div class="form-check mt-4">
-                <input class="form-check-input" type="checkbox" name="archived" value="1" id="arch" @checked(request('archived'))>
-                <label class="form-check-label small" for="arch">Show archived</label>
-            </div>
-        </div>
-        <div class="col-md-2">
-            <button class="btn btn-sm btn-lgu w-100">Filter</button>
-        </div>
-    </div>
-</form>
-
 <div class="card">
+    <x-list-toolbar search placeholder="name, email, username"
+        :action="route('users.index')">
+        <x-list-filter name="role" label="Role" :options="$roles" />
+        <x-list-filter name="status" label="Status"
+            :options="['active' => 'Active', 'inactive' => 'Inactive', 'blocked' => 'Blocked']" />
+        <x-list-filter name="show" label="Show" any="Current"
+            :options="['archived' => 'Archived', 'all' => 'All']" />
+    </x-list-toolbar>
+
+    <div data-list>
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
             <thead><tr><th>Name</th><th>Roles</th><th>Department</th><th>Status</th><th></th></tr></thead>
@@ -101,5 +84,6 @@
         </table>
     </div>
     <div class="card-body">{{ $users->links() }}</div>
+    </div>
 </div>
 @endsection

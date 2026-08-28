@@ -146,6 +146,82 @@
     document.querySelectorAll('.modal[data-open-on-load]').forEach(function (el) {
       bootstrap.Modal.getOrCreateInstance(el).show();
     });
+
+    // Live filtering.
+    //
+    // The toolbar asks the server and swaps the rows it gets back, so a search
+    // covers every record rather than the ten currently on screen. Filtering
+    // the visible rows in the browser would be instant and wrong: search for a
+    // name sitting on page three and it would answer "no matches".
+    //
+    // The form works without any of this — that is why the submit button is
+    // removed here rather than left out of the markup. If the script does not
+    // run, or a request fails, the page falls back to submitting normally.
+    document.querySelectorAll('form[data-live-filter]').forEach(function (form) {
+      var card = form.closest('.card');
+      var list = card && card.querySelector('[data-list]');
+      if (!list || !window.fetch || !window.AbortController) return;
+
+      form.querySelectorAll('.toolbar-submit').forEach(function (b) { b.remove(); });
+
+      var timer = null;
+      var inflight = null;
+
+      function url() {
+        var params = new URLSearchParams();
+        new FormData(form).forEach(function (value, key) {
+          if (String(value) !== '') params.append(key, value);
+        });
+        var query = params.toString();
+        return form.action + (query ? '?' + query : '');
+      }
+
+      function run() {
+        var target = url();
+        if (inflight) inflight.abort();
+        inflight = new AbortController();
+        list.setAttribute('aria-busy', 'true');
+
+        fetch(target, {
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          credentials: 'same-origin',
+          signal: inflight.signal
+        }).then(function (response) {
+          if (!response.ok) throw new Error(response.status);
+          return response.text();
+        }).then(function (html) {
+          var next = new DOMParser().parseFromString(html, 'text/html')
+            .querySelector('[data-list]');
+          if (next) list.innerHTML = next.innerHTML;
+          list.removeAttribute('aria-busy');
+          // So the address bar matches what is shown: a refresh, a bookmark or
+          // the back button all keep the filter.
+          history.replaceState(null, '', target);
+        }).catch(function (error) {
+          if (error.name === 'AbortError') return;
+          list.removeAttribute('aria-busy');
+          form.submit();
+        });
+      }
+
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        clearTimeout(timer);
+        run();
+      });
+
+      // A dropdown is a decision already made; a search box is still being
+      // typed, so it waits for a pause rather than asking on every keystroke.
+      form.querySelectorAll('select').forEach(function (select) {
+        select.addEventListener('change', run);
+      });
+      form.querySelectorAll('input[type="search"]').forEach(function (input) {
+        input.addEventListener('input', function () {
+          clearTimeout(timer);
+          timer = setTimeout(run, 300);
+        });
+      });
+    });
   });
 })();
 

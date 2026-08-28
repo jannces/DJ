@@ -21,10 +21,17 @@ class BalanceController extends Controller
         $users = User::whereHas('employeeProfile')
             ->with(['employeeProfile.department', 'leaveBalances.leaveType'])
             ->when($request->string('q')->toString(), fn ($q, $s) => $q->where('name', 'like', "%{$s}%"))
+            // Balances are reviewed office by office, so the office is the
+            // filter HR actually reaches for.
+            ->when($request->string('department')->toString(), fn ($q, $d) => $q->whereHas('employeeProfile', fn ($w) => $w->where('department_id', $d)))
             ->orderBy('name')->paginate(config('lists.per_page'))->withQueryString();
         $types = LeaveType::where('deductible', true)->orWhereIn('code', ['VL', 'SL'])->get();
 
-        return view('hr.balances', compact('users', 'types'));
+        return view('hr.balances', [
+            'users' => $users,
+            'types' => $types,
+            'departments' => \App\Models\Department::orderBy('name')->pluck('name', 'id'),
+        ]);
     }
 
     public function adjust(Request $request, User $user): RedirectResponse

@@ -58,7 +58,7 @@ class DeviceListTest extends TestCase
             'the add button is not above the container'
         );
         $this->assertMatchesRegularExpression(
-            '#<div class="card">\s*<div class="list-toolbar">#',
+            '#<div class="card">\s*<form [^>]*class="list-toolbar"#',
             $html,
             'the search is not inside the container'
         );
@@ -136,11 +136,29 @@ class DeviceListTest extends TestCase
 
         $plain = $this->get('/devices')->assertOk()->getContent();
         $this->assertStringNotContainsString('RETIRED-PC', $plain);
-        $this->assertStringContainsString('archived=1', $plain, 'nothing links to the archived list');
+        $this->assertStringContainsString('value="archived"', $plain,
+            'nothing on the page offers the archived list');
 
-        $withArchived = $this->get('/devices?archived=1')->assertOk()->getContent();
-        $this->assertStringContainsString('RETIRED-PC', $withArchived);
-        $this->assertStringContainsString('ON-FLOOR', $withArchived);
+        $archived = $this->get('/devices?show=archived')->assertOk()->getContent();
+        $this->assertStringContainsString('RETIRED-PC', $archived);
+        $this->assertStringNotContainsString('ON-FLOOR', $archived,
+            'archived should show the retired ones, not everything');
+
+        // The third option, which the old on/off toggle could not express.
+        $all = $this->get('/devices?show=all')->assertOk()->getContent();
+        $this->assertStringContainsString('RETIRED-PC', $all);
+        $this->assertStringContainsString('ON-FLOOR', $all);
+    }
+
+    public function test_the_status_dropdown_narrows_the_list(): void
+    {
+        $this->device(['hostname' => 'RUNNING', 'status' => 'active']);
+        $this->device(['ip_address' => '192.168.1.11', 'hostname' => 'STOPPED', 'status' => 'inactive']);
+
+        $html = $this->get('/devices?status=inactive')->assertOk()->getContent();
+
+        $this->assertStringContainsString('STOPPED', $html);
+        $this->assertStringNotContainsString('RUNNING', $html);
     }
 
     /** Archiving twice is meaningless, so the button is not offered twice. */
@@ -153,11 +171,15 @@ class DeviceListTest extends TestCase
         $this->assertStringNotContainsString('/archive', $html);
     }
 
-    public function test_the_search_survives_switching_to_archived(): void
+    /**
+     * The search term and the dropdowns are one form now, so changing a filter
+     * carries the search with it rather than starting over.
+     */
+    public function test_the_search_term_stays_in_the_box(): void
     {
         $html = $this->get('/devices?q=TREASURY')->assertOk()->getContent();
 
-        $this->assertStringContainsString('q=TREASURY', $html,
-            'switching to archived would drop what was searched for');
+        $this->assertMatchesRegularExpression('#name="q" value="TREASURY"#', $html,
+            'what was searched for was dropped from the box');
     }
 }

@@ -2,12 +2,14 @@
 @section('title', 'Leave Balances')
 @section('content')
 <h1 class="h4 mb-3">Leave Balances</h1>
-<form class="card card-body mb-3" method="GET" data-no-loader>
-    <div class="row g-2 align-items-end"><div class="col-md-4"><label class="form-label small">Search employee</label>
-        <input name="q" value="{{ request('q') }}" class="form-control form-control-sm"></div>
-        <div class="col-md-2"><button class="btn btn-sm btn-lgu w-100">Search</button></div></div>
-</form>
-<div class="card"><div class="table-responsive"><table class="table table-hover align-middle mb-0">
+<div class="card">
+    <x-list-toolbar search placeholder="Search employee"
+        :action="route('balances.index')">
+        <x-list-filter name="department" label="Department" :options="$departments" />
+    </x-list-toolbar>
+
+    <div data-list>
+    <div class="table-responsive"><table class="table table-hover align-middle mb-0">
     <thead><tr><th>Employee</th><th>Department</th><th>Balances</th><th></th></tr></thead>
     <tbody>
     @forelse ($users as $u)
@@ -18,7 +20,7 @@
             <td class="text-end"><button class="btn btn-sm btn-lgu" data-bs-toggle="modal" data-bs-target="#adj{{ $u->id }}">Adjust</button></td>
         </tr>
     @empty <tr><td colspan="4" class="text-muted text-center py-3">No employees.</td></tr> @endforelse
-    </tbody></table></div><div class="card-body">{{ $users->links() }}</div></div>
+    </tbody></table></div><div class="card-body">{{ $users->links() }}</div></div></div>
 
 {{-- Modals outside the table so they render and stay clickable. --}}
 @foreach ($users as $u)

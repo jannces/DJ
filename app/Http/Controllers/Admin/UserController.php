@@ -42,13 +42,25 @@ class UserController extends Controller
         if ($status = $request->string('status')->toString()) {
             $query->where('status', $status);
         }
-        if ($request->boolean('archived')) {
-            $query->onlyTrashed();
+        // "Who are the department heads?" was unanswerable: roles were shown
+        // in the list but there was no way to ask by one.
+        if ($role = $request->string('role')->toString()) {
+            $query->whereHas('roles', fn ($q) => $q->where('slug', $role));
         }
+        // Archived was a checkbox that could only be on or off, so there was
+        // no way to see current and archived accounts together.
+        match ($request->string('show')->toString()) {
+            'archived' => $query->onlyTrashed(),
+            'all' => $query->withTrashed(),
+            default => null,
+        };
 
         $users = $query->orderBy('name')->paginate(config('lists.per_page'))->withQueryString();
 
-        return view('admin.users.index', compact('users'));
+        return view('admin.users.index', [
+            'users' => $users,
+            'roles' => Role::assignable()->pluck('name', 'slug'),
+        ]);
     }
 
     public function create(): View

@@ -43,7 +43,12 @@ class DeviceController extends Controller
         $devices = AuthorizedDevice::with('registrar')
             ->when($request->string('q')->toString(), fn ($q, $s) => $q->where(fn ($w) =>
                 $w->where('ip_address', 'like', "%{$s}%")->orWhere('hostname', 'like', "%{$s}%")))
-            ->when(! $request->boolean('archived'), fn ($q) => $q->whereNull('archived_at'))
+            ->when($request->string('status')->toString(), fn ($q, $s) => $q->where('status', $s))
+            // Archived was a link that could only be on or off; "all" is how
+            // you compare what is retired against what is running.
+            ->when($request->string('show')->toString() !== 'all', fn ($q) => $request->string('show')->toString() === 'archived'
+                ? $q->whereNotNull('archived_at')
+                : $q->whereNull('archived_at'))
             ->orderBy('hostname')->paginate(config('lists.per_page'))->withQueryString();
 
         return [

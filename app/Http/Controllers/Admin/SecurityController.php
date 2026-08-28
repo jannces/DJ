@@ -72,7 +72,10 @@ class SecurityController extends Controller
         $logs = IntrusionLog::with('user')
             ->when($request->string('category')->toString(), fn ($q, $c) => $q->where('category', $c))
             ->when($request->string('severity')->toString(), fn ($q, $s) => $q->where('severity', $s))
-            ->when($request->string('ip')->toString(), fn ($q, $ip) => $q->where('ip', 'like', "%{$ip}%"))
+            // `q` is the toolbar's search box; `ip` is kept so a link or
+            // bookmark written against the old filter still works.
+            ->when($request->string('q')->toString() ?: $request->string('ip')->toString(),
+                fn ($query, $ip) => $query->where('ip', 'like', "%{$ip}%"))
             ->latest()->paginate(config('lists.per_page'))->withQueryString();
 
         return view('admin.security.intrusions', compact('logs'));

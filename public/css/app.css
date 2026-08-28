@@ -2811,6 +2811,14 @@ span.dash-link{ justify-content:flex-start; }
 .list-toolbar .toolbar-filters{
   display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;
 }
+/* The search takes the room it can and the dropdowns keep their own width, so
+   a page with one filter and a page with three read the same way. */
+.toolbar-search{ flex:1 1 15rem; min-width:11rem; max-width:24rem; }
+.toolbar-select{ width:auto; min-width:9rem; }
+.toolbar-clear{ padding-inline:.4rem; font-size:.8rem; }
+/* While the rows are being fetched, the old ones are still readable but are
+   plainly not the answer yet. */
+[data-list][aria-busy="true"]{ opacity:.55; transition:opacity var(--dur) var(--ease); }
 
 /* Counts in a list read as numbers, right-aligned under a right-aligned head. */
 .table th.num, .table td.num{

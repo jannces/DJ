@@ -35,6 +35,8 @@ class LeaveRequestController extends Controller
             ->status($request->string('status')->toString() ?: null)
             ->latest()->paginate(config('lists.per_page'))->withQueryString();
 
+        // The filter has always worked; nothing on the page ever offered it,
+        // so you had to know to type ?status=approved into the address bar.
         return view('leave.index', compact('requests'));
     }
 
@@ -236,12 +238,21 @@ class LeaveRequestController extends Controller
     public function all(Request $request): View
     {
         $requests = LeaveRequest::with('leaveType', 'user')
+            // Two dropdowns and no way to look something up: on a list of
+            // every application in the LGU, the reference number is how a
+            // particular one gets found.
+            ->when($request->string('q')->toString(), fn ($q, $s) => $q->where(
+                fn ($w) => $w->where('reference_no', 'like', "%{$s}%")
+                    ->orWhereHas('user', fn ($u) => $u->where('name', 'like', "%{$s}%"))
+            ))
             ->when($request->string('status')->toString(), fn ($q, $s) => $q->where('status', $s))
             ->when($request->string('type')->toString(), fn ($q, $t) => $q->whereHas('leaveType', fn ($w) => $w->where('code', $t)))
             ->latest()->paginate(config('lists.per_page'))->withQueryString();
-        $types = LeaveType::orderBy('name')->get();
 
-        return view('leave.all', compact('requests', 'types'));
+        return view('leave.all', [
+            'requests' => $requests,
+            'types' => LeaveType::orderBy('name')->pluck('name', 'code'),
+        ]);
     }
 
     public function form6(Request $request, LeaveRequest $leaveRequest)

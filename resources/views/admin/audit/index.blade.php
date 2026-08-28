@@ -2,14 +2,14 @@
 @section('title', 'Audit Logs')
 @section('content')
 <h1 class="h4 mb-3">Audit Logs</h1>
-<form class="card card-body mb-3" method="GET" data-no-loader>
-    <div class="row g-2 align-items-end">
-        <div class="col-md-3"><label class="form-label small">Action</label><input name="action" value="{{ request('action') }}" class="form-control form-control-sm"></div>
-        <div class="col-md-3"><label class="form-label small">User</label><input name="user" value="{{ request('user') }}" class="form-control form-control-sm"></div>
-        <div class="col-md-2"><button class="btn btn-sm btn-lgu w-100">Filter</button></div>
-    </div>
-</form>
-<div class="card"><div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0">
+<div class="card">
+    <x-list-toolbar search placeholder="Search by user"
+        :action="route('audit.index')">
+        <x-list-filter name="action" label="Action" :options="$actions" />
+    </x-list-toolbar>
+
+    <div data-list>
+    <div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0">
     <thead><tr><th>Time</th><th>User</th><th>Role</th><th>Action</th><th>Target</th><th>IP</th><th>Changes</th></tr></thead>
     <tbody>
     @forelse ($logs as $l)
@@ -25,5 +25,5 @@
             </td>
         </tr>
     @empty <tr><td colspan="7" class="text-center text-muted py-4">No audit entries.</td></tr> @endforelse
-    </tbody></table></div><div class="card-body">{{ $logs->links() }}</div></div>
+    </tbody></table></div><div class="card-body">{{ $logs->links() }}</div></div></div>
 @endsection

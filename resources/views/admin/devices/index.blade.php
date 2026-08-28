@@ -8,7 +8,6 @@
 
 @php
     $openNew = ($opening ?? false) || $errors->any();
-    $archived = request()->boolean('archived');
 @endphp
 
 <div class="list-head">
@@ -34,25 +33,15 @@
 </div>
 
 <div class="card">
-    <div class="list-toolbar">
-        <form method="GET" class="toolbar-filters" data-no-loader>
-            <div class="input-group input-group-sm" style="max-width:280px">
-                <input name="q" value="{{ request('q') }}" class="form-control"
-                       placeholder="Search IP or hostname" aria-label="Search IP or hostname">
-                <button class="btn btn-outline-secondary">Search</button>
-            </div>
-            {{-- Archived devices are already in the query; nothing linked to
-                 them, so the only way to see one was to type the URL. --}}
-            @if ($archived)
-                <a href="{{ route('devices.index', ['q' => request('q')]) }}"
-                   class="btn btn-sm btn-outline-secondary">Hide archived</a>
-            @else
-                <a href="{{ route('devices.index', ['q' => request('q'), 'archived' => 1]) }}"
-                   class="btn btn-sm btn-outline-secondary">Show archived</a>
-            @endif
-        </form>
-    </div>
+    <x-list-toolbar search placeholder="Search IP or hostname"
+        :action="route('devices.index')">
+        <x-list-filter name="status" label="Status"
+            :options="['active' => 'Active', 'inactive' => 'Inactive']" />
+        <x-list-filter name="show" label="Show" any="Current"
+            :options="['archived' => 'Archived', 'all' => 'All']" />
+    </x-list-toolbar>
 
+    <div data-list>
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
             <thead>
@@ -111,6 +100,7 @@
         </table>
     </div>
     <div class="card-body">{{ $devices->links() }}</div>
+    </div>
 </div>
 
 <x-record-panel id="device-new" title="Register device"

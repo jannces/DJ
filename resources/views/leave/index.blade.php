@@ -5,6 +5,16 @@
      a second entry point for the same action is just duplication. --}}
 <h1 class="h4 mb-3">My Leave Requests</h1>
 <div class="card">
+    <x-list-toolbar :action="route('leave.index')">
+        <x-list-filter name="status" label="Status" :options="[
+            'pending' => 'Pending', 'dept_review' => 'Department review',
+            'hr_review' => 'HR review', 'final_review' => 'Final review',
+            'approved' => 'Approved', 'rejected' => 'Rejected',
+            'returned' => 'Returned', 'cancelled' => 'Cancelled',
+        ]" />
+    </x-list-toolbar>
+
+    <div data-list>
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
             <thead><tr><th>Reference</th><th>Type</th><th>Dates</th><th>Days</th><th>Status</th><th></th></tr></thead>
@@ -33,5 +43,6 @@
         </table>
     </div>
     <div class="card-body">{{ $requests->links() }}</div>
+    </div>
 </div>
 @endsection
