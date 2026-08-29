@@ -143,7 +143,10 @@ a:hover { color:var(--primary-hover); }
 @media (max-width:1100px){
   .lms-sidebar{ position:fixed; margin-left:calc(var(--sidebar-w)*-1); }
   .lms-sidebar.show-mobile{ margin-left:0; }
-  .sidebar-backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1035; }
+  /* The same dim as a form panel's, and for the same reason: the menu is a
+     choice you can walk away from, not a stop. It used to be its own
+     hand-mixed black, so two overlays a tap apart were different greys. */
+  .sidebar-backdrop{ position:fixed; inset:0; background:rgb(12 8 24); opacity:.55; z-index:1035; }
 }
 
 /* ---- 5. Topbar ----------------------------------------------------------- */
@@ -315,8 +318,12 @@ a:hover { color:var(--primary-hover); }
   background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--text) 8%,transparent),transparent);
   animation:shimmer 1.4s infinite; transform:translateX(-100%); }
 @keyframes shimmer { 100%{ transform:translateX(100%); } }
+/* Dims, does not blur. The page is leaving; nothing is being asked and there
+   is nothing to look past. Blur is reserved for a decision — see the overlay
+   rule near .lms-ask-bg — and spending it on an ordinary page load teaches
+   people it means nothing. */
 #page-loader { position:fixed; inset:0; background:color-mix(in srgb,var(--bg) 55%,transparent);
-  backdrop-filter:blur(3px); z-index:3000; display:none; align-items:center; justify-content:center; }
+  z-index:3000; display:none; align-items:center; justify-content:center; }
 #page-loader.active { display:flex; }
 .spinner-ring { width:52px; height:52px; border:4px solid var(--border); border-top-color:var(--primary);
   border-radius:50%; animation:spin .8s linear infinite; }
@@ -1768,8 +1775,27 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
    slack the row height leaves rather than floating in the middle of it. Its own
    top margin is overridden by `auto`, so the gap is restored as padding. */
 .dash-split > .dash-frame > .dash-body > .dash-note{ margin-top:auto; padding-top:.9rem; }
+/* A column of stacked panels against a single tall one — two panels on the
+   left, severity running down the full height on the right.
+
+   The column has to carry the row height the same way a single frame does, or
+   its two panels sit at their natural heights and leave a gap under the last
+   one while the tall panel beside it runs on. Both stacked panels grow into
+   whatever slack the row leaves, so the bottom edges of the two columns land
+   on the same line and nothing overhangs. */
 .dash-col{ display:flex; flex-direction:column; gap:1rem; min-width:0; }
+.dash-col > .dash-frame{
+  margin-bottom:0; flex:1 1 auto; display:flex; flex-direction:column;
+}
+.dash-col > .dash-frame > .dash-body{ flex:1 1 auto; display:flex; flex-direction:column; }
+.dash-col > .dash-frame > .dash-body > .dash-note{ margin-top:auto; padding-top:.9rem; }
 .dash-col .dash-frame{ margin-bottom:0; }
+
+/* Below the breakpoint the split is a single column, so the stack and the tall
+   panel simply follow one another and neither should still be stretching. */
+@media (max-width:992px){
+  .dash-col > .dash-frame{ flex:0 0 auto; }
+}
 
 /* ---- "Show the numbers": the table view a chart carries ------------------ */
 .an-numbers{ margin-top:1rem; }
@@ -2875,6 +2901,28 @@ span.dash-link{ justify-content:flex-start; }
 .modal-footer .btn{ min-width:7rem; }
 
 /* ============================================================================
+   OVERLAYS — blur where you must not look past it, dim where you might
+              still need to
+   ----------------------------------------------------------------------------
+   One rule, and every overlay in this sheet follows it.
+
+   BLUR is for a stop: something is being asked and an answer is required
+   before anything else happens. Whatever is behind it is competing for the
+   attention the decision needs, so it stops being readable. Only the
+   confirmation qualifies (.lms-ask-bg).
+
+   DIM is for everything you might still want to read:
+     · .modal-backdrop  — a record panel is work in progress, and the list
+                          behind it is often what somebody is copying a
+                          department code or an address from;
+     · .sidebar-backdrop — a menu is a choice you can walk away from;
+     · #page-loader      — the page is leaving, nothing is being asked.
+
+   The reason blur is rationed is that it only means "stop" while it is rare.
+   The loader used to blur on every ordinary navigation, which spent the signal
+   on nothing.
+   ============================================================================
+
    ASKING FIRST — the confirmation panel
    ----------------------------------------------------------------------------
    The confirmation is SweetAlert2, which is already loaded for the toasts, but

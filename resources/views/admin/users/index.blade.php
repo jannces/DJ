@@ -65,10 +65,13 @@
                                                   data-confirm-tone="success">@csrf<button class="dropdown-item text-success">Unblock</button></form></li>
                                     @else
                                         <li>
+                                            {{-- The reason is asked inside the confirmation, not by a
+                                                 browser prompt after it. --}}
                                             <form method="POST" action="{{ route('users.block', $user) }}"
                                                   data-confirm="Block {{ $user->name }}? They will not be able to sign in."
                                                   data-confirm-tone="danger"
-                                                  onsubmit="this.reason.value=prompt('Reason for blocking:')||''; return this.reason.value!=='';">
+                                                  data-confirm-input="Reason for blocking"
+                                                  data-confirm-field="reason">
                                                 @csrf<input type="hidden" name="reason">
                                                 <button class="dropdown-item text-danger">Block</button>
                                             </form>

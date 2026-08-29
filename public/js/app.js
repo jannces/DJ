@@ -121,11 +121,35 @@
       form.addEventListener('submit', function (e) {
         if (form.dataset.confirmed) return;
         e.preventDefault();
-        lmsConfirm({
+
+        var options = {
           text: form.dataset.confirm,
           tone: form.dataset.confirmTone || 'danger'
-        }).then(function (res) {
-          if (res.isConfirmed) { form.dataset.confirmed = '1'; form.submit(); }
+        };
+
+        // Some decisions have to be written down as well as agreed to —
+        // blocking an account is recorded against a reason. That belongs in
+        // the question rather than in a second dialog after it: a browser
+        // prompt is a stop that does not blur, does not follow the theme, and
+        // was appearing BEFORE the confirmation, because an inline onsubmit is
+        // bound before this listener is.
+        if (form.dataset.confirmInput) {
+          options.input = 'text';
+          options.inputPlaceholder = form.dataset.confirmInput;
+          options.inputAttributes = { 'aria-label': form.dataset.confirmInput };
+          options.inputValidator = function (value) {
+            if (!value || !value.trim()) return form.dataset.confirmInput + ' is required.';
+          };
+        }
+
+        lmsConfirm(options).then(function (res) {
+          if (!res.isConfirmed) return;
+          if (form.dataset.confirmInput) {
+            var field = form.querySelector('[name="' + form.dataset.confirmField + '"]');
+            if (field) field.value = res.value;
+          }
+          form.dataset.confirmed = '1';
+          form.submit();
         });
       });
     });

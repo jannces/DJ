@@ -202,6 +202,84 @@ class AttackSeverityTest extends TestCase
         $this->assertLessThan(strpos($column, 'Attack severity'), strpos($column, 'Most targeted pages'));
     }
 
+    /**
+     * Every panel on this page is in a row that can hold it.
+     *
+     * .dash-split is a two-column grid, so a third panel dropped into one
+     * wraps onto a half-width second row and the page reads as though
+     * something came loose. The stacked column and the tall panel beside it
+     * are one row of two, like every other row here.
+     */
+    public function test_the_dashboard_rows_hold_two_panels_each(): void
+    {
+        $this->actingAs($this->makeUser('system-admin'));
+        session(['otp_verified' => true]);
+
+        $html = $this->get('/security')->assertOk()->getContent();
+
+        $rows = $this->rowCellCounts($html);
+
+        $this->assertNotEmpty($rows, 'the dashboard has no rows at all');
+
+        foreach ($rows as $number => $cells) {
+            $this->assertSame(2, $cells,
+                'row '.($number + 1).' holds '.$cells.' panels in a two-column grid');
+        }
+    }
+
+    /**
+     * The stacked column has to carry the row height the way a single frame
+     * does, or its panels sit at their natural heights and leave a gap under
+     * the last one while the tall panel beside it runs on past them.
+     */
+    public function test_the_stacked_column_stretches_to_the_row(): void
+    {
+        $css = preg_replace('/\s+/', '', file_get_contents(public_path('css/app.css')));
+
+        $this->assertMatchesRegularExpression('/\.dash-split\{[^}]*align-items:stretch/', $css);
+        $this->assertMatchesRegularExpression('/\.dash-col>\.dash-frame\{[^}]*flex:1 1 auto/',
+            preg_replace('/flex:1(\s*)1(\s*)auto/', 'flex:1 1 auto', $css),
+            'the stacked panels do not take up the slack, so the column ends short');
+    }
+
+    /**
+     * How many cells each .dash-split row holds.
+     *
+     * Counted by walking div depth rather than by pattern, because a row's
+     * cells and the panels nested inside one of them are the same tag: a
+     * regex cannot tell the column's two panels from the row's two cells.
+     *
+     * @return array<int,int>
+     */
+    private function rowCellCounts(string $html): array
+    {
+        preg_match_all('#<div\b[^>]*>|</div>#', $html, $m, PREG_OFFSET_CAPTURE);
+
+        $rows = [];
+        $depth = null;
+        $level = 0;
+
+        foreach ($m[0] as [$tag, $at]) {
+            $opening = $tag !== '</div>';
+
+            if ($opening && $depth === null && str_contains($tag, 'class="dash-split"')) {
+                $depth = $level;          // the row itself
+                $rows[] = 0;
+            } elseif ($opening && $depth !== null && $level === $depth + 1
+                && preg_match('/class="dash-(frame|col)"/', $tag)) {
+                $rows[array_key_last($rows)]++;
+            }
+
+            $level += $opening ? 1 : -1;
+
+            if ($depth !== null && $level === $depth) {
+                $depth = null;            // the row closed
+            }
+        }
+
+        return $rows;
+    }
+
     public function test_a_quiet_week_says_so_rather_than_drawing_empty_bars(): void
     {
         $this->actingAs($this->makeUser('system-admin'));

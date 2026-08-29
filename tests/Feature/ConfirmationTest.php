@@ -134,6 +134,69 @@ class ConfirmationTest extends TestCase
             'the form panels blur away the list somebody may be reading from');
     }
 
+    /**
+     * Blur where you must not look past it, dim where you might still need to.
+     *
+     * Blur only means "stop" while it is rare. The page loader used to blur on
+     * every ordinary navigation, which spent the signal on nothing — so the
+     * confirmation is the only overlay allowed to use it.
+     */
+    public function test_only_a_decision_blurs_the_page(): void
+    {
+        $css = preg_replace('/\s+/', '', file_get_contents(public_path('css/app.css')));
+
+        // Overlays that cover the page: what is behind them is dimmed only.
+        foreach ([
+            '#page-loader' => 'the page is leaving; nothing is being asked',
+            '.sidebar-backdrop' => 'a menu is a choice you can walk away from',
+            '.modal-backdrop.show' => 'a form panel is work in progress',
+        ] as $selector => $why) {
+            preg_match('/'.preg_quote($selector, '/').'\{([^}]*)\}/', $css, $m);
+            $this->assertNotEmpty($m, $selector.' is gone from the stylesheet');
+            $this->assertStringNotContainsString('backdrop-filter:blur', $m[1],
+                $selector.' blurs, but '.$why);
+        }
+
+        $this->assertMatchesRegularExpression('/\.lms-ask-bg\{[^}]*backdrop-filter:blur/', $css,
+            'the one overlay that should blur does not');
+    }
+
+    /**
+     * Blocking an account is recorded against a reason, and that is asked for
+     * inside the confirmation. It used to be a browser prompt — a stop that
+     * does not blur, does not follow the theme, and appeared BEFORE the
+     * confirmation, because an inline onsubmit binds before the listener does.
+     */
+    public function test_the_block_reason_is_asked_inside_the_confirmation(): void
+    {
+        $form = $this->formAttributes('admin/users/index', 'users.block');
+
+        $this->assertStringContainsString('data-confirm-input="Reason for blocking"', $form);
+        $this->assertStringContainsString('data-confirm-field="reason"', $form);
+        $this->assertStringNotContainsString('prompt(', $form,
+            'the reason is still asked by a browser prompt');
+
+        $script = file_get_contents(public_path('js/app.js'));
+        $this->assertStringContainsString('inputValidator', $script,
+            'a block can be recorded with no reason against it');
+    }
+
+    /** No view anywhere reaches for a browser dialog. */
+    public function test_nothing_uses_a_raw_browser_dialog(): void
+    {
+        $offenders = [];
+
+        foreach (glob(resource_path('views/**/*.blade.php')) as $file) {
+            $source = file_get_contents($file);
+            if (preg_match('/\b(prompt|confirm|alert)\s*\(/', $source)) {
+                $offenders[] = basename($file);
+            }
+        }
+
+        $this->assertSame([], $offenders,
+            'these ask with a browser dialog, which does not blur or follow the theme');
+    }
+
     /** The toasts are the same library and must not be dressed as a panel. */
     public function test_the_toasts_are_left_alone(): void
     {
