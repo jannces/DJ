@@ -50,7 +50,11 @@
                             </form>
                         @else
                             <a href="{{ route('users.edit', $user) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
-                            <a href="{{ route('users.history', $user) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-clock-history"></i></a>
+                            {{-- Edit them, what they can do, what they did. --}}
+                            <a href="{{ route('users.access', $user) }}" class="btn btn-sm btn-outline-secondary"
+                               aria-label="Access for {{ $user->name }}"><i class="bi bi-key"></i></a>
+                            <a href="{{ route('users.history', $user) }}" class="btn btn-sm btn-outline-secondary"
+                               aria-label="History for {{ $user->name }}"><i class="bi bi-clock-history"></i></a>
                             <div class="btn-group">
                                 <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown"></button>
                                 <ul class="dropdown-menu dropdown-menu-end">

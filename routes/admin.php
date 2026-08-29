@@ -37,7 +37,11 @@ Route::middleware('permission:users.manage')->group(function () {
     Route::get('users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
     Route::put('users/{user}', [UserController::class, 'update'])->name('users.update');
     Route::get('users/{user}/history', [UserController::class, 'history'])->name('users.history');
-    Route::post('users/{user}/assign-roles', [UserController::class, 'assignRoles'])->name('users.assign-roles');
+    // Per-permission overrides are a page of their own, beside /edit and
+    // /history. Roles are saved with the profile on the edit form now, so the
+    // two forms that used to sit on that page and both submit roles are one.
+    Route::get('users/{user}/access', [UserController::class, 'access'])->name('users.access');
+    Route::post('users/{user}/access', [UserController::class, 'updateAccess'])->name('users.access.update');
     Route::post('users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
     Route::post('users/{user}/block', [UserController::class, 'block'])->name('users.block');
     Route::post('users/{user}/unblock', [UserController::class, 'unblock'])->name('users.unblock');

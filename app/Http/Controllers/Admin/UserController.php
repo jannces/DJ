@@ -172,10 +172,11 @@ class UserController extends Controller
             'roles' => Role::assignable()->get(),
             'departments' => Department::orderBy('name')->get(),
             'positions' => Position::orderBy('title')->get(),
-            'permissions' => Permission::orderBy('module')->get()->groupBy('module'),
             'assignedRoles' => $user->roles->pluck('id')->all(),
-            'directAllow' => $user->directPermissions->where('pivot.type', 'allow')->pluck('id')->all(),
-            'directDeny' => $user->directPermissions->where('pivot.type', 'deny')->pluck('id')->all(),
+            // Only the count: the overrides themselves live on their own page,
+            // and the edit form says how many are in effect rather than
+            // carrying thirty-five rows of them.
+            'overrides' => $user->directPermissions->count(),
         ]);
     }
 
@@ -185,32 +186,75 @@ class UserController extends Controller
         // civil status, birth date and hire date used to be missing here
         // entirely, so the form collected them and the update silently dropped
         // them — they could never be corrected after the account was made.
+        // Roles belong to this form and always did on screen -- but update()
+        // never read them, so ticking Department Head and pressing Save
+        // reported "User updated." and changed nothing. The only thing that
+        // saved a role was the other button at the bottom of the same page.
         $data = $request->validate(array_merge([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email,'.$user->id],
-        ], $this->profileRules()), self::messages());
+        ], $this->roleRules(), $this->profileRules()), self::messages());
+
+        // Editing your own roles is a way to grant yourself authority. The
+        // guard came with the roles from the form that used to own them.
+        $ownAccount = $request->user()->id === $user->id;
 
         $old = $user->getAttributes();
         $user->update(['name' => $data['name'], 'email' => $data['email']]);
         $user->employeeProfile?->update(Arr::only($data, array_keys($this->profileRules())));
+
+        if (! $ownAccount) {
+            $this->rbac->syncUserRoles($user, $this->keepUnassignable($user, $data['roles']));
+        }
         $this->audit->log('user_updated', $user, $old, $user->getChanges());
 
-        return redirect()->route('users.index')->with('status', 'User updated.');
+        return redirect()->route('users.index')->with('status', $ownAccount
+            ? 'User updated. Your own roles were left alone.'
+            : 'User updated.');
     }
 
-    public function assignRoles(Request $request, User $user): RedirectResponse
+    /**
+     * The per-permission overrides for one account.
+     *
+     * Its own page, beside /edit and /history, rather than a second form
+     * stacked under the edit form. Two forms on one page both submitted the
+     * roles, so whichever was pressed second decided them -- and the edit
+     * form's own roles were being dropped on the floor besides.
+     */
+    public function access(User $user): View
+    {
+        $user->load('roles', 'directPermissions');
+
+        return view('admin.users.access', [
+            'user' => $user,
+            'permissions' => Permission::orderBy('module')->orderBy('name')->get()->groupBy('module'),
+            'directAllow' => $user->directPermissions->where('pivot.type', 'allow')->pluck('id')->all(),
+            'directDeny' => $user->directPermissions->where('pivot.type', 'deny')->pluck('id')->all(),
+        ]);
+    }
+
+    public function updateAccess(Request $request, User $user): RedirectResponse
     {
         // Users cannot edit their own access (privilege-escalation guard).
         if ($request->user()->id === $user->id) {
-            return back()->with('error', 'You cannot change your own roles or permissions.');
+            return back()->with('error', 'You cannot change your own access.');
         }
 
-        $data = $request->validate(array_merge($this->roleRules(), [
-            'allow' => ['array'], 'allow.*' => ['exists:permissions,id'],
-            'deny' => ['array'], 'deny.*' => ['exists:permissions,id'],
-        ]), self::messages());
-
-        $this->rbac->syncUserRoles($user, $this->keepUnassignable($user, $data['roles']));
+        // Allow and deny are two checkboxes for a value with three states, so
+        // both can be ticked -- and the save used to apply deny and drop the
+        // allow without saying so. It is refused now, and says which one.
+        $data = $request->validate([
+            'allow' => ['array'],
+            'allow.*' => [
+                'exists:permissions,id',
+                Rule::notIn($request->input('deny', [])),
+            ],
+            'deny' => ['array'],
+            'deny.*' => ['exists:permissions,id'],
+        ], [
+            'allow.*.not_in' => 'A permission cannot be both allowed and denied. '
+                .'Leave both unticked to inherit it from the role.',
+        ]);
 
         $pivot = [];
         foreach ($data['allow'] ?? [] as $id) {
@@ -223,7 +267,7 @@ class UserController extends Controller
         $this->rbac->bumpVersion();
         $this->audit->log('user_access_changed', $user, [], $data);
 
-        return back()->with('status', 'Access updated.');
+        return redirect()->route('users.access', $user)->with('status', 'Access updated.');
     }
 
     /**

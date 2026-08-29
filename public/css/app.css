@@ -2028,12 +2028,29 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 @media (max-width:1100px){ .user-form-grid{ grid-template-columns:minmax(0,1fr); } }
 .user-form-main{ display:flex; flex-direction:column; gap:1rem; min-width:0; }
 .user-form-side{ display:flex; flex-direction:column; gap:1rem; }
-@media (min-width:1101px){
-  /* Clear of the topbar, which is sticky too -- at top:1rem the roles card
-     slid under it and the Create user button went with it, so on a form this
-     long the way to save it disappeared as you filled it in. */
-  .user-form-side{ position:sticky; top:calc(var(--topbar-h) + 1rem); }
+/* Both columns end on the same line. The three stacked cards are taller than
+   five roles, so the roles card stretches to match rather than stopping short
+   and leaving the row with a ragged edge. The slack inside it falls between
+   the role list and the footer, not under the last role.
+
+   The sidebar no longer sticks: the commit moved below both columns, so there
+   is nothing in this column that has to stay in view — and a card that stuck
+   could not also end level with the one beside it. */
+.user-form-side > .card{ flex:1 1 auto; display:flex; flex-direction:column; }
+.user-form-side > .card > .card-body{ flex:1 1 auto; display:flex; flex-direction:column; }
+.role-foot{
+  margin-top:auto; padding-top:1rem;
+  border-top:1px solid var(--hair);
+  font-size:.78rem; color:var(--muted);
 }
+
+/* A form's commit, below both columns and to the right: it is the last thing
+   done, after everything beside it has been read. */
+.form-actions{
+  display:flex; justify-content:flex-end; gap:.5rem;
+  margin-top:1.25rem; flex-wrap:wrap;
+}
+.form-actions .btn{ min-width:8rem; }
 .user-form .card{ margin-bottom:0; }
 .user-form .card-header{
   display:flex; align-items:baseline; justify-content:space-between; gap:.75rem;
@@ -2094,6 +2111,18 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .perm-name{ overflow:hidden; text-overflow:ellipsis; }
 .perm-allow{ color:var(--success); margin:0; }
 .perm-deny{ color:var(--danger); margin:0; }
+
+/* Two columns. Thirty-five rows in one column is a scroll, and the module
+   headings stop being what you scan for. Modules are kept whole rather than
+   split across the break, so a heading is never left at the foot of a column
+   with its permissions in the next one. */
+.perm-columns{ columns:2; column-gap:2rem; }
+.perm-columns > .perm-module{ break-inside:avoid; page-break-inside:avoid; }
+@media (max-width:900px){ .perm-columns{ columns:1; } }
+.perm-note{
+  margin:1rem 0 0; padding-top:.9rem; border-top:1px solid var(--hair);
+  font-size:.78rem; color:var(--muted);
+}
 
 /* ============================================================================
    SIGN-IN SCREEN

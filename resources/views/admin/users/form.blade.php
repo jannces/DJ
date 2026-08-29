@@ -258,54 +258,48 @@
                         </div>
                         @error('roles')<div class="text-danger small mt-2">{{ $message }}</div>@enderror
                         @error('roles.*')<div class="text-danger small mt-2">{{ $message }}</div>@enderror
+
+                        {{-- Pinned to the foot of the card, so the slack from
+                             matching the column beside it falls here rather
+                             than dangling under the last role. --}}
+                        @if ($user->exists)
+                            <div class="role-foot">
+                                <p class="mb-2">
+                                    Permissions come from the roles above.
+                                    @if ($overrides)
+                                        <b>{{ $overrides }}</b>
+                                        {{ Str::plural('override', $overrides) }} in effect on this account.
+                                    @else
+                                        No overrides are in effect.
+                                    @endif
+                                </p>
+                                <a href="{{ route('users.access', $user) }}" class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-key"></i>Review access
+                                </a>
+                            </div>
+                        @else
+                            <div class="role-foot">
+                                <p class="mb-0">
+                                    Permissions come from the roles. Individual ones can be
+                                    overridden once the account exists.
+                                </p>
+                            </div>
+                        @endif
                     </div>
                 </div>
 
-                <div class="user-form-actions">
-                    <button class="btn btn-lgu" type="submit">
-                        <i class="bi bi-check2 me-1"></i>{{ $creating ? 'Create user' : 'Save changes' }}
-                    </button>
-                    <a href="{{ route('users.index') }}" class="btn btn-outline-secondary">Cancel</a>
-                </div>
             </aside>
+        </div>
+
+        {{-- Below both columns and to the right, where a form's commit belongs
+             once the columns beside each other have both been read. --}}
+        <div class="form-actions">
+            <a href="{{ route('users.index') }}" class="btn btn-outline-secondary">Cancel</a>
+            <button class="btn btn-lgu" type="submit">
+                <i class="bi bi-check2 me-1"></i>{{ $creating ? 'Create user' : 'Save changes' }}
+            </button>
         </div>
     </form>
 
-    @if ($user->exists)
-        <form method="POST" action="{{ route('users.assign-roles', $user) }}" class="mt-4">
-            @csrf
-            <div class="card">
-                <div class="card-header fw-semibold">
-                    Fine-grained permission overrides
-                    <span class="card-note">a deny wins over any role allow</span>
-                </div>
-                <div class="card-body">
-                    {{-- The roles this account keeps while its permissions are edited. --}}
-                    @foreach ($checkedRoles as $rid)
-                        <input type="hidden" name="roles[]" value="{{ $rid }}">
-                    @endforeach
-                    @foreach ($permissions as $module => $perms)
-                        <div class="perm-module">
-                            <div class="perm-module-name">{{ $module }}</div>
-                            @foreach ($perms as $perm)
-                                <div class="perm-row">
-                                    <span class="perm-name">{{ $perm->name }}</span>
-                                    <label class="perm-allow">
-                                        <input type="checkbox" name="allow[]" value="{{ $perm->id }}"
-                                               @checked(in_array($perm->id, $directAllow))> allow
-                                    </label>
-                                    <label class="perm-deny">
-                                        <input type="checkbox" name="deny[]" value="{{ $perm->id }}"
-                                               @checked(in_array($perm->id, $directDeny))> deny
-                                    </label>
-                                </div>
-                            @endforeach
-                        </div>
-                    @endforeach
-                    <button class="btn btn-lgu btn-sm mt-2" type="submit">Update access</button>
-                </div>
-            </div>
-        </form>
-    @endif
 </div>
 @endsection

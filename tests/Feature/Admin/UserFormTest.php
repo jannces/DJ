@@ -136,8 +136,22 @@ class UserFormTest extends TestCase
 
         $employee = Role::where('slug', 'employee')->firstOrFail();
 
-        $this->post('/users/'.$owner->id.'/assign-roles', ['roles' => [$employee->id]])
-            ->assertRedirect();
+        // Roles are saved by the edit form now, not by a second form stacked
+        // under it. $owner has an employee profile from makeUser(), so a full
+        // payload is what the edit form would send.
+        $owner->employeeProfile()->create(
+            \App\Models\EmployeeProfile::factory()->raw([
+                'user_id' => $owner->id,
+                'department_id' => $this->department->id,
+                'position_id' => $this->position->id,
+            ])
+        );
+
+        $this->put('/users/'.$owner->id, $this->payload([
+            'name' => $owner->name,
+            'email' => $owner->email,
+            'roles' => [$employee->id],
+        ]))->assertRedirect();
 
         $this->assertEqualsCanonicalizing(
             ['auditor-general', 'employee'],

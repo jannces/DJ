@@ -86,20 +86,43 @@ class UserFormLayoutTest extends TestCase
     }
 
     /**
-     * The sidebar sticks, and it has to stick clear of the topbar, which is
-     * sticky as well. At top:1rem the roles card slid underneath it and took
-     * the Create user button with it — on a form this long, the way to save it
-     * disappeared while it was being filled in.
+     * The two columns end on the same line.
+     *
+     * The three stacked cards are taller than five roles, so the roles card
+     * has to stretch to match rather than stopping short and leaving the row
+     * with a ragged edge. The slack falls between the role list and the
+     * footer, not under the last role.
+     *
+     * It deliberately no longer sticks: the commit moved below both columns,
+     * so nothing in that column has to stay in view, and a card that stuck
+     * could not also end level with the one beside it.
      */
-    public function test_the_sticky_sidebar_clears_the_sticky_topbar(): void
+    public function test_the_two_columns_end_level(): void
     {
         $css = preg_replace('/\s+/', '', file_get_contents(public_path('css/app.css')));
 
-        $this->assertStringContainsString('--topbar-h:62px', $css,
-            'the topbar height is not a value anything else can read');
-        $this->assertMatchesRegularExpression(
-            '/\.user-form-side\{position:sticky;top:calc\(var\(--topbar-h\)\+1rem\)/', $css,
-            'the sidebar sticks under the topbar rather than below it');
+        $this->assertMatchesRegularExpression('/\.user-form-grid\{[^}]*align-items:start/', $css);
+        $this->assertMatchesRegularExpression('/\.user-form-side>\.card\{[^}]*flex:1 1 auto/',
+            preg_replace('/flex:1(\s*)1(\s*)auto/', 'flex:1 1 auto', $css),
+            'the roles card does not stretch, so the columns end at different points');
+        $this->assertMatchesRegularExpression('/\.role-foot\{[^}]*margin-top:auto/', $css,
+            'the slack dangles under the last role instead of falling above the footer');
+
+        $this->assertDoesNotMatchRegularExpression('/\.user-form-side\{position:sticky/', $css,
+            'a sticky column cannot also end level with the one beside it');
+    }
+
+    /** The commit sits below both columns, on the right. */
+    public function test_the_actions_are_below_both_columns_and_right(): void
+    {
+        $html = $this->form();
+        $css = preg_replace('/\s+/', '', file_get_contents(public_path('css/app.css')));
+
+        $this->assertMatchesRegularExpression('/\.form-actions\{[^}]*justify-content:flex-end/', $css);
+        $this->assertLessThan(
+            strpos($html, 'class="form-actions"'),
+            strpos($html, 'user-form-side'),
+            'the buttons come before the columns they commit');
     }
 
     /** The order the page reads in is the order the work is done in. */
