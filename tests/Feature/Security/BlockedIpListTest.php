@@ -56,7 +56,7 @@ class BlockedIpListTest extends TestCase
             '#<div class="list-actions">\s*<a [^>]*>\s*<i class="bi bi-slash-circle"></i>Block an IP#',
             $html, 'the block form is not behind a button above the container');
         $this->assertMatchesRegularExpression(
-            '#<div class="card">\s*<form [^>]*class="list-toolbar"#', $html);
+            '#<div class="card-header"><span>Blocks</span></div>\s*<form [^>]*class="list-toolbar"#', $html);
         $this->assertStringContainsString('<div data-list>', $html);
     }
 

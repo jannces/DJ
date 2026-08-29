@@ -21,6 +21,20 @@ use Illuminate\Support\Carbon;
 class SecurityDashboardService
 {
     /**
+     * The three grades in "Attack severity", worst first.
+     *
+     * The order is fixed rather than sorted by count: this is a scale, and a
+     * scale that reorders itself is not one. Every other chart here sorts by
+     * magnitude because it answers "which is the most"; this one answers "how
+     * bad", and Critical belongs at the top on a quiet week too.
+     */
+    public const SEVERITY_GRADES = [
+        'critical' => ['label' => 'Critical', 'note' => 'source blocked'],
+        'high' => ['label' => 'High', 'note' => 'repeated attempts'],
+        'medium' => ['label' => 'Medium', 'note' => 'single attempt'],
+    ];
+
+    /**
      * The three attacks the system claims to detect, and what each is made of
      * in the data.
      *
@@ -39,20 +53,6 @@ class SecurityDashboardService
      * the row counts lockouts, and is labelled as lockouts — the attempts
      * themselves are in "Failures by reason" below.
      */
-    /**
-     * The three grades in "Attack severity", worst first.
-     *
-     * The order is fixed rather than sorted by count: this is a scale, and a
-     * scale that reorders itself is not one. Every other chart here sorts by
-     * magnitude because it answers "which is the most"; this one answers "how
-     * bad", and Critical belongs at the top on a quiet week too.
-     */
-    public const SEVERITY_GRADES = [
-        'critical' => ['label' => 'Critical', 'note' => 'source blocked'],
-        'high' => ['label' => 'High', 'note' => 'repeated attempts'],
-        'medium' => ['label' => 'Medium', 'note' => 'single attempt'],
-    ];
-
     public const ATTACK_TYPES = [
         'sqli' => ['label' => 'SQL injection', 'source' => 'sqli'],
         'input' => ['label' => 'Input manipulation', 'source' => 'xss + traversal'],
@@ -325,14 +325,7 @@ class SecurityDashboardService
         $counts = ['critical' => 0, 'high' => 0, 'medium' => 0];
 
         foreach ($events->groupBy('ip') as $ip => $fromThisAddress) {
-            $actedOn = in_array($ip, $blocked, true)
-                || $fromThisAddress->contains(fn ($e) => $e->matched_rule === 'lockout_threshold');
-
-            $grade = match (true) {
-                $actedOn => 'critical',
-                $fromThisAddress->count() > 1 => 'high',
-                default => 'medium',
-            };
+            $grade = $this->gradeFor($fromThisAddress, in_array($ip, $blocked, true));
 
             $counts[$grade] += $fromThisAddress->count();
         }
@@ -376,7 +369,104 @@ class SecurityDashboardService
             ->when($until, fn ($q) => $q->where('created_at', '<', $until))
             ->where(fn ($q) => $q->whereIn('category', ['sqli', 'xss', 'traversal'])
                 ->orWhere('matched_rule', 'lockout_threshold'))
-            ->get(['id', 'ip', 'category', 'matched_rule']);
+            ->get(['id', 'ip', 'category', 'matched_rule', 'created_at']);
+    }
+
+    /**
+     * How serious one address's week looks, from its own events.
+     *
+     * One definition, used by the severity panel and by the list of addresses
+     * still awaiting a decision, so "Critical" means the same thing on both.
+     *
+     * @param  \Illuminate\Support\Collection  $fromThisAddress
+     */
+    private function gradeFor($fromThisAddress, bool $actedOn): string
+    {
+        return match (true) {
+            $actedOn => 'critical',
+            $fromThisAddress->contains(fn ($e) => $e->matched_rule === 'lockout_threshold') => 'critical',
+            $fromThisAddress->count() > 1 => 'high',
+            default => 'medium',
+        };
+    }
+
+    /**
+     * Addresses seen attacking that nothing is keeping out yet.
+     *
+     * The system has always known who attacked it -- that is what
+     * intrusion_logs is -- but the only way to act on it was to read an
+     * address off the log and retype it into a form. This is that list, with
+     * enough beside each row to make the decision rather than guess at it.
+     *
+     * Deliberately narrow. Only the three attack types count, the same three
+     * the severity panel grades: a CSRF mismatch is usually a stale browser
+     * tab, and a colleague coming back from lunch must never appear on a list
+     * headed "seen attacking", one click from a ban.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function intruders(int $days = 7, int $limit = 10): array
+    {
+        $events = $this->attackEvents(now()->subDays($days - 1)->startOfDay());
+
+        $blocked = BlockedIp::currentlyActive()->pluck('ip')->all();
+
+        $rows = [];
+
+        foreach ($events->groupBy('ip') as $ip => $fromThisAddress) {
+            // Already kept out, or never blockable: neither is a decision
+            // waiting to be made, and a button that silently does nothing is
+            // worse than no button.
+            if (in_array($ip, $blocked, true) || IntrusionDetectionService::isTrustedIp($ip)) {
+                continue;
+            }
+
+            $kinds = $fromThisAddress
+                ->map(fn ($e) => self::attackOf($e))
+                ->filter()->unique()
+                ->map(fn ($key) => self::ATTACK_TYPES[$key]['label'])
+                ->values()->all();
+
+            $grade = $this->gradeFor($fromThisAddress, false);
+
+            $rows[] = [
+                'ip' => $ip,
+                'events' => $fromThisAddress->count(),
+                'kinds' => $kinds,
+                'last_seen' => $fromThisAddress->max('created_at'),
+                'grade' => $grade,
+                'grade_label' => self::SEVERITY_GRADES[$grade]['label'],
+                // A private address is a machine in the building. Blocking one
+                // locks a real employee out of the leave system, which is
+                // exactly what the broken rate counter did to 192.168.1.7.
+                'on_lan' => ! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE),
+                'reason' => $this->evidenceFor($fromThisAddress->count(), $kinds, $days),
+            ];
+        }
+
+        $order = array_flip(array_keys(self::SEVERITY_GRADES));
+        usort($rows, fn ($a, $b) => [$order[$a['grade']], -$a['events']]
+            <=> [$order[$b['grade']], -$b['events']]);
+
+        return array_slice($rows, 0, $limit);
+    }
+
+    /**
+     * The sentence a block is recorded against.
+     *
+     * Written from the evidence rather than typed, because a block is an audit
+     * record and a reason somebody typed in a hurry is worth less than one the
+     * system can substantiate.
+     */
+    public function evidenceFor(int $events, array $kinds, int $days): string
+    {
+        return sprintf(
+            '%d intrusion event%s in %d days: %s',
+            $events,
+            $events === 1 ? '' : 's',
+            $days,
+            $kinds ? strtolower(implode(', ', $kinds)) : 'attack signatures',
+        );
     }
 
     /**

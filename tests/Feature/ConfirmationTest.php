@@ -127,6 +127,11 @@ class ConfirmationTest extends TestCase
         foreach (glob(resource_path('views/**/*.blade.php')) as $file) {
             preg_match_all('#data-confirm="([^"]*)"#', file_get_contents($file), $found);
             foreach ($found[1] as $text) {
+                // A component takes its question as a prop; the wording is
+                // checked where the prop is passed, not here.
+                if (preg_match('/^\{\{[^}]+\}\}$/', trim($text))) {
+                    continue;
+                }
                 if (strlen(strip_tags($text)) < 15 || ! str_contains($text, '?')) {
                     $vague[] = basename($file).': '.$text;
                 }

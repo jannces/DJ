@@ -7,6 +7,7 @@ use App\Models\BlockedIp;
 use App\Models\IntrusionLog;
 use App\Models\SystemSetting;
 use App\Services\Security\AuditLogger;
+use App\Services\Security\IntrusionDetectionService;
 use App\Services\Security\SecurityDashboardService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,9 @@ use Illuminate\View\View;
 
 class SecurityController extends Controller
 {
+    /** The window the "seen attacking" list covers. */
+    private const INTRUDER_DAYS = 7;
+
     public function __construct(private readonly AuditLogger $audit)
     {
     }
@@ -86,7 +90,7 @@ class SecurityController extends Controller
         return view('admin.security.intrusions', compact('logs'));
     }
 
-    public function blockedIps(Request $request): View
+    public function blockedIps(Request $request, SecurityDashboardService $security): View
     {
         $blocked = BlockedIp::with('blocker')
             ->when($request->string('q')->toString(), fn ($q, $s) => $q->where(
@@ -103,7 +107,14 @@ class SecurityController extends Controller
                     : $q->currentlyActive())
             ->latest()->paginate(config('lists.per_page'))->withQueryString();
 
-        return view('admin.security.blocked-ips', compact('blocked'));
+        return view('admin.security.blocked-ips', [
+            'blocked' => $blocked,
+            // Who has attacked and is not being kept out. The system has always
+            // known; until now the only way to act on it was to read an address
+            // off the intrusion log and retype it into the form.
+            'intruders' => $security->intruders(self::INTRUDER_DAYS),
+            'days' => self::INTRUDER_DAYS,
+        ]);
     }
 
     public function blockIp(Request $request): RedirectResponse
@@ -144,6 +155,50 @@ class SecurityController extends Controller
     }
 
     /**
+     * Block an address off the "seen attacking" list.
+     *
+     * The address arrives in the request, so nothing about it is taken on
+     * trust. The reason is rebuilt here from the events actually on record,
+     * and an address with no attack events behind it is refused outright --
+     * the one-click path requires evidence to exist. Blocking something on a
+     * report rather than on evidence is what the manual form is for, and that
+     * asks for a reason to be typed.
+     */
+    public function blockIntruder(Request $request, SecurityDashboardService $security): RedirectResponse
+    {
+        $ip = $request->validate(['ip' => ['required', 'ip']])['ip'];
+
+        // Never blockable, so never blocked -- the middleware would ignore the
+        // row anyway and it would sit in the list looking like it worked.
+        abort_if(IntrusionDetectionService::isTrustedIp($ip), 403,
+            'This address is on the never-block list.');
+
+        $seen = collect($security->intruders(self::INTRUDER_DAYS, PHP_INT_MAX))
+            ->firstWhere('ip', $ip);
+
+        abort_if($seen === null, 404,
+            'That address has no attack events on record, or is already blocked.');
+
+        $hours = (int) SystemSetting::get('security.ip_block_hours', 24);
+
+        $block = BlockedIp::updateOrCreate(['ip' => $ip], [
+            'reason' => $seen['reason'],
+            'source' => 'manual',
+            'blocked_by' => $request->user()->id,
+            'expires_at' => now()->addHours($hours),
+            'active' => true,
+        ]);
+        Cache::forget("blocked-ip.{$ip}");
+        $this->audit->log('ip_blocked_from_evidence', $block, [], [
+            'ip' => $ip,
+            'events' => $seen['events'],
+            'hours' => $hours,
+        ]);
+
+        return back()->with('status', "IP {$ip} blocked for {$hours} hours.");
+    }
+
+    /**
      * Put a lifted block back.
      *
      * Without this the row was dead weight once lifted: to block the same
@@ -157,11 +212,18 @@ class SecurityController extends Controller
         $hours = (int) SystemSetting::get('security.ip_block_hours', 24);
         $old = ['active' => $blockedIp->active, 'expires_at' => (string) $blockedIp->expires_at];
 
+        // The reason has to be rewritten too. Keeping the original left the
+        // row reading "Automatic block: 5 intrusion events in 10 minutes"
+        // while labelled manual and attributed to a person -- three statements
+        // that contradict each other. The original stays as context.
+        $original = $blockedIp->reason;
         $blockedIp->update([
             'active' => true,
             'source' => 'manual',
             'blocked_by' => $request->user()->id,
             'expires_at' => now()->addHours($hours),
+            'reason' => 'Blocked again by '.$request->user()->name
+                .(str_starts_with($original, 'Blocked again by ') ? '' : ' (originally: '.$original.')'),
         ]);
         Cache::forget("blocked-ip.{$blockedIp->ip}");
         $this->audit->log('ip_blocked_again', $blockedIp, $old, [

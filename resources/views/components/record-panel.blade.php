@@ -6,6 +6,7 @@
     'save' => 'Save',
     'open' => false,
     'cancel' => null,
+    'confirm' => null,
 ])
 
 {{--
@@ -42,7 +43,12 @@
      aria-labelledby="{{ $id }}-title" aria-hidden="true"
      @if ($open) data-open-on-load @endif>
     <div class="modal-dialog modal-dialog-centered">
-        <form method="POST" action="{{ $action }}" class="modal-content" data-no-loader>
+        {{-- Most panels do not confirm: filling in the fields and pressing
+             Save is the deliberate act, and asking again is friction for
+             nothing. A panel that shuts somebody out of the system is the
+             exception. --}}
+        <form method="POST" action="{{ $action }}" class="modal-content" data-no-loader
+              @if ($confirm) data-confirm="{{ $confirm }}" data-confirm-tone="danger" @endif>
             @csrf
             @if ($method !== 'POST') @method($method) @endif
 

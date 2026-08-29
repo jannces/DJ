@@ -2694,6 +2694,13 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .sv-high{ background:var(--k-warn-f); }
 .sv-medium{ background:var(--ch-mute); }
 
+/* The severity grade as an inline tag, for a table row rather than a chart. */
+.sv-tag{
+  display:inline-flex; align-items:center; gap:.35rem;
+  font-size:.78rem; color:var(--text-2); white-space:nowrap;
+}
+.sv-tag .sv-dot{ width:.45rem; height:.45rem; }
+
 .sv-up{ color:var(--k-bad); }
 .sv-down{ color:var(--k-good); }
 

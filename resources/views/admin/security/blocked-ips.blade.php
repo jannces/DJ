@@ -21,7 +21,10 @@
     </a>
 </div>
 
+@include('admin.security._intruders', ['intruders' => $intruders, 'days' => $days])
+
 <div class="card">
+    <div class="card-header"><span>Blocks</span></div>
     <x-list-toolbar search placeholder="Search IP or reason"
         :action="route('security.blocked-ips')">
         <x-list-filter name="source" label="Source"
@@ -112,7 +115,8 @@
 
 <x-record-panel id="block-new" title="Block an IP"
     :action="route('security.block-ip')" save="Block IP"
-    :open="$openNew" :cancel="route('security.blocked-ips')">
+    :open="$openNew" :cancel="route('security.blocked-ips')"
+    confirm="Block this address? It will be shut out of the system.">
 
     <div class="mb-3">
         <label class="form-label" for="blk-ip">IP address <span class="req">*</span></label>
