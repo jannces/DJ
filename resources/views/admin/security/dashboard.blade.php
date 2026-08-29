@@ -41,32 +41,6 @@
         </div>
     </div>
 
-    {{-- ---------- The three attacks ---------- --}}
-    {{-- The only chart on the system with a categorical colour scale, because
-         here the type IS the subject rather than a ranking. Three hues,
-         validated in both themes: worst adjacent colour-blind separation 9.2 ΔE
-         light and 9.4 dark against a target of 8.
-
-         The stored category sits under each label so the mapping is visible
-         rather than assumed. `xss` and `traversal` are grouped as input
-         manipulation HERE and nowhere else — the detector keeps recording them
-         separately and Intrusion Logs keeps showing which. --}}
-    <div class="dash-frame">
-        <div class="dash-head">
-            <p class="dash-title">Attempts by type</p>
-            <span class="dash-link">last 30 days</span>
-        </div>
-        <div class="dash-body">
-            @include('dashboard._hbars', ['rows' => $attacks, 'series' => true])
-            <p class="dash-note">
-                All three raise an alert: the topbar bell for an administrator who is
-                signed in, an email for one who is not.
-            </p>
-        </div>
-    </div>
-</div>
-
-<div class="dash-split">
     {{-- ---------- Where it comes from ---------- --}}
     <div class="dash-frame">
         <div class="dash-head">
@@ -87,18 +61,68 @@
         </div>
     </div>
 
-    {{-- ---------- What it aims at ---------- --}}
+</div>
+
+{{-- Two panels stacked against one tall one. "Attempts by type" and "Most
+     targeted pages" both answer a question about the attacks -- what kind, and
+     at what -- so severity runs down the side of both rather than sitting under
+     one of them: how bad is the third question about the same set. --}}
+<div class="dash-split">
+    <div class="dash-col">
+        {{-- ---------- The three attacks ---------- --}}
+        {{-- The only chart on the system with a categorical colour scale,
+             because here the type IS the subject rather than a ranking. Three
+             hues, validated in both themes: worst adjacent colour-blind
+             separation 9.2 dE light and 9.4 dark against a target of 8.
+
+             The stored category sits under each label so the mapping is visible
+             rather than assumed. `xss` and `traversal` are grouped as input
+             manipulation HERE and nowhere else -- the detector keeps recording
+             them separately and Intrusion Logs keeps showing which. --}}
+        <div class="dash-frame">
+            <div class="dash-head">
+                <p class="dash-title">Attempts by type</p>
+                <span class="dash-link">last 30 days</span>
+            </div>
+            <div class="dash-body">
+                @include('dashboard._hbars', ['rows' => $attacks, 'series' => true])
+                <p class="dash-note">
+                    All three raise an alert: the topbar bell for an administrator who is
+                    signed in, an email for one who is not.
+                </p>
+            </div>
+        </div>
+
+        {{-- ---------- What it aims at ---------- --}}
+        <div class="dash-frame">
+            <div class="dash-head">
+                <p class="dash-title">Most targeted pages</p>
+                <span class="dash-link">last 30 days</span>
+            </div>
+            <div class="dash-body">
+                @include('dashboard._hbars', [
+                    'rows' => $routes, 'mono' => true,
+                    'empty' => 'No intrusion events in the last 30 days.',
+                ])
+                <p class="dash-note">What an attacker aims at says what they think is worth having.</p>
+            </div>
+        </div>
+    </div>
+
+    {{-- ---------- How bad ---------- --}}
+    {{-- The stored severity column is not a scale: the detector records all
+         three attack types at high and nothing at low or critical, so charting
+         it would draw one bar and two empty ones. What differs between two
+         injection attempts is the pattern behind them, so that is what is
+         graded -- here, in the analytics, leaving the log a record of what was
+         seen rather than of what was later concluded. --}}
     <div class="dash-frame">
         <div class="dash-head">
-            <p class="dash-title">Most targeted pages</p>
-            <span class="dash-link">last 30 days</span>
+            <p class="dash-title">Attack severity</p>
+            <span class="dash-link">this week</span>
         </div>
         <div class="dash-body">
-            @include('dashboard._hbars', [
-                'rows' => $routes, 'mono' => true,
-                'empty' => 'No intrusion events in the last 30 days.',
-            ])
-            <p class="dash-note">What an attacker aims at says what they think is worth having.</p>
+            @include('dashboard._severity', ['severity' => $severity])
         </div>
     </div>
 </div>

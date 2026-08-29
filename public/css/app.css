@@ -2622,6 +2622,49 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .sev-high, .sev-critical{ background:var(--k-bad-f); }
 .sev-medium{ background:var(--k-warn-f); }
 
+/* ---- Attack severity ----------------------------------------------------- */
+/* Three grades, worst first, never reordered by count: this is a scale, and a
+   scale that sorts itself is not one.
+
+   Red, amber, neutral — the three the system already uses for a bad, a warning
+   and a plain count. Deliberately not red/amber/green: a green flag on a
+   refused attack reads as "this is fine" when it means "this one was
+   isolated", and red against green is the one pair a colour-blind reader
+   cannot separate, which matters on a panel where the colour carries the
+   meaning. The neutral says "recorded, nothing to do". */
+.sv{ display:flex; flex-direction:column; height:100%; }
+.sv-heads{
+  display:grid; grid-template-columns:repeat(3, minmax(0,1fr));
+  gap:.75rem; padding-bottom:1rem; margin-bottom:1rem;
+  border-bottom:1px solid var(--ch-grid);
+}
+.sv-fig{ display:flex; flex-direction:column; gap:.15rem; min-width:0; }
+.sv-n{ font-size:1.5rem; font-weight:600; line-height:1.1; color:var(--text); }
+/* Zero here is the good answer, so it is not painted as an alarm; any other
+   number is the one thing on the page worth acting on. */
+.sv-n.is-bad{ color:var(--k-bad); }
+.sv-l{ font-size:.72rem; color:var(--muted); line-height:1.25; }
+
+.sv-rows{ list-style:none; margin:0; padding:0; display:grid; gap:1rem; }
+.sv-row{ min-width:0; }
+.sv-key{ display:flex; align-items:baseline; gap:.4rem; margin-bottom:.35rem; }
+.sv-dot{
+  display:inline-block; width:.5rem; height:.5rem; border-radius:50%;
+  flex:none; align-self:center;
+}
+.sv-name{ font-size:.82rem; font-weight:600; color:var(--text); }
+.sv-v{ margin-left:auto; font-size:.82rem; font-variant-numeric:tabular-nums; color:var(--text); }
+.sv-t{ height:.55rem; background:var(--ch-grid); border-radius:3px; overflow:hidden; }
+.sv-f{ display:block; height:100%; border-radius:3px; min-width:2px; }
+.sv-note{ margin:.3rem 0 0; font-size:.72rem; color:var(--muted); }
+
+.sv-critical{ background:var(--k-bad-f); }
+.sv-high{ background:var(--k-warn-f); }
+.sv-medium{ background:var(--ch-mute); }
+
+.sv-up{ color:var(--k-bad); }
+.sv-down{ color:var(--k-good); }
+
 /* ---- Coverage risk ------------------------------------------------------- */
 .cv-r{
   display:grid; grid-template-columns:minmax(6rem,11rem) minmax(0,1fr) 4.2rem;
@@ -2880,9 +2923,12 @@ span.dash-link{ justify-content:flex-start; }
 }
 .lms-ask .swal2-styled:focus-visible{ outline:2px solid var(--primary); outline-offset:2px; }
 
-/* The record panels are the same kind of overlay, so they get the same blur —
-   one of the two blurring and the other not would read as an accident. */
-.modal-backdrop.show{
-  -webkit-backdrop-filter:blur(5px); backdrop-filter:blur(5px);
-  background:rgba(12, 8, 24, .45); opacity:1;
-}
+/* The record panels dim and do NOT blur, and the difference is the point.
+   A confirmation is a stop: you must read it and decide, and anything still
+   legible behind it is competing for the attention the decision needs. A form
+   panel is work in progress, and the list behind it is often what you need to
+   see — the code the other department used, whether this address is already
+   registered. Blurring that away takes context off the screen at the moment
+   somebody is trying to copy it. Blur where you must not look past it; dim
+   where you might still need to. */
+.modal-backdrop.show{ background:rgb(12 8 24); opacity:.55; }

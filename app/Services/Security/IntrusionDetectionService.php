@@ -81,10 +81,41 @@ class IntrusionDetectionService
         'details', 'signature', 'applicant_signature', 'blocked_reason',
     ];
 
+    /**
+     * The categories whose detection also refuses the thing detected.
+     *
+     * Two mechanisms, one outcome. The three signature families return a 400
+     * from this middleware, so the request never reaches a controller;
+     * `auth_fail` is the lockout threshold, which blocks the account rather
+     * than the request. Either way nothing got through.
+     *
+     * This is what lets the dashboard report how many attempts reached the
+     * application rather than asserting that none did. A rule added later with
+     * block => false shows up as a number that is no longer zero.
+     *
+     * @var array<string>
+     */
+    public const PREVENTED = ['sqli', 'xss', 'traversal', 'auth_fail'];
+
     public function __construct(
         private readonly AuditLogger $audit,
         private readonly SecurityAlerter $alerts,
     ) {
+    }
+
+    /** The signature categories that refuse the request, read off the rules. */
+    public function blockingCategories(): array
+    {
+        $blocking = [];
+        foreach ([$this->signatures, $this->freeTextSignatures] as $set) {
+            foreach ($set as $category => $rule) {
+                if ($rule['block']) {
+                    $blocking[$category] = true;
+                }
+            }
+        }
+
+        return array_keys($blocking);
     }
 
     public function inspect(Request $request): ?Response

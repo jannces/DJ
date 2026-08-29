@@ -126,8 +126,12 @@ class ConfirmationTest extends TestCase
         $this->assertMatchesRegularExpression('/\.lms-ask\{[^}]*background:var\(--surface\)/', $css,
             'the question does not use the system surface, so it will not match the theme');
 
-        // The record panels are the same kind of overlay and blur too.
-        $this->assertMatchesRegularExpression('/\.modal-backdrop\.show\{[^}]*backdrop-filter:blur/', $css);
+        // The record panels dim instead. A confirmation is a stop and nothing
+        // behind it should be readable; a form panel is work in progress, and
+        // the list behind it is often what you are copying from.
+        $this->assertDoesNotMatchRegularExpression(
+            '/\.modal-backdrop\.show\{[^}]*backdrop-filter:blur/', $css,
+            'the form panels blur away the list somebody may be reading from');
     }
 
     /** The toasts are the same library and must not be dressed as a panel. */

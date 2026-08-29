@@ -39,6 +39,20 @@ class SecurityDashboardService
      * the row counts lockouts, and is labelled as lockouts — the attempts
      * themselves are in "Failures by reason" below.
      */
+    /**
+     * The three grades in "Attack severity", worst first.
+     *
+     * The order is fixed rather than sorted by count: this is a scale, and a
+     * scale that reorders itself is not one. Every other chart here sorts by
+     * magnitude because it answers "which is the most"; this one answers "how
+     * bad", and Critical belongs at the top on a quiet week too.
+     */
+    public const SEVERITY_GRADES = [
+        'critical' => ['label' => 'Critical', 'note' => 'source blocked'],
+        'high' => ['label' => 'High', 'note' => 'repeated attempts'],
+        'medium' => ['label' => 'Medium', 'note' => 'single attempt'],
+    ];
+
     public const ATTACK_TYPES = [
         'sqli' => ['label' => 'SQL injection', 'source' => 'sqli'],
         'input' => ['label' => 'Input manipulation', 'source' => 'xss + traversal'],
@@ -91,6 +105,8 @@ class SecurityDashboardService
             'attackers' => $this->topAttackers(),
             'routes' => $this->targetedRoutes(),
             'signins' => $this->signInsByDay(),
+
+            'severity' => $this->attackSeverity(),
 
             // The three additions.
             'queue' => $this->unreviewed(),
@@ -269,6 +285,98 @@ class SecurityDashboardService
         usort($rows, fn ($a, $b) => [$b['value'], $a['label']] <=> [$a['value'], $b['label']]);
 
         return $rows;
+    }
+
+    /**
+     * How serious this week's attacks were, graded by escalation.
+     *
+     * The detector records all three attack types at `high` and nothing at all
+     * at `low` or `critical`, so reading the stored severity column would draw
+     * one bar and two empty ones. That column says how bad the *kind* of thing
+     * is, and for SQL injection, input manipulation and a lockout the answer is
+     * always the same. It is not a scale.
+     *
+     * What differs between two SQL injection attempts is the pattern behind
+     * them, so that is what is graded here — in the analytics, not in the
+     * detector. Nothing about what gets written to intrusion_logs changes;
+     * history is not rewritten, and the log stays a record of what was seen
+     * rather than of what was later concluded.
+     *
+     *   critical  the system had to act — the address was blocked, or an
+     *             account was locked. Not a probe: a decision.
+     *   high      more than one attempt from the same address. Deliberate.
+     *   medium    a single isolated attempt. A scanner, a stray bot, a URL
+     *             somebody mistyped.
+     *
+     * Weekly, to match the attempts-per-day chart above it, and reported
+     * against the week before so a number has something to be read against.
+     */
+    public function attackSeverity(int $days = 7): array
+    {
+        $from = now()->subDays($days - 1)->startOfDay();
+        $previousFrom = now()->subDays($days * 2 - 1)->startOfDay();
+
+        $events = $this->attackEvents($from);
+
+        // Addresses the system shut out, and the accounts it locked. Both are
+        // the system deciding, rather than merely noticing.
+        $blocked = BlockedIp::where('created_at', '>=', $from)->pluck('ip')->all();
+
+        $counts = ['critical' => 0, 'high' => 0, 'medium' => 0];
+
+        foreach ($events->groupBy('ip') as $ip => $fromThisAddress) {
+            $actedOn = in_array($ip, $blocked, true)
+                || $fromThisAddress->contains(fn ($e) => $e->matched_rule === 'lockout_threshold');
+
+            $grade = match (true) {
+                $actedOn => 'critical',
+                $fromThisAddress->count() > 1 => 'high',
+                default => 'medium',
+            };
+
+            $counts[$grade] += $fromThisAddress->count();
+        }
+
+        $rows = [];
+        foreach (self::SEVERITY_GRADES as $key => $grade) {
+            $rows[] = [
+                'key' => $key,
+                'label' => $grade['label'],
+                'source' => $grade['note'],
+                'value' => $counts[$key],
+            ];
+        }
+
+        // Not asserted, computed: an attempt is prevented when its category is
+        // one the detector refuses. A rule added later that only records makes
+        // this stop being zero.
+        $prevented = app(IntrusionDetectionService::class)::PREVENTED;
+
+        return [
+            'rows' => $rows,
+            'total' => $events->count(),
+            'sources' => $events->pluck('ip')->unique()->count(),
+            'reached' => $events->reject(fn ($e) => in_array($e->category, $prevented, true))->count(),
+            'previous' => $this->attackEvents($previousFrom, $from)->count(),
+            'days' => $days,
+        ];
+    }
+
+    /**
+     * The events behind the three attack types, and only those.
+     *
+     * CSRF, request rate and privilege denials are recorded by the same
+     * detector but are not attacks of these kinds, and mixing them in would
+     * make a week of stale browser tabs look like a week under attack.
+     */
+    private function attackEvents(Carbon $from, ?Carbon $until = null)
+    {
+        return IntrusionLog::query()
+            ->where('created_at', '>=', $from)
+            ->when($until, fn ($q) => $q->where('created_at', '<', $until))
+            ->where(fn ($q) => $q->whereIn('category', ['sqli', 'xss', 'traversal'])
+                ->orWhere('matched_rule', 'lockout_threshold'))
+            ->get(['id', 'ip', 'category', 'matched_rule']);
     }
 
     /**
