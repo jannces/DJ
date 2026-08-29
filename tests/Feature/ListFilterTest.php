@@ -145,10 +145,13 @@ class ListFilterTest extends TestCase
         $head = $this->makeUser('department-head');
         $head->update(['name' => 'Perla Domingo']);
 
+        $clerk = $this->makeUser('employee');
+        $clerk->update(['name' => 'Ramon Bautista']);
+
         $html = $this->get('/users?role=department-head')->assertOk()->getContent();
 
         $this->assertStringContainsString('Perla Domingo', $html);
-        $this->assertSame(1, substr_count($html, 'Perla Domingo'));
+        $this->assertStringNotContainsString('Ramon Bautista', $html);
 
         $other = $this->get('/users?role=mayor')->assertOk()->getContent();
         $this->assertStringNotContainsString('Perla Domingo', $other);

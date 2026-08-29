@@ -28,4 +28,16 @@ class BlockedIp extends Model
         return $query->where('active', true)
             ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()));
     }
+
+    /**
+     * Whether this block is keeping anybody out right now.
+     *
+     * One definition, because there were two. The status badge counted an
+     * expired block as lifted while the button next to it counted the same row
+     * as active, so a row could read "Lifted" and still offer to unblock.
+     */
+    public function isInEffect(): bool
+    {
+        return $this->active && (! $this->expires_at || $this->expires_at->isFuture());
+    }
 }

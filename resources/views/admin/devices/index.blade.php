@@ -77,7 +77,9 @@
                     </td>
                     <td class="small">{{ $d->last_active_at?->diffForHumans() ?? 'Never' }}</td>
                     <td class="text-end text-nowrap">
-                        <form method="POST" action="{{ route('devices.toggle', $d) }}" class="d-inline">
+                        <form method="POST" action="{{ route('devices.toggle', $d) }}" class="d-inline"
+                              data-confirm="{{ $d->status === 'active' ? 'Deactivate' : 'Activate' }} {{ $d->hostname }}?{{ $d->status === 'active' ? ' It will be refused while device enforcement is on.' : '' }}"
+                              data-confirm-tone="{{ $d->status === 'active' ? 'danger' : 'success' }}">
                             @csrf
                             <button class="btn btn-sm btn-outline-secondary">
                                 {{ $d->status === 'active' ? 'Deactivate' : 'Activate' }}
@@ -85,7 +87,7 @@
                         </form>
                         @unless ($d->archived_at)
                             <form method="POST" action="{{ route('devices.archive', $d) }}"
-                                  class="d-inline" data-confirm="Archive {{ $d->hostname }}?">
+                                  class="d-inline" data-confirm="Archive {{ $d->hostname }}? It will be removed from the list of authorized devices.">
                                 @csrf
                                 <button class="btn btn-sm btn-outline-warning"
                                         aria-label="Archive {{ $d->hostname }}"><i class="bi bi-archive"></i></button>

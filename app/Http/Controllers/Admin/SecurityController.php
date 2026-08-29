@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\BlockedIp;
 use App\Models\IntrusionLog;
+use App\Models\SystemSetting;
 use App\Services\Security\AuditLogger;
 use App\Services\Security\SecurityDashboardService;
 use Illuminate\Http\RedirectResponse;
@@ -81,9 +82,22 @@ class SecurityController extends Controller
         return view('admin.security.intrusions', compact('logs'));
     }
 
-    public function blockedIps(): View
+    public function blockedIps(Request $request): View
     {
-        $blocked = BlockedIp::with('blocker')->latest()->paginate(config('lists.per_page'));
+        $blocked = BlockedIp::with('blocker')
+            ->when($request->string('q')->toString(), fn ($q, $s) => $q->where(
+                fn ($w) => $w->where('ip', 'like', "%{$s}%")->orWhere('reason', 'like', "%{$s}%")
+            ))
+            ->when($request->string('source')->toString(), fn ($q, $s) => $q->where('source', $s))
+            // In effect by default: a list of blocks is asked about because
+            // something is being kept out right now, not because of what was
+            // lifted last month.
+            ->when($request->string('show')->toString() !== 'all',
+                fn ($q) => $request->string('show')->toString() === 'lifted'
+                    ? $q->where(fn ($w) => $w->where('active', false)
+                        ->orWhere(fn ($e) => $e->whereNotNull('expires_at')->where('expires_at', '<=', now())))
+                    : $q->currentlyActive())
+            ->latest()->paginate(config('lists.per_page'))->withQueryString();
 
         return view('admin.security.blocked-ips', compact('blocked'));
     }
@@ -109,12 +123,48 @@ class SecurityController extends Controller
         return back()->with('status', "IP {$data['ip']} blocked.");
     }
 
+    /**
+     * Lift a block.
+     *
+     * Available on automatic blocks as much as manual ones — an address the
+     * system decided was hostile is exactly the one that turns out to be a
+     * legitimate employee behind an office router.
+     */
     public function unblockIp(BlockedIp $blockedIp): RedirectResponse
     {
         $blockedIp->update(['active' => false]);
         Cache::forget("blocked-ip.{$blockedIp->ip}");
         $this->audit->log('ip_unblocked', $blockedIp, ['active' => true], ['active' => false]);
 
-        return back()->with('status', "IP {$blockedIp->ip} unblocked.");
+        return back()->with('status', "Block lifted for {$blockedIp->ip}.");
+    }
+
+    /**
+     * Put a lifted block back.
+     *
+     * Without this the row was dead weight once lifted: to block the same
+     * address again you had to read the address off the row and type it into
+     * the form. It is recorded as a fresh decision by whoever clicked it
+     * rather than as a continuation of the original automatic block, because
+     * that is what it is.
+     */
+    public function reblockIp(Request $request, BlockedIp $blockedIp): RedirectResponse
+    {
+        $hours = (int) SystemSetting::get('security.ip_block_hours', 24);
+        $old = ['active' => $blockedIp->active, 'expires_at' => (string) $blockedIp->expires_at];
+
+        $blockedIp->update([
+            'active' => true,
+            'source' => 'manual',
+            'blocked_by' => $request->user()->id,
+            'expires_at' => now()->addHours($hours),
+        ]);
+        Cache::forget("blocked-ip.{$blockedIp->ip}");
+        $this->audit->log('ip_blocked_again', $blockedIp, $old, [
+            'ip' => $blockedIp->ip,
+            'hours' => $hours,
+        ]);
+
+        return back()->with('status', "IP {$blockedIp->ip} blocked again for {$hours} hours.");
     }
 }

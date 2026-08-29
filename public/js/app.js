@@ -63,12 +63,26 @@
       timer: 3800, timerProgressBar: true, icon: icon, title: title
     });
   };
+  // Answerable yes or no, in those words. "Yes, proceed" against "Cancel" is
+  // two different kinds of answer to one question; the pair has to match the
+  // question being asked.
+  //
+  // The tone colours the Yes button after the thing it will do: red for a
+  // block, an archive, a deletion; green for lifting a ban or restoring an
+  // account. Same colour as the button that opened the dialog, so the answer
+  // is confirming what was clicked rather than a generic proceed.
+  var CONFIRM_TONES = { danger: '#be123c', success: '#15803d', brand: '#6d28d9' };
+
   window.lmsConfirm = function (opts) {
+    var settings = opts || {};
+    var tone = CONFIRM_TONES[settings.tone] || CONFIRM_TONES.danger;
+    delete settings.tone;
+
     return Swal.fire(Object.assign({
       title: 'Are you sure?', icon: 'warning', showCancelButton: true,
-      confirmButtonColor: '#6d28d9', cancelButtonColor: '#6b7280',
-      confirmButtonText: 'Yes, proceed', reverseButtons: true
-    }, opts || {}));
+      confirmButtonColor: tone, cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Yes', cancelButtonText: 'No', reverseButtons: true
+    }, settings));
   };
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -103,7 +117,10 @@
       form.addEventListener('submit', function (e) {
         if (form.dataset.confirmed) return;
         e.preventDefault();
-        lmsConfirm({ text: form.dataset.confirm }).then(function (res) {
+        lmsConfirm({
+          text: form.dataset.confirm,
+          tone: form.dataset.confirmTone || 'danger'
+        }).then(function (res) {
           if (res.isConfirmed) { form.dataset.confirmed = '1'; form.submit(); }
         });
       });

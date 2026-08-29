@@ -43,7 +43,9 @@
                     </td>
                     <td class="text-end">
                         @if ($user->trashed())
-                            <form method="POST" action="{{ route('users.restore', $user->id) }}" class="d-inline">
+                            <form method="POST" action="{{ route('users.restore', $user->id) }}" class="d-inline"
+                                  data-confirm="Restore {{ $user->name }}? The account will appear in the list again."
+                                  data-confirm-tone="success">
                                 @csrf<button class="btn btn-sm btn-outline-success"><i class="bi bi-arrow-counterclockwise"></i> Restore</button>
                             </form>
                         @else
@@ -53,25 +55,32 @@
                                 <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown"></button>
                                 <ul class="dropdown-menu dropdown-menu-end">
                                     <li>
-                                        <form method="POST" action="{{ route('users.reset-password', $user) }}" data-confirm="Reset this user's password?">
+                                        <form method="POST" action="{{ route('users.reset-password', $user) }}" data-confirm="Reset the password for {{ $user->name }}? They will have to set a new one at their next sign-in.">
                                             @csrf<button class="dropdown-item">Reset password</button>
                                         </form>
                                     </li>
                                     @if ($user->status === 'blocked')
-                                        <li><form method="POST" action="{{ route('users.unblock', $user) }}">@csrf<button class="dropdown-item text-success">Unblock</button></form></li>
+                                        <li><form method="POST" action="{{ route('users.unblock', $user) }}"
+                                                  data-confirm="Unblock {{ $user->name }}? They will be able to sign in again."
+                                                  data-confirm-tone="success">@csrf<button class="dropdown-item text-success">Unblock</button></form></li>
                                     @else
                                         <li>
-                                            <form method="POST" action="{{ route('users.block', $user) }}" onsubmit="this.reason.value=prompt('Reason for blocking:')||''; return this.reason.value!=='';">
+                                            <form method="POST" action="{{ route('users.block', $user) }}"
+                                                  data-confirm="Block {{ $user->name }}? They will not be able to sign in."
+                                                  data-confirm-tone="danger"
+                                                  onsubmit="this.reason.value=prompt('Reason for blocking:')||''; return this.reason.value!=='';">
                                                 @csrf<input type="hidden" name="reason">
                                                 <button class="dropdown-item text-danger">Block</button>
                                             </form>
                                         </li>
                                     @endif
                                     <li>
-                                        <form method="POST" action="{{ route('users.toggle-active', $user) }}">@csrf<button class="dropdown-item">{{ $user->status==='inactive'?'Activate':'Deactivate' }}</button></form>
+                                        <form method="POST" action="{{ route('users.toggle-active', $user) }}"
+                                              data-confirm="{{ $user->status === 'inactive' ? 'Activate' : 'Deactivate' }} {{ $user->name }}?"
+                                              data-confirm-tone="{{ $user->status === 'inactive' ? 'success' : 'danger' }}">@csrf<button class="dropdown-item">{{ $user->status==='inactive'?'Activate':'Deactivate' }}</button></form>
                                     </li>
                                     <li><hr class="dropdown-divider"></li>
-                                    <li><form method="POST" action="{{ route('users.archive', $user) }}" data-confirm="Archive this user?">@csrf<button class="dropdown-item text-warning">Archive</button></form></li>
+                                    <li><form method="POST" action="{{ route('users.archive', $user) }}" data-confirm="Archive {{ $user->name }}? The account will no longer appear in the list.">@csrf<button class="dropdown-item text-warning">Archive</button></form></li>
                                 </ul>
                             </div>
                         @endif

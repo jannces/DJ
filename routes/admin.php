@@ -65,6 +65,7 @@ Route::middleware('permission:security.blocked-ips')->group(function () {
     Route::get('security/blocked-ips', [SecurityController::class, 'blockedIps'])->name('security.blocked-ips');
     Route::post('security/blocked-ips', [SecurityController::class, 'blockIp'])->name('security.block-ip');
     Route::post('security/blocked-ips/{blockedIp}/unblock', [SecurityController::class, 'unblockIp'])->name('security.unblock-ip');
+    Route::post('security/blocked-ips/{blockedIp}/reblock', [SecurityController::class, 'reblockIp'])->name('security.reblock-ip');
 });
 Route::middleware('permission:security.intrusions')->group(function () {
     Route::get('security/intrusions', [SecurityController::class, 'intrusions'])->name('security.intrusions');
