@@ -2953,6 +2953,72 @@ span.dash-link{ justify-content:flex-start; }
 .modal-footer .btn{ min-width:7rem; }
 
 /* ============================================================================
+   TWO MESSAGE CHANNELS
+   ----------------------------------------------------------------------------
+   A receipt and an alarm were sharing one toast: same corner, same timer. One
+   confirms something you just did and is harmless to miss, because the page
+   behind it already shows the result. The other says an attack is happening,
+   and missing it means missing the attack.
+
+   RECEIPTS go bottom-right, beside the button that caused them -- form actions
+   sit below-right and row actions are right-aligned in the last column. The old
+   top-right corner sat on top of the search box, the bell and the user menu.
+
+   ALARMS go top-centre, where nothing else in this application ever appears,
+   so the position itself carries the meaning. It only works while it stays
+   rare, which is why receipts are not allowed there.
+
+   Colour is the third signal on an alarm, not the only one: it is top-centre,
+   it says "Intrusion alert", and it does not go away. Somebody who cannot
+   separate red from green still cannot confuse the two.
+   ========================================================================== */
+
+/* ---- Receipts ------------------------------------------------------------ */
+.lms-toast.swal2-toast{
+  background:var(--surface); color:var(--text);
+  border:1px solid var(--hair); border-radius:.625rem;
+  box-shadow:var(--shadow); padding:.7rem .9rem;
+}
+.lms-toast .swal2-title{ color:var(--text); font-size:.85rem; font-weight:500; }
+.lms-toast .swal2-timer-progress-bar{ background:var(--ch-mute); }
+/* The ambience of the event: it worked, it worked with a caveat, it is a note. */
+.lms-toast-success .swal2-timer-progress-bar{ background:var(--k-good-f); }
+.lms-toast-warning .swal2-timer-progress-bar{ background:var(--k-warn-f); }
+.lms-toast-info .swal2-timer-progress-bar{ background:var(--primary); }
+
+/* ---- Alarms -------------------------------------------------------------- */
+#lms-alerts{
+  position:fixed; left:50%; transform:translateX(-50%);
+  top:calc(var(--topbar-h) + .75rem);
+  z-index:1035; display:flex; flex-direction:column; gap:.5rem;
+  width:min(30rem, calc(100vw - 2rem));
+}
+.lms-alert{
+  display:flex; align-items:flex-start; gap:.75rem;
+  background:var(--surface); border:1px solid var(--hair);
+  border-left:4px solid var(--k-bad-f);
+  border-radius:.625rem; box-shadow:var(--shadow-lg);
+  padding:.75rem .85rem;
+  animation:alertIn .18s var(--ease) both;
+}
+@keyframes alertIn{ from{ opacity:0; transform:translateY(-.4rem); } to{ opacity:1; transform:none; } }
+/* Act now, against look at it when you can. */
+.lms-alert-high{ border-left-color:var(--k-bad-f); }
+.lms-alert-medium{ border-left-color:var(--k-warn-f); }
+.lms-alert-body{ flex:1 1 auto; min-width:0; }
+.lms-alert-title{ margin:0; font-size:.85rem; font-weight:600; color:var(--text); }
+.lms-alert-high .lms-alert-title{ color:var(--k-bad); }
+.lms-alert-medium .lms-alert-title{ color:var(--k-warn); }
+.lms-alert-detail{ margin:.15rem 0 0; font-size:.8rem; color:var(--text-2); }
+.lms-alert-link{ display:inline-block; margin-top:.35rem; font-size:.78rem; }
+.lms-alert-close{
+  flex:none; border:0; background:transparent; color:var(--muted);
+  font-size:1.15rem; line-height:1; padding:0 .15rem; cursor:pointer;
+}
+.lms-alert-close:hover{ color:var(--text); }
+@media print{ #lms-alerts{ display:none; } }
+
+/* ============================================================================
    OVERLAYS — blur where you must not look past it, dim where you might
               still need to
    ----------------------------------------------------------------------------

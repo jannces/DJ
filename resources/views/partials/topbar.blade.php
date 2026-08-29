@@ -26,6 +26,8 @@
             <a href="{{ route('security.dashboard') }}" id="alert-bell" class="icon-btn"
                data-url="{{ route('web.security.alerts') }}"
                data-interval="{{ \App\Models\SystemSetting::get('general.alerts_poll_seconds', 15) }}"
+               {{-- Where an alert sends you to read what the address did. --}}
+               data-log-url="{{ route('security.intrusions') }}?q="
                aria-label="Security alerts" title="Security alerts">
                 <i class="bi bi-shield-exclamation"></i>
                 <span id="alert-badge" class="dot-badge d-none">0</span>

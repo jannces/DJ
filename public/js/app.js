@@ -56,12 +56,81 @@
     });
   };
 
-  // ---- Toasts (SweetAlert2) ----------------------------------------------
+  // ---- Two channels, because there are two kinds of message ---------------
+  //
+  // "User updated." and "Intrusion alert: sqli from 203.0.113.9" were sharing
+  // one toast: same corner, same 3.8-second timer. One is a receipt for
+  // something you just did and is harmless to miss -- the list shows the
+  // change. The other is something happening elsewhere, and missing it means
+  // missing an attack. Those want opposite treatment, so they are separate.
+
+  // A receipt. Bottom-right, next to the button that caused it -- form actions
+  // sit below-right and row actions are right-aligned in the last column -- and
+  // clear of the topbar's controls, which the old top-right corner sat on top
+  // of. Gone in four seconds; the page behind it already shows the result.
   window.lmsToast = function (icon, title) {
     Swal.fire({
-      toast: true, position: 'top-end', showConfirmButton: false,
-      timer: 3800, timerProgressBar: true, icon: icon, title: title
+      toast: true, position: 'bottom-end', showConfirmButton: false,
+      timer: 3800, timerProgressBar: true, icon: icon, title: title,
+      customClass: { popup: 'lms-toast lms-toast-' + icon }
     });
+  };
+
+  // Something that needs a person. Top-centre, where nothing else in this
+  // application ever appears, so the position itself means "attend to this" --
+  // it stays rare by only ever carrying an intrusion or a refusal.
+  //
+  // Deliberately not SweetAlert2: it shows one thing at a time, so a routine
+  // "User updated." would close an intrusion alert that had not been read.
+  // These stack, and stay until dismissed.
+  window.lmsAlert = function (tone, title, detail, link) {
+    var host = document.getElementById('lms-alerts');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'lms-alerts';
+      document.body.appendChild(host);
+    }
+
+    var alert = document.createElement('div');
+    alert.className = 'lms-alert lms-alert-' + (tone || 'high');
+    alert.setAttribute('role', 'alert');
+    // Assertive: an attack in progress is worth interrupting a screen reader.
+    alert.setAttribute('aria-live', 'assertive');
+
+    var body = document.createElement('div');
+    body.className = 'lms-alert-body';
+
+    var heading = document.createElement('p');
+    heading.className = 'lms-alert-title';
+    heading.textContent = title;
+    body.appendChild(heading);
+
+    if (detail) {
+      var line = document.createElement('p');
+      line.className = 'lms-alert-detail';
+      line.textContent = detail;
+      body.appendChild(line);
+    }
+
+    // An address with no way to look at what it did is a dead end.
+    if (link) {
+      var a = document.createElement('a');
+      a.className = 'lms-alert-link';
+      a.href = link;
+      a.textContent = 'View the events \u2192';
+      body.appendChild(a);
+    }
+
+    var close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'lms-alert-close';
+    close.setAttribute('aria-label', 'Dismiss');
+    close.innerHTML = '&times;';
+    close.addEventListener('click', function () { alert.remove(); });
+
+    alert.appendChild(body);
+    alert.appendChild(close);
+    host.appendChild(alert);
   };
   // Answerable yes or no, in those words. "Yes, proceed" against "Cancel" is
   // two different kinds of answer to one question; the pair has to match the
@@ -95,8 +164,10 @@
     const flash = document.getElementById('lms-flash');
     if (flash) {
       if (flash.dataset.success) lmsToast('success', flash.dataset.success);
-      if (flash.dataset.error) lmsToast('error', flash.dataset.error);
       if (flash.dataset.warning) lmsToast('warning', flash.dataset.warning);
+      // A refused action is not a receipt: it says something did not happen,
+      // and it used to disappear in under four seconds.
+      if (flash.dataset.error) lmsAlert('high', 'That did not go through', flash.dataset.error);
     }
 
     // Sidebar toggle (+ mobile backdrop)
@@ -190,7 +261,16 @@
             badge.textContent = data.unseen > 99 ? '99+' : data.unseen;
             badge.classList.remove('d-none');
             if (data.latest && data.latest.id !== Number(bell.dataset.lastId || 0)) {
-              if (bell.dataset.lastId) lmsToast('warning', 'Intrusion alert: ' + data.latest.category + ' from ' + data.latest.ip);
+              if (bell.dataset.lastId) {
+                // The severity is what the detector recorded, not a guess made
+                // here -- so a rule graded critical later paints itself.
+                lmsAlert(
+                  data.latest.severity === 'medium' ? 'medium' : 'high',
+                  'Intrusion alert',
+                  data.latest.category + ' from ' + data.latest.ip,
+                  bell.dataset.logUrl ? bell.dataset.logUrl + encodeURIComponent(data.latest.ip) : null
+                );
+              }
               bell.dataset.lastId = data.latest.id;
             }
           } else { badge.classList.add('d-none'); }
