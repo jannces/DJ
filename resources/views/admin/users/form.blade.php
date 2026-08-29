@@ -178,7 +178,7 @@
                     </div>
                     <div class="card-body">
                         <div class="row g-3">
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label" for="f-dept">Department <span class="req">*</span></label>
                                 <select id="f-dept" name="department_id"
                                         class="form-select @error('department_id') is-invalid @enderror" required>
@@ -189,7 +189,7 @@
                                 </select>
                                 @error('department_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <label class="form-label" for="f-position">Position <span class="req">*</span></label>
                                 <select id="f-position" name="position_id"
                                         class="form-select @error('position_id') is-invalid @enderror" required>
@@ -236,7 +236,10 @@
 
             <aside class="user-form-side">
                 <div class="card">
-                    <div class="card-header fw-semibold">Roles <span class="req">*</span></div>
+                    <div class="card-header fw-semibold">
+                        <span>Roles <span class="req">*</span></span>
+                        <span class="card-note">choose at least one</span>
+                    </div>
                     <div class="card-body">
                         <div class="role-list @error('roles') is-invalid-group @enderror">
                             @foreach ($roles as $r)
