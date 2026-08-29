@@ -81,7 +81,11 @@
     return Swal.fire(Object.assign({
       title: 'Are you sure?', icon: 'warning', showCancelButton: true,
       confirmButtonColor: tone, cancelButtonColor: '#6b7280',
-      confirmButtonText: 'Yes', cancelButtonText: 'No', reverseButtons: true
+      confirmButtonText: 'Yes', cancelButtonText: 'No', reverseButtons: true,
+      // Carries the system's own panel styling, and the blur behind it. Scoped
+      // to the confirmation so the toasts, which are the same library, are not
+      // dragged into it.
+      customClass: { container: 'lms-ask-bg', popup: 'lms-ask' }
     }, settings));
   };
 

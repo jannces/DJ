@@ -2830,3 +2830,59 @@ span.dash-link{ justify-content:flex-start; }
    arrived at an /edit URL and shutting the panel there would strand you on a
    URL whose panel is closed. */
 .modal-footer .btn{ min-width:7rem; }
+
+/* ============================================================================
+   ASKING FIRST — the confirmation panel
+   ----------------------------------------------------------------------------
+   The confirmation is SweetAlert2, which is already loaded for the toasts, but
+   it arrived wearing its own light theme: a white box in the middle of a dark
+   application, the one panel in the system that did not look like the system.
+   It is dressed as a record panel here — same surface, same hairline, same
+   corner, same footer rhythm — so a question about blocking somebody looks
+   like every other floating panel they have used.
+
+   Scoped to .lms-ask, set by lmsConfirm(). The toasts are the same library and
+   must not be caught by any of this.
+
+   The page behind is blurred rather than only dimmed. A dim leaves the table
+   underneath legible, and a question that stops someone blocking the wrong
+   account should be the only thing on the screen worth reading.
+   ========================================================================== */
+.lms-ask-bg{
+  background:rgba(12, 8, 24, .45) !important;
+  -webkit-backdrop-filter:blur(5px); backdrop-filter:blur(5px);
+}
+.lms-ask{
+  background:var(--surface); color:var(--text);
+  border:1px solid var(--hair); border-radius:.75rem;
+  box-shadow:var(--shadow-lg); padding:0; width:min(30rem, calc(100vw - 2rem));
+}
+.lms-ask .swal2-icon{ margin:1.25rem auto .25rem; }
+.lms-ask .swal2-title{
+  color:var(--text); font-size:1.05rem; font-weight:600;
+  padding:.85rem 1.15rem .25rem;
+}
+.lms-ask .swal2-html-container{
+  color:var(--text-2); font-size:.9rem; line-height:var(--lh);
+  margin:0; padding:0 1.15rem 1.15rem;
+}
+/* The footer reads like a panel's: a rule above it, and buttons that are the
+   same size as the ones the answer is about. */
+.lms-ask .swal2-actions{
+  margin:0; padding:.85rem 1.15rem; gap:.5rem;
+  border-top:1px solid var(--hair); width:100%;
+  justify-content:flex-end;
+}
+.lms-ask .swal2-styled{
+  margin:0; min-width:7rem; border-radius:.5rem;
+  font-size:.85rem; font-weight:500; padding:.45rem 1rem;
+  box-shadow:none !important;
+}
+.lms-ask .swal2-styled:focus-visible{ outline:2px solid var(--primary); outline-offset:2px; }
+
+/* The record panels are the same kind of overlay, so they get the same blur —
+   one of the two blurring and the other not would read as an accident. */
+.modal-backdrop.show{
+  -webkit-backdrop-filter:blur(5px); backdrop-filter:blur(5px);
+  background:rgba(12, 8, 24, .45); opacity:1;
+}

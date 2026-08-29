@@ -105,6 +105,43 @@ class ConfirmationTest extends TestCase
     }
 
     /**
+     * The question floats over the page, and the page behind it is blurred.
+     *
+     * A dim leaves the table underneath legible, and a question about blocking
+     * the wrong account should be the only thing on screen worth reading. It
+     * also has to look like the system's own panels: the dialog is
+     * SweetAlert2, which arrived wearing its own light theme — a white box in
+     * the middle of a dark application.
+     */
+    public function test_the_question_floats_over_a_blurred_page(): void
+    {
+        $script = file_get_contents(public_path('js/app.js'));
+        $css = preg_replace('/\s+/', '', file_get_contents(public_path('css/app.css')));
+
+        $this->assertStringContainsString("popup: 'lms-ask'", $script,
+            'the confirmation is not carrying the system panel styling');
+
+        $this->assertMatchesRegularExpression('/\.lms-ask-bg\{[^}]*backdrop-filter:blur/', $css,
+            'the page behind the question is not blurred');
+        $this->assertMatchesRegularExpression('/\.lms-ask\{[^}]*background:var\(--surface\)/', $css,
+            'the question does not use the system surface, so it will not match the theme');
+
+        // The record panels are the same kind of overlay and blur too.
+        $this->assertMatchesRegularExpression('/\.modal-backdrop\.show\{[^}]*backdrop-filter:blur/', $css);
+    }
+
+    /** The toasts are the same library and must not be dressed as a panel. */
+    public function test_the_toasts_are_left_alone(): void
+    {
+        $css = file_get_contents(public_path('css/app.css'));
+
+        preg_match_all('/^\s*\.swal2-[a-z-]+\s*\{/m', $css, $unscoped);
+
+        $this->assertSame([], $unscoped[0],
+            'this styles SweetAlert2 globally, which catches the toasts as well');
+    }
+
+    /**
      * The Yes button is coloured after what it does, so the answer confirms
      * the button that was pressed rather than a generic proceed.
      */
