@@ -1498,9 +1498,15 @@ span.dash-link:hover{ transform:none; box-shadow:none; color:var(--muted); }
   font-size:.78rem; color:var(--muted);
 }
 .pagination{ margin:0; gap:.3rem; justify-content:center; flex-wrap:wrap; }
-/* The two jumps read as arrows, not as page numbers. */
+/* The two arrows read as arrows, not as page numbers. */
 .pagination .page-item:first-child .page-link,
 .pagination .page-item:last-child .page-link{ font-size:.95rem; line-height:1.1; }
+/* A gap is not a control: no border, no hover, and it must not look clickable
+   sitting between two numbers that are. */
+.page-link.page-gap{
+  border-color:transparent; background:transparent; color:var(--muted-2);
+  padding-inline:.35rem; cursor:default;
+}
 .page-link{
   border:1px solid var(--hair); border-radius:.5rem; background:var(--surface);
   color:var(--text-2); font-size:.82rem; padding:.35rem .7rem;
@@ -2962,7 +2968,7 @@ span.dash-link{ justify-content:flex-start; }
 .lms-ask .swal2-actions{
   margin:0; padding:.85rem 1.15rem; gap:.5rem;
   border-top:1px solid var(--hair); width:100%;
-  justify-content:flex-end;
+  justify-content:center;
 }
 .lms-ask .swal2-styled{
   margin:0; min-width:7rem; border-radius:.5rem;

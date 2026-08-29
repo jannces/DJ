@@ -73,6 +73,50 @@ class ConfirmationTest extends TestCase
     }
 
     /**
+     * The listener watches the document, not each form.
+     *
+     * Binding per form at load left every row action unguarded the moment the
+     * live filter replaced the list: the rows came back from the server with
+     * data-confirm still on them and nothing listening, so Lift block, Block
+     * again, Archive and the rest went through silently after any search or
+     * dropdown. The earlier test read the Blade source, so it proved the
+     * attribute was written and never that anything was watching for it.
+     */
+    public function test_the_confirmation_survives_the_list_being_replaced(): void
+    {
+        $script = file_get_contents(public_path('js/app.js'));
+
+        $this->assertStringContainsString("document.addEventListener('submit'", $script,
+            'confirmations are not delegated, so replaced rows lose them');
+        $this->assertStringNotContainsString("querySelectorAll('form[data-confirm]')", $script,
+            'forms are still bound one by one at load');
+        $this->assertStringNotContainsString("querySelectorAll('form:not([data-no-loader])", $script,
+            'the page loader is still bound one by one at load');
+    }
+
+    /**
+     * Row actions live inside the region the filter swaps, which is exactly
+     * why the binding had to move. If one ever sits outside it that is fine —
+     * this records which lists depend on the delegation.
+     */
+    public function test_the_row_actions_are_inside_the_part_that_gets_replaced(): void
+    {
+        foreach ([
+            'admin/security/blocked-ips' => 'security.unblock-ip',
+            'admin/users/index' => 'users.archive',
+            'admin/devices/index' => 'devices.toggle',
+        ] as $view => $route) {
+            $source = file_get_contents(resource_path('views/'.$view.'.blade.php'));
+
+            $this->assertGreaterThan(
+                strpos($source, '<div data-list>'),
+                strpos($source, $route),
+                $route.' is outside the swapped region, so this test is stale'
+            );
+        }
+    }
+
+    /**
      * The question has to name what it will do. "Are you sure?" over a row of
      * identical buttons tells you nothing about which one you pressed.
      */

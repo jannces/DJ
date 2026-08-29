@@ -14,7 +14,14 @@ class AuditLogController extends Controller
         $logs = AuditLog::with('user')
             ->when($request->string('action')->toString(), fn ($q, $a) => $q->where('action', $a))
             ->when($request->string('q')->toString(), fn ($q, $u) => $q->whereHas('user', fn ($w) => $w->where('name', 'like', "%{$u}%")))
-            ->latest()->paginate(config('lists.per_page'))->withQueryString();
+            // Cursor, not offset. Entries arrive at the top of this list
+            // continuously, and with OFFSET every arrival pushes the list down
+            // -- page 2 then re-shows rows already read on page 1, or skips
+            // past them. A cursor anchors to a row, so neither can happen.
+            // id breaks ties: two entries can share a timestamp, and a cursor
+            // needs a total order to anchor to.
+            ->latest()->orderByDesc('id')
+            ->cursorPaginate(config('lists.per_page'))->withQueryString();
 
         // Actions come from a fixed vocabulary the system writes itself, so
         // the filter is a list of what is actually in the log rather than a

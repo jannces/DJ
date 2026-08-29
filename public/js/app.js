@@ -116,51 +116,68 @@
       });
     });
 
-    // Confirmation forms
-    document.querySelectorAll('form[data-confirm]').forEach(function (form) {
-      form.addEventListener('submit', function (e) {
+    // Confirmation forms, and the page loader.
+    //
+    // Both are bound once on the document rather than on each form. A form
+    // found at load and given its own listener stops being watched the moment
+    // its row is replaced -- and the live filter replaces the whole list on
+    // every search and every dropdown. The markup came back from the server
+    // with data-confirm still on it and nothing listening, so Lift block,
+    // Block again, Archive and the rest went through silently after any
+    // filtering. Listening on the document covers rows that arrive later,
+    // which is every row on a filtered list.
+    document.addEventListener('submit', function (e) {
+      var form = e.target.closest ? e.target.closest('form') : null;
+      if (!form) return;
+
+      if (form.hasAttribute('data-confirm')) {
         if (form.dataset.confirmed) return;
         e.preventDefault();
+        ask(form);
 
-        var options = {
-          text: form.dataset.confirm,
-          tone: form.dataset.confirmTone || 'danger'
-        };
+        return;
+      }
 
-        // Some decisions have to be written down as well as agreed to —
-        // blocking an account is recorded against a reason. That belongs in
-        // the question rather than in a second dialog after it: a browser
-        // prompt is a stop that does not blur, does not follow the theme, and
-        // was appearing BEFORE the confirmation, because an inline onsubmit is
-        // bound before this listener is.
-        if (form.dataset.confirmInput) {
-          options.input = 'text';
-          options.inputPlaceholder = form.dataset.confirmInput;
-          options.inputAttributes = { 'aria-label': form.dataset.confirmInput };
-          options.inputValidator = function (value) {
-            if (!value || !value.trim()) return form.dataset.confirmInput + ' is required.';
-          };
-        }
-
-        lmsConfirm(options).then(function (res) {
-          if (!res.isConfirmed) return;
-          if (form.dataset.confirmInput) {
-            var field = form.querySelector('[name="' + form.dataset.confirmField + '"]');
-            if (field) field.value = res.value;
-          }
-          form.dataset.confirmed = '1';
-          form.submit();
-        });
-      });
-    });
-
-    // Page loader on genuine navigations (not AJAX/confirm forms)
-    document.querySelectorAll('form:not([data-no-loader]):not([data-confirm])').forEach(function (form) {
-      form.addEventListener('submit', function () {
-        const loader = document.getElementById('page-loader');
+      // A genuine navigation, not an AJAX form or one that stops to ask.
+      if (!form.hasAttribute('data-no-loader')) {
+        var loader = document.getElementById('page-loader');
         if (loader) loader.classList.add('active');
-      });
+      }
     });
+
+    function ask(form) {
+      var options = {
+        text: form.dataset.confirm,
+        tone: form.dataset.confirmTone || 'danger'
+      };
+
+      // Some decisions have to be written down as well as agreed to --
+      // blocking an account is recorded against a reason. That belongs in the
+      // question rather than in a second dialog after it: a browser prompt is
+      // a stop that does not blur, does not follow the theme, and was
+      // appearing BEFORE the confirmation, because an inline onsubmit is bound
+      // before a listener added here is.
+      if (form.dataset.confirmInput) {
+        options.input = 'text';
+        options.inputPlaceholder = form.dataset.confirmInput;
+        options.inputAttributes = { 'aria-label': form.dataset.confirmInput };
+        options.inputValidator = function (value) {
+          if (!value || !value.trim()) return form.dataset.confirmInput + ' is required.';
+        };
+      }
+
+      lmsConfirm(options).then(function (res) {
+        if (!res.isConfirmed) return;
+        if (form.dataset.confirmInput) {
+          var field = form.querySelector('[name="' + form.dataset.confirmField + '"]');
+          if (field) field.value = res.value;
+        }
+        // submit() does not fire the listener above again, but the flag stays
+        // in case anything else submits the form the ordinary way.
+        form.dataset.confirmed = '1';
+        form.submit();
+      });
+    }
 
     // Real-time intrusion alert polling (admins only)
     const bell = document.getElementById('alert-bell');

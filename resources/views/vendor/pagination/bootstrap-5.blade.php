@@ -1,75 +1,94 @@
 @php
     /**
-     * The pager every list in the system uses.
+     * The pager every offset-paginated list in the system uses.
      *
-     * Laravel's default spreads the whole run of page numbers across the
-     * container — on the intrusion log, with 284 events, that was a row of
-     * 1 2 3 4 5 6 7 8 9 10 … 28 29 stretched from edge to edge.
+     * Laravel's default rendered the whole run of page numbers, which on the
+     * intrusion log meant 1 2 3 4 5 6 7 8 9 10 … 28 29 stretched across the
+     * container. This truncates to the first page, the last page, the current
+     * one and its immediate neighbours, with an ellipsis standing in for each
+     * gap — so the row is a fixed width whether there are three pages or three
+     * hundred, and both ends stay one click away.
      *
-     * This shows three numbers, centred, so the row is the same narrow width
-     * whether there are three pages or three hundred.
+     * An earlier version showed a fixed block of three, 1 2 3 then 4 5 6. It
+     * had to be abandoned: with the ends never shown, the arrows had to step a
+     * whole block, so on any list of three pages or fewer there was no next
+     * block and BOTH arrows were dead on every page — including page one, with
+     * page two plainly sitting next to it. Most lists here are under thirty
+     * rows, so that was most lists.
      *
-     * The three are a fixed block rather than a window sliding around the
-     * current page: 1 2 3, then 4 5 6, then 7 8 9. A sliding window renumbers
-     * itself on every step — go from 3 to 4 and the row silently becomes
-     * 3 4 5 — so the same position on screen means a different page each time
-     * you look. A block stays put until you leave it, and the arrows are what
-     * move you to the next one.
+     * The arrows step one page and are disabled only at the true ends.
      *
      * $elements, which Laravel computed with its own window, is deliberately
-     * unused: the window is worked out here so that one file governs every
-     * list and there is nothing to keep in sync.
+     * unused: the window is worked out here so one file governs every list and
+     * there is nothing to keep in sync.
      */
-    $size = 3;
     $last = $paginator->lastPage();
     $current = $paginator->currentPage();
+    $around = 1;
 
-    $block = (int) ceil($current / $size);
-    $start = ($block - 1) * $size + 1;
-    $end = min($last, $start + $size - 1);
+    $wanted = [1, $last];
+    for ($p = $current - $around; $p <= $current + $around; $p++) {
+        if ($p >= 1 && $p <= $last) {
+            $wanted[] = $p;
+        }
+    }
+    $wanted = array_values(array_unique($wanted));
+    sort($wanted);
 
-    // One click per block, so the numbers advance by three rather than by one.
-    $previous = max(1, $start - $size);
-    $next = min($last, $start + $size);
+    // Walk the kept pages and fill each gap. A gap of exactly one page prints
+    // that page instead of an ellipsis: "1 … 3" is wider than "1 2 3" and
+    // hides a page behind a click for nothing.
+    $slots = [];
+    foreach ($wanted as $i => $page) {
+        $previous = $wanted[$i - 1] ?? null;
+        if ($previous !== null && $page - $previous > 1) {
+            $slots[] = $page - $previous === 2 ? $previous + 1 : null;
+        }
+        $slots[] = $page;
+    }
 @endphp
 
 @if ($paginator->hasPages())
     <nav class="pager" role="navigation" aria-label="{{ __('Pagination Navigation') }}">
         <ul class="pagination">
-            {{-- Back a block --}}
-            @if ($start === 1)
+            {{-- Previous --}}
+            @if ($paginator->onFirstPage())
                 <li class="page-item disabled" aria-disabled="true">
                     <span class="page-link" aria-hidden="true">&laquo;</span>
                 </li>
             @else
                 <li class="page-item">
-                    <a class="page-link" href="{{ $paginator->url($previous) }}"
-                       aria-label="Previous {{ $size }} pages">&laquo;</a>
+                    <a class="page-link" href="{{ $paginator->previousPageUrl() }}"
+                       rel="prev" aria-label="{{ __('Previous page') }}">&laquo;</a>
                 </li>
             @endif
 
-            @for ($page = $start; $page <= $end; $page++)
-                @if ($page === $current)
+            @foreach ($slots as $slot)
+                @if ($slot === null)
+                    <li class="page-item disabled" aria-hidden="true">
+                        <span class="page-link page-gap">&hellip;</span>
+                    </li>
+                @elseif ($slot === $current)
                     <li class="page-item active" aria-current="page">
-                        <span class="page-link">{{ $page }}</span>
+                        <span class="page-link">{{ $slot }}</span>
                     </li>
                 @else
                     <li class="page-item">
-                        <a class="page-link" href="{{ $paginator->url($page) }}"
-                           aria-label="{{ __('Go to page :page', ['page' => $page]) }}">{{ $page }}</a>
+                        <a class="page-link" href="{{ $paginator->url($slot) }}"
+                           aria-label="{{ __('Go to page :page', ['page' => $slot]) }}">{{ $slot }}</a>
                     </li>
                 @endif
-            @endfor
+            @endforeach
 
-            {{-- On a block --}}
-            @if ($end >= $last)
-                <li class="page-item disabled" aria-disabled="true">
-                    <span class="page-link" aria-hidden="true">&raquo;</span>
+            {{-- Next --}}
+            @if ($paginator->hasMorePages())
+                <li class="page-item">
+                    <a class="page-link" href="{{ $paginator->nextPageUrl() }}"
+                       rel="next" aria-label="{{ __('Next page') }}">&raquo;</a>
                 </li>
             @else
-                <li class="page-item">
-                    <a class="page-link" href="{{ $paginator->url($next) }}"
-                       aria-label="Next {{ $size }} pages">&raquo;</a>
+                <li class="page-item disabled" aria-disabled="true">
+                    <span class="page-link" aria-hidden="true">&raquo;</span>
                 </li>
             @endif
         </ul>

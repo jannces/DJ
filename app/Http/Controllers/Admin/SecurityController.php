@@ -77,7 +77,11 @@ class SecurityController extends Controller
             // bookmark written against the old filter still works.
             ->when($request->string('q')->toString() ?: $request->string('ip')->toString(),
                 fn ($query, $ip) => $query->where('ip', 'like', "%{$ip}%"))
-            ->latest()->paginate(config('lists.per_page'))->withQueryString();
+            // Cursor, not offset: an attack in progress writes events while
+            // the log is being read, and an offset page would skip some of
+            // them. See AuditLogController.
+            ->latest()->orderByDesc('id')
+            ->cursorPaginate(config('lists.per_page'))->withQueryString();
 
         return view('admin.security.intrusions', compact('logs'));
     }
