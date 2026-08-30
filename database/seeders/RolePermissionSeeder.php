@@ -54,6 +54,7 @@ class RolePermissionSeeder extends Seeder
 
         'reports.generate' => ['Generate & export operational reports', 'reports'],
         'reports.security' => ['Generate & export security reports', 'reports'],
+        'reports.department' => ['Generate & export reports for own department', 'reports'],
     ];
 
     /**
@@ -125,7 +126,14 @@ class RolePermissionSeeder extends Seeder
         // any office's leave, not just their own, and would make the
         // recommendation a decision. The permission below is scoped by the head
         // named on the department — see ApprovalWorkflowService::canRecommend().
-        $grant($deptHead, [...self::EMPLOYEE_BASELINE, 'leave.review.department']);
+        // The department reports cover the one office this head runs, and the
+        // office is read off the record rather than chosen -- so this is not
+        // `leave.requests.view-all` in a smaller coat: it cannot reach another
+        // office's applications at all.
+        $grant($deptHead, [
+            ...self::EMPLOYEE_BASELINE,
+            'leave.review.department', 'reports.generate', 'reports.department',
+        ]);
         $grant($hr, [
             ...self::EMPLOYEE_BASELINE,
             'employees.view', 'employees.manage', 'employees.view-salary',

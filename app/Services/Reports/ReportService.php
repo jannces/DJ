@@ -69,6 +69,27 @@ class ReportService
             'about' => 'Earned, used and remaining per employee',
             'permission' => 'leave.requests.view-all', 'group' => 'leave', 'scope' => self::SCOPE_NONE,
         ],
+        // The same three questions an office head asks, answered for the one
+        // office they head. They reuse the builders above rather than growing
+        // a second version that could drift from the first -- the only
+        // difference is that the department is supplied rather than chosen,
+        // and ReportController supplies it from the record, not the request.
+        'my-office-leave' => [
+            'title' => 'Leave in my office',
+            'about' => 'Every application filed in the period',
+            'permission' => 'reports.department', 'group' => 'department', 'scope' => self::SCOPE_RANGE,
+        ],
+        'my-office-pending' => [
+            'title' => 'Waiting on me',
+            'about' => 'Applications not yet recommended',
+            'permission' => 'reports.department', 'group' => 'department', 'scope' => self::SCOPE_NONE,
+        ],
+        'my-office-balances' => [
+            'title' => 'Leave balances in my office',
+            'about' => 'Credits remaining, per person',
+            'permission' => 'reports.department', 'group' => 'department', 'scope' => self::SCOPE_NONE,
+        ],
+
         'intrusion' => [
             'title' => 'Intrusion Report',
             'about' => 'Every detection, with its rule and target',
@@ -126,7 +147,29 @@ class ReportService
     public const GROUPS = [
         'security' => 'Security',
         'leave' => 'Leave',
+        // Scoped to the office the reader heads. Kept apart from 'leave' so
+        // that "every application in the LGU" and "every application in my
+        // office" are never two rows of the same list.
+        'department' => 'My office',
     ];
+
+    /**
+     * The office this person heads, if any.
+     *
+     * One definition, used to decide whether the department reports are
+     * offered and to scope them once they are -- so the two can never disagree
+     * about which office somebody runs.
+     */
+    public static function officeHeadedBy(User $user): ?Department
+    {
+        return Department::where('head_user_id', $user->id)->first();
+    }
+
+    /** Whether a report is scoped to the reader's own office. */
+    public static function isDepartmentScoped(string $report): bool
+    {
+        return (self::CATALOGUE[$report]['group'] ?? null) === 'department';
+    }
 
     /** The permission a report requires, or null if there is no such report. */
     public static function permissionFor(string $report): ?string
@@ -145,10 +188,20 @@ class ReportService
         // than whichever group happened to have the first visible report.
         $groups = array_fill_keys(array_keys(self::GROUPS), []);
 
+        // Heading an office is a fact about the record, not a permission. A
+        // head who is not named on any department would otherwise be offered
+        // three reports that then refuse -- the same rule their dashboard pane
+        // follows: the role gets the queue, the department gets the office.
+        $office = self::officeHeadedBy($user);
+
         foreach (self::CATALOGUE as $key => $report) {
-            if ($user->hasPermission($report['permission'])) {
-                $groups[$report['group']][$key] = $report;
+            if (! $user->hasPermission($report['permission'])) {
+                continue;
             }
+            if ($report['group'] === 'department' && $office === null) {
+                continue;
+            }
+            $groups[$report['group']][$key] = $report;
         }
 
         return array_filter($groups);
@@ -164,6 +217,11 @@ class ReportService
             'pending' => $this->pending($filters),
             'mandatory-leave' => $this->mandatoryLeave($filters),
             'leave-balance' => $this->leaveBalance($filters),
+            // The department is already in $filters, put there by the
+            // controller from the office this reader heads.
+            'my-office-leave' => $this->employeeLeave($filters),
+            'my-office-pending' => $this->pending($filters),
+            'my-office-balances' => $this->leaveBalance($filters),
             'intrusion' => $this->intrusion($filters),
             'audit' => $this->audit($filters),
             'blocked-login' => $this->blockedLogin($filters),

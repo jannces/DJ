@@ -157,19 +157,29 @@ class RoleBaselineTest extends TestCase
     }
 
     /**
-     * A head is scoped to their own office, and every report in the catalogue
-     * is LGU-wide. reports.generate on its own would give them a nav item to
-     * an empty page; the permission the reports need would give them every
-     * office's applications, which is the thing the scoping exists to prevent.
+     * A head runs reports for the office they head, and cannot reach past it.
+     *
+     * The office is read off the record rather than chosen, so this is not
+     * leave.requests.view-all in a smaller coat: without that permission the
+     * LGU-wide reports are not offered and would refuse if they were.
      */
-    public function test_a_department_head_is_not_given_reports(): void
+    public function test_a_department_head_gets_only_their_own_office(): void
     {
         $head = $this->makeUser('department-head');
 
-        $this->assertFalse($head->hasPermission('reports.generate'));
+        $this->assertTrue($head->hasPermission('reports.department'));
         $this->assertFalse($head->hasPermission('leave.requests.view-all'),
             'a head can see every office\'s applications, not just their own');
-        $this->assertSame([], \App\Services\Reports\ReportService::visibleTo($head));
+        $this->assertFalse($head->hasPermission('reports.security'));
+    }
+
+    /** Heading no office means no office reports — not three that then refuse. */
+    public function test_a_head_with_no_office_is_offered_nothing(): void
+    {
+        $head = $this->makeUser('department-head');
+
+        $this->assertSame([], \App\Services\Reports\ReportService::visibleTo($head),
+            'reports are offered to somebody who heads no department');
     }
 
     /** Nothing holds a permission that satisfies every check. */

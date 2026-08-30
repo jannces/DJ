@@ -50,6 +50,22 @@ class ReportController extends Controller
         // Period first: every report covers one month or one year, so the
         // filters that survive are the ones that name it plus the report's own.
         $filters = $request->only(['period', 'year', 'month', 'department', 'status', 'type', 'category', 'user']);
+
+        // A department report is scoped to the office the reader heads, and
+        // that office comes from the record rather than from the request --
+        // overwritten, not defaulted, so a head who sends ?department=3 gets
+        // their own office and not the Treasurer's. The same rule the rest of
+        // this system follows for an employee id: never take the subject of a
+        // query from the person asking.
+        if (ReportService::isDepartmentScoped($report)) {
+            $office = ReportService::officeHeadedBy($request->user());
+
+            abort_if($office === null, 403,
+                'These reports cover the office you head, and you are not named as head of one.');
+
+            $filters['department'] = $office->id;
+        }
+
         $data = $this->reports->build($report, array_filter($filters));
         $format = $request->query('format', 'html');
 
