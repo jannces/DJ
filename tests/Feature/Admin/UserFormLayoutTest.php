@@ -262,7 +262,9 @@ class UserFormLayoutTest extends TestCase
         $html = $this->form();
 
         foreach ([
-            'name', 'email', 'username', 'employee_no',
+            // employee_no is issued by the server and shown read-only, so it
+            // is deliberately not a field the form sends.
+            'name', 'email', 'username',
             'first_name', 'middle_name', 'last_name', 'gender', 'civil_status',
             'birth_date', 'contact_no', 'address',
             'department_id', 'position_id', 'employment_status', 'salary', 'date_hired',

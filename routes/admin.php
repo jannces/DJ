@@ -48,7 +48,14 @@ Route::middleware('permission:users.manage')->group(function () {
     Route::post('users/{user}/toggle-active', [UserController::class, 'toggleActive'])->name('users.toggle-active');
     Route::post('users/{user}/archive', [UserController::class, 'archive'])->name('users.archive');
     Route::post('users/{id}/restore', [UserController::class, 'restore'])->name('users.restore');
-    Route::delete('users/{id}', [UserController::class, 'destroy'])->name('users.destroy');
+    // No permanent delete. An account is archived, never destroyed: a
+    // forceDelete cascaded through every leave application the person ever
+    // filed -- approved ones included, each backed by a signed CSC Form 6 --
+    // and nulled their name out of the audit, activity and intrusion logs.
+    // Deleting an approver also stripped their name off other people's
+    // approved applications. A system whose case rests on auditability cannot
+    // offer that, and archiving already covers the reason: resigned, dismissed
+    // or died.
 });
 
 // Authorized devices

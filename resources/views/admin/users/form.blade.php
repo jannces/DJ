@@ -94,16 +94,17 @@
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label" for="f-empno">Employee no. <span class="req">*</span></label>
-                                    {{-- Filled in with the next in the
-                                         sequence, and still editable: an
-                                         office that numbers its own way has to
-                                         be able to. --}}
-                                    <input id="f-empno" name="employee_no"
-                                           class="form-control @error('employee_no') is-invalid @enderror"
-                                           value="{{ old('employee_no', $suggestedEmployeeNo ?? '') }}"
-                                           maxlength="50" required>
-                                    @error('employee_no')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                                    <div class="form-text">Next in sequence. Change it if your office numbers differently.</div>
+                                    {{-- Shown, not asked for. The number is
+                                         issued by the server, which ignores
+                                         whatever the form sends -- readonly is
+                                         a hint to the browser, not a rule.
+                                         Left in the markup rather than removed
+                                         so the person adding the account can
+                                         see what it will be. --}}
+                                    <input id="f-empno"
+                                           class="form-control"
+                                           value="{{ $suggestedEmployeeNo ?? '' }}" readonly>
+                                    <div class="form-text">Issued automatically. Never reused, even after an account is archived.</div>
                                 </div>
                             @endif
                         </div>

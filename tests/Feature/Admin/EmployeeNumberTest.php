@@ -16,9 +16,10 @@ use Tests\TestCase;
  * it, read the last number off the bottom, add one. That is how two people end
  * up sharing a number, and it is work the system already had the answer to.
  *
- * A suggestion, not an allocation — the field stays editable, because an office
- * that numbers its own way has to be able to, and whatever is submitted is
- * still checked for uniqueness on the server.
+ * It is issued rather than suggested: the field is read-only and the server
+ * ignores whatever the request carries, because readonly is a hint to the
+ * browser and nothing more. That is what makes the number permanent — assigned
+ * once, never edited, and never reissued.
  */
 class EmployeeNumberTest extends TestCase
 {
@@ -99,50 +100,65 @@ class EmployeeNumberTest extends TestCase
 
         $this->assertMatchesRegularExpression('#<input id="f-empno"[^>]*value="EMP-0004"#s', $html,
             'the administrator still has to go and look the number up');
-        $this->assertStringContainsString('Change it if your office numbers differently', $html);
+        $this->assertStringContainsString('Never reused, even after an account is archived', $html);
     }
 
-    /** Filled in, not fixed: it is a suggestion. */
-    public function test_the_field_can_still_be_typed_over(): void
+    /** Shown, not asked for: the number is the system's to issue. */
+    public function test_the_field_cannot_be_typed_over(): void
     {
         $html = $this->get('/users/create')->assertOk()->getContent();
 
         preg_match('#<input id="f-empno"[^>]*>#s', $html, $m);
 
-        $this->assertStringNotContainsString('readonly', $m[0]);
-        $this->assertStringNotContainsString('disabled', $m[0]);
+        $this->assertStringContainsString('readonly', $m[0]);
+        $this->assertStringNotContainsString('name="employee_no"', $m[0],
+            'the form still sends a number the server could be talked into using');
     }
 
-    public function test_a_number_typed_by_hand_is_the_one_used(): void
+    /**
+     * readonly is a hint to the browser and nothing more, so the rule is on
+     * the server: whatever arrives in the request is discarded.
+     */
+    public function test_a_number_sent_in_the_request_is_ignored(): void
     {
-        $this->post('/users', $this->payload(['employee_no' => '2026-0099']))
+        $this->profile('EMP-0003');
+
+        $this->post('/users', $this->payload(['employee_no' => 'EMP-0001']))
             ->assertRedirect();
 
-        $this->assertDatabaseHas('employee_profiles', ['employee_no' => '2026-0099']);
+        $this->assertDatabaseHas('employee_profiles', ['employee_no' => 'EMP-0004']);
+        $this->assertSame(0, EmployeeProfile::where('employee_no', 'EMP-0001')->count(),
+            'the number submitted by hand was taken instead of the one the system issues');
     }
 
     public function test_the_suggested_number_saves(): void
     {
         $this->profile('EMP-0004');
 
-        $this->post('/users', $this->payload(['employee_no' => EmployeeProfile::nextEmployeeNo()]))
-            ->assertRedirect();
+        $this->post('/users', $this->payload())->assertRedirect();
 
         $this->assertDatabaseHas('employee_profiles', ['employee_no' => 'EMP-0005']);
     }
 
     /**
-     * Two administrators adding accounts at the same time are offered the same
-     * number. Refusing it is right; only refusing it sends them back to the
-     * list they were spared, so the message names one that is free.
+     * The point of the whole thing. Archiving keeps the employee_profiles row,
+     * so a resigned, dismissed or deceased employee's number stays counted and
+     * cannot come back to somebody else -- their leave record, their filed CSC
+     * Form 6 copies and their audit entries all still carry it.
      */
-    public function test_a_clash_is_refused_and_a_free_number_named(): void
+    public function test_a_number_is_not_reissued_after_the_account_is_archived(): void
     {
         $this->profile('EMP-0001');
+        $leaver = \App\Models\EmployeeProfile::where('employee_no', 'EMP-0002')->first()
+            ?? $this->profile('EMP-0002');
 
-        $this->from('/users/create')
-            ->post('/users', $this->payload(['employee_no' => 'EMP-0001']))
-            ->assertSessionHasErrors(['employee_no' => 'That employee number is already taken. EMP-0002 is free.']);
+        $leaver->user->delete();   // archived: resigned, dismissed or died
+
+        $this->assertSame('EMP-0003', \App\Models\EmployeeProfile::nextEmployeeNo(),
+            'the sequence went backwards and would hand out a former employee\'s number');
+
+        $this->post('/users', $this->payload())->assertRedirect();
+        $this->assertDatabaseHas('employee_profiles', ['employee_no' => 'EMP-0003']);
     }
 
     /** @param array<string,mixed> $overrides */
@@ -152,7 +168,6 @@ class EmployeeNumberTest extends TestCase
             'name' => 'Juan Dela Cruz',
             'username' => 'jdelacruz',
             'email' => 'juan@alicia.gov.ph',
-            'employee_no' => 'EMP-0001',
             'roles' => [Role::where('slug', 'employee')->firstOrFail()->id],
             'first_name' => 'Juan',
             'middle_name' => 'Santos',

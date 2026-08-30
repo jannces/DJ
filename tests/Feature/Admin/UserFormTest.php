@@ -166,7 +166,9 @@ class UserFormTest extends TestCase
     public static function requiredFields(): array
     {
         $fields = [
-            'name', 'username', 'email', 'employee_no', 'first_name', 'last_name',
+            // employee_no is not here: it is issued by the server rather than
+            // submitted, so there is no request value to require.
+            'name', 'username', 'email', 'first_name', 'last_name',
             'gender', 'civil_status', 'birth_date', 'contact_no', 'address',
             'department_id', 'position_id', 'employment_status', 'salary', 'date_hired',
         ];

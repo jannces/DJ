@@ -142,14 +142,18 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'alpha_dash', 'min:3', 'max:255', 'unique:users,username'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'employee_no' => ['required', 'string', 'max:50', 'unique:employee_profiles,employee_no'],
-        ], $this->roleRules(), $this->profileRules()), self::messages() + [
-            // Two administrators adding accounts at the same time are offered
-            // the same number. Rather than only refusing it, say which one is
-            // free -- the point of the suggestion is not having to go and look.
-            'employee_no.unique' => 'That employee number is already taken. '
-                .EmployeeProfile::nextEmployeeNo().' is free.',
-        ]);
+        ], $this->roleRules(), $this->profileRules()), self::messages());
+
+        // The employee number is the system's to issue, not the form's to
+        // send. The field is shown read-only, but readonly is a hint to the
+        // browser and nothing more -- so the number is taken here and whatever
+        // arrived in the request is discarded.
+        //
+        // That is what makes it permanent. A number is assigned once, never
+        // edited, and never reissued: archiving keeps the employee_profiles
+        // row, so a resigned or dismissed employee's number stays counted and
+        // cannot come back to somebody else.
+        $data['employee_no'] = EmployeeProfile::nextEmployeeNo();
 
         $tempPassword = Str::password(14);
         $user = User::create([
@@ -365,18 +369,6 @@ class UserController extends Controller
         $this->audit->log('user_restored', $user);
 
         return back()->with('status', 'User restored.');
-    }
-
-    public function destroy(int $id): RedirectResponse
-    {
-        $user = User::withTrashed()->findOrFail($id);
-        if ($user->id === request()->user()->id) {
-            return back()->with('error', 'You cannot delete your own account.');
-        }
-        $this->audit->log('user_deleted_permanent', null, ['user' => $user->only(['id', 'email'])], []);
-        $user->forceDelete();
-
-        return back()->with('status', 'User permanently deleted.');
     }
 
     public function history(User $user): View
