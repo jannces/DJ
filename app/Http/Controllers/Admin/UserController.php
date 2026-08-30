@@ -3,23 +3,23 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Archive;
+use App\Models\AuditLog;
 use App\Models\Department;
 use App\Models\EmployeeProfile;
 use App\Models\Permission;
 use App\Models\Position;
 use App\Models\Role;
 use App\Models\User;
-use App\Rules\StrongPassword;
 use App\Services\Auth\LoginSecurityService;
 use App\Services\Rbac\RbacService;
 use App\Services\Security\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class UserController extends Controller
@@ -28,8 +28,7 @@ class UserController extends Controller
         private readonly RbacService $rbac,
         private readonly LoginSecurityService $loginSecurity,
         private readonly AuditLogger $audit,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request): View
     {
@@ -155,12 +154,18 @@ class UserController extends Controller
         // cannot come back to somebody else.
         $data['employee_no'] = EmployeeProfile::nextEmployeeNo();
 
-        $tempPassword = Str::password(14);
+        // One first-time password for every new account, rather than a random
+        // one shown once in a flash message that the next page cleared. The
+        // employee cannot keep it: ForcePasswordChange holds them on the
+        // change-password screen until they set their own. See
+        // config/security.php for why it is not treated as a secret.
+        $first = config('security.first_password');
+
         $user = User::create([
             'name' => $data['name'],
             'username' => $data['username'],
             'email' => $data['email'],
-            'password' => Hash::make($tempPassword),
+            'password' => Hash::make($first),
             'status' => User::STATUS_ACTIVE,
             'must_change_password' => true,
             'email_verified_at' => now(),
@@ -171,10 +176,10 @@ class UserController extends Controller
             Arr::only($data, array_merge(['employee_no'], array_keys($this->profileRules())))
         );
         $this->rbac->syncUserRoles($user, $this->keepUnassignable($user, $data['roles']));
-        $this->audit->log('user_created', $user, [], ['email' => $user->email, 'temp_password' => '[GENERATED]']);
+        $this->audit->log('user_created', $user, [], ['email' => $user->email, 'temp_password' => '[STANDARD]']);
 
         return redirect()->route('users.index')
-            ->with('status', "User created. Temporary password: {$tempPassword} (share securely; the user must change it on first login).");
+            ->with('status', "User created. {$data['name']} signs in with the first-time password {$first} and sets their own before they can go any further.");
     }
 
     public function edit(User $user): View
@@ -304,16 +309,26 @@ class UserController extends Controller
         return array_values(array_unique(array_merge($submitted, $hidden)));
     }
 
+    /**
+     * Put the account back to the first-time password.
+     *
+     * The same word as a new account, for the same reason: an employee who
+     * has forgotten theirs is told something they can be told over the
+     * counter, and the administrator does not have to read a random string
+     * off a message that has already gone. They are held on the
+     * change-password screen at the next sign-in exactly as a new account is.
+     */
     public function resetPassword(User $user): RedirectResponse
     {
-        $temp = Str::password(14);
+        $first = config('security.first_password');
+
         $user->update([
-            'password' => Hash::make($temp),
+            'password' => Hash::make($first),
             'must_change_password' => true,
         ]);
         $this->audit->log('password_reset_by_admin', $user);
 
-        return back()->with('status', "New temporary password: {$temp} (must be changed on next login).");
+        return back()->with('status', "Password reset. {$user->name} signs in with {$first} and sets their own before they can go any further.");
     }
 
     public function block(Request $request, User $user): RedirectResponse
@@ -374,8 +389,8 @@ class UserController extends Controller
     public function history(User $user): View
     {
         $logins = $user->failedLogins()->latest('occurred_at')->limit(50)->get();
-        $audits = \App\Models\AuditLog::where('user_id', $user->id)->latest()->limit(50)->get();
-        $activity = \App\Models\ActivityLog::where('user_id', $user->id)->latest()->limit(50)->get();
+        $audits = AuditLog::where('user_id', $user->id)->latest()->limit(50)->get();
+        $activity = ActivityLog::where('user_id', $user->id)->latest()->limit(50)->get();
 
         return view('admin.users.history', compact('user', 'logins', 'audits', 'activity'));
     }
