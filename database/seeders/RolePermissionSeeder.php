@@ -56,6 +56,19 @@ class RolePermissionSeeder extends Seeder
         'reports.security' => ['Generate & export security reports', 'reports'],
     ];
 
+    /**
+     * What every person on the payroll can do with their own leave.
+     *
+     * Held by Employee, Department Head, HR and the Mayor. Not by the System
+     * Administrator, whose account operates the system rather than working in
+     * it -- their dashboard is the security one and carries no leave figures.
+     *
+     * @var array<string>
+     */
+    private const EMPLOYEE_BASELINE = [
+        'dashboard.view', 'leave.apply', 'leave.view-own', 'leave.cancel',
+    ];
+
     public function run(): void
     {
         foreach ($this->permissions as $slug => [$name, $module]) {
@@ -95,9 +108,16 @@ class RolePermissionSeeder extends Seeder
             $role->permissions()->sync($ids);
         };
 
-        $grant($employee, [
-            'dashboard.view', 'leave.apply', 'leave.view-own', 'leave.cancel',
-        ]);
+        // Everybody on the payroll files leave, whatever else they do. A head
+        // of office, an HR officer and the Mayor are employees first and hold
+        // a duty second, so their roles carry this and then add to it.
+        //
+        // Without it a Department Head assigned only that role could not file
+        // an application, see one, or cancel one -- which is the workflow the
+        // LGU described, where the head applies and the Mayor and HR decide.
+        // It only worked at all because the demo accounts happened to hold
+        // Employee as well.
+        $grant($employee, self::EMPLOYEE_BASELINE);
         // Department Head recommends leave for its own office, which is the
         // first step of the workflow again.
         //
@@ -105,8 +125,9 @@ class RolePermissionSeeder extends Seeder
         // any office's leave, not just their own, and would make the
         // recommendation a decision. The permission below is scoped by the head
         // named on the department — see ApprovalWorkflowService::canRecommend().
-        $grant($deptHead, ['leave.review.department']);
+        $grant($deptHead, [...self::EMPLOYEE_BASELINE, 'leave.review.department']);
         $grant($hr, [
+            ...self::EMPLOYEE_BASELINE,
             'employees.view', 'employees.manage', 'employees.view-salary',
             'departments.manage', 'positions.manage', 'holidays.manage',
             'leave.requests.view-all', 'leave.balances.manage', 'leave-types.manage',
@@ -115,7 +136,10 @@ class RolePermissionSeeder extends Seeder
         // Mayor and HR are the two authorized approvers. Any ONE of them can
         // decide an application — see ApprovalWorkflowService, which gates on
         // the permission rather than on a role slug.
-        $grant($mayor, ['leave.approve.final', 'leave.requests.view-all']);
+        $grant($mayor, [
+            ...self::EMPLOYEE_BASELINE,
+            'leave.approve.final', 'leave.requests.view-all',
+        ]);
         $grant($sysAdmin, [
             'dashboard.view', 'users.manage', 'users.block', 'users.reset-password',
             'users.assign-roles', 'users.history', 'rbac.manage', 'settings.manage',

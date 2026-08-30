@@ -289,6 +289,24 @@
       bootstrap.Modal.getOrCreateInstance(el).show();
     });
 
+    // A row menu inside a scrollable table is cut off by it.
+    //
+    // .table-responsive is overflow-x:auto, and CSS forces the other axis to
+    // auto the moment one is constrained -- so a dropdown that opens downward
+    // is clipped at the container's edge, which on the user list left two of
+    // its four items unreachable. The container lets the menu out while it is
+    // open and goes back to scrolling when it closes.
+    //
+    // Delegated, so rows the live filter swaps in are covered too, and read
+    // off Bootstrap's own events rather than a guess about which click opened
+    // what.
+    ['show.bs.dropdown', 'hide.bs.dropdown'].forEach(function (event) {
+      document.addEventListener(event, function (e) {
+        var scroller = e.target.closest && e.target.closest('.table-responsive');
+        if (scroller) scroller.classList.toggle('menu-open', event === 'show.bs.dropdown');
+      });
+    });
+
     // A submit that cannot succeed, switched off until it can.
     //
     // The rule is in the controller: roles are required there and a submission

@@ -155,11 +155,27 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label" for="f-birth">Birth date <span class="req">*</span></label>
+                                {{-- A native picker opens at its max when the
+                                     field is empty, so with only a max this
+                                     one opened fifteen years ago and looked
+                                     stale. A min bounds the range as well, so
+                                     the year selector offers the years an
+                                     employee could actually have been born in
+                                     rather than an unbounded spinner.
+
+                                     A century back, not a working lifetime: a
+                                     browser bound tighter than the server's
+                                     rule would silently refuse something the
+                                     server would have accepted, and the
+                                     browser check is the convenience here, not
+                                     the rule. --}}
                                 <input id="f-birth" type="date" name="birth_date"
                                        class="form-control @error('birth_date') is-invalid @enderror"
                                        value="{{ old('birth_date', $p?->birth_date?->toDateString()) }}"
+                                       min="{{ now()->subYears(100)->toDateString() }}"
                                        max="{{ now()->subYears(15)->toDateString() }}" required>
                                 @error('birth_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                <div class="form-text">Must be 15 or older.</div>
                             </div>
 
                             <div class="col-md-4">
@@ -269,8 +285,10 @@
                                 <input id="f-hired" type="date" name="date_hired"
                                        class="form-control @error('date_hired') is-invalid @enderror"
                                        value="{{ old('date_hired', $p?->date_hired?->toDateString()) }}"
+                                       min="{{ now()->subYears(100)->toDateString() }}"
                                        max="{{ now()->toDateString() }}" required>
                                 @error('date_hired')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                <div class="form-text">Not in the future.</div>
                             </div>
                         </div>
                     </div>

@@ -217,6 +217,45 @@ class UserFormLayoutTest extends TestCase
             ->assertSessionHasErrors('roles');
     }
 
+    /**
+     * A native date picker opens at its max when the field is empty. Birth
+     * date had a max of fifteen years ago and no min, so it opened on August
+     * 2011 with an unbounded year spinner — which reads as a stale calendar
+     * rather than as an age rule.
+     */
+    public function test_the_date_pickers_have_a_range_rather_than_just_a_ceiling(): void
+    {
+        $html = $this->form();
+
+        foreach (['f-birth', 'f-hired'] as $id) {
+            preg_match('#<input id="'.$id.'"[^>]*>#s', $html, $m);
+            $this->assertNotEmpty($m, $id.' is gone');
+            $this->assertStringContainsString('min=', $m[0],
+                $id.' has no lower bound, so its year list is an unbounded spinner');
+            $this->assertStringContainsString('max=', $m[0]);
+        }
+
+        $this->assertStringContainsString('Must be 15 or older.', $html,
+            'the age rule is enforced but never stated');
+    }
+
+    /**
+     * And the bound must not be tighter than the server's rule, or the form
+     * silently refuses something the server would have accepted.
+     */
+    public function test_the_picker_never_refuses_what_the_server_allows(): void
+    {
+        $html = $this->form();
+
+        preg_match('#<input id="f-birth"[^>]*min="([^"]+)"#s', $html, $m);
+
+        $this->assertLessThan(
+            now()->subYears(70)->toDateString(),
+            $m[1],
+            'the browser bound is tighter than any rule the server enforces'
+        );
+    }
+
     /** The form still saves — layout work must not disturb the fields. */
     public function test_every_field_is_still_on_the_page(): void
     {

@@ -563,6 +563,11 @@ footer.app-foot{ text-align:center; color:var(--muted-2); font-size:.76rem; padd
 .lms-sidebar{ max-height:100vh; }
 .lms-nav{ overflow-y:auto; overscroll-behavior:contain; }
 .table-responsive{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+/* While a row menu is open the container stops clipping, or the menu is cut
+   off at its edge: constraining overflow-x forces overflow-y to auto as well,
+   which left two of the user list's four row actions unreachable. The class is
+   put on by the dropdown's own show/hide events. */
+.table-responsive.menu-open{ overflow:visible; }
 
 @media print{
   /* The scroll container must not clip the sheet on paper. */
