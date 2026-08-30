@@ -144,6 +144,79 @@ class UserFormLayoutTest extends TestCase
         }
     }
 
+    // ------------------------------------------------- the button that waits
+
+    /**
+     * Create user is switched off until a role is chosen.
+     *
+     * The rule is in UserController -- roles are required there and a
+     * submission without one is rejected whatever the browser did. This is the
+     * affordance in front of it.
+     */
+    public function test_the_form_says_a_role_has_to_be_chosen(): void
+    {
+        $html = $this->form();
+
+        $this->assertMatchesRegularExpression('#<form method="POST"[^>]*data-requires-checked="roles\[\]"#s', $html,
+            'nothing tells the page which boxes gate the button');
+        $this->assertStringContainsString('Choose at least one role first.', $html);
+        $this->assertStringContainsString('data-requires-hint', $html);
+    }
+
+    /**
+     * The button is NOT rendered disabled. With the script gone it stays
+     * pressable and the server explains itself, which beats a dead button and
+     * no reason for it.
+     */
+    public function test_the_button_is_not_dead_without_the_script(): void
+    {
+        $html = $this->form();
+
+        preg_match('#<button class="btn btn-lgu" type="submit">.*?</button>#s', $html, $m);
+        $this->assertNotEmpty($m, 'the submit button is gone');
+        $this->assertStringNotContainsString('disabled', $m[0],
+            'a browser without the script can never submit this form');
+
+        $this->assertStringContainsString('submit.disabled = !chosen',
+            file_get_contents(public_path('js/app.js')),
+            'nothing switches the button off when no role is chosen');
+    }
+
+    /** The hint is hidden when a role is already chosen — an edit, or a retry. */
+    public function test_the_hint_is_absent_once_a_role_is_chosen(): void
+    {
+        $this->seedCore();
+        $this->actingAs($this->makeUser('system-admin'));
+        session(['otp_verified' => true]);
+
+        $employee = \App\Models\Role::where('slug', 'employee')->firstOrFail();
+        $user = $this->makeUser('employee');
+        \App\Models\EmployeeProfile::factory()->create([
+            'user_id' => $user->id,
+            'department_id' => \App\Models\Department::factory()->create()->id,
+            'position_id' => \App\Models\Position::factory()->create()->id,
+        ]);
+
+        $html = $this->get('/users/'.$user->id.'/edit')->assertOk()->getContent();
+
+        preg_match('#<p class="form-actions-hint"[^>]*>#', $html, $m);
+        $this->assertStringContainsString('hidden', $m[0],
+            'the hint shows on a form that already has a role');
+        $this->assertNotNull($employee);
+    }
+
+    /** The server is still the rule, whatever the button did. */
+    public function test_a_submission_with_no_role_is_still_refused(): void
+    {
+        $this->seedCore();
+        $this->actingAs($this->makeUser('system-admin'));
+        session(['otp_verified' => true]);
+
+        $this->from('/users/create')
+            ->post('/users', ['name' => 'Juan Dela Cruz', 'email' => 'juan@alicia.gov.ph'])
+            ->assertSessionHasErrors('roles');
+    }
+
     /** The form still saves — layout work must not disturb the fields. */
     public function test_every_field_is_still_on_the_page(): void
     {

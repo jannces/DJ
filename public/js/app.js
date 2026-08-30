@@ -289,6 +289,31 @@
       bootstrap.Modal.getOrCreateInstance(el).show();
     });
 
+    // A submit that cannot succeed, switched off until it can.
+    //
+    // The rule is in the controller: roles are required there and a submission
+    // without one is rejected whatever the browser did. This is the affordance
+    // in front of it, and the button is not rendered disabled in the markup --
+    // with this script gone it stays pressable and the server explains itself,
+    // which beats a dead button and no reason for it.
+    document.querySelectorAll('form[data-requires-checked]').forEach(function (form) {
+      var boxes = form.querySelectorAll(
+        'input[type="checkbox"][name="' + form.dataset.requiresChecked + '"]'
+      );
+      var submit = form.querySelector('[type="submit"]');
+      var hint = form.querySelector('[data-requires-hint]');
+      if (!boxes.length || !submit) return;
+
+      function sync() {
+        var chosen = Array.prototype.some.call(boxes, function (box) { return box.checked; });
+        submit.disabled = !chosen;
+        if (hint) hint.hidden = chosen;
+      }
+
+      boxes.forEach(function (box) { box.addEventListener('change', sync); });
+      sync();
+    });
+
     // Live filtering.
     //
     // The toolbar asks the server and swaps the rows it gets back, so a search

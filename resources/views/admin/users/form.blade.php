@@ -29,6 +29,10 @@
     // is not in the list is preserved by the controller, not resubmitted here.
     $shownRoleIds = $roles->pluck('id')->all();
     $checkedRoles = array_values(array_intersect($assignedRoles, $shownRoleIds));
+
+    // Whether a role is chosen as the page renders -- after a rejected
+    // submission that is what was typed, not what is stored.
+    $rolesChosen = ! empty(old('roles', $checkedRoles));
 @endphp
 
 <div class="user-form">
@@ -47,7 +51,14 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ $creating ? route('users.store') : route('users.update', $user) }}">
+    {{-- The button is switched off until a role is chosen. This is the
+         affordance, not the rule: roles are required in UserController and a
+         submission without one is rejected there whatever the browser did. The
+         button is therefore NOT rendered disabled -- with the script off it
+         stays pressable and the server explains itself, which is better than a
+         dead button and no reason for it. --}}
+    <form method="POST" action="{{ $creating ? route('users.store') : route('users.update', $user) }}"
+          data-requires-checked="roles[]">
         @csrf
         @unless ($creating) @method('PUT') @endunless
 
@@ -326,6 +337,11 @@
         {{-- Below both columns and to the right, where a form's commit belongs
              once the columns beside each other have both been read. --}}
         <div class="form-actions">
+            {{-- Why the button is off, next to the button rather than up in the
+                 card the answer is in. --}}
+            <p class="form-actions-hint" data-requires-hint @if ($rolesChosen) hidden @endif>
+                Choose at least one role first.
+            </p>
             <a href="{{ route('users.index') }}" class="btn btn-outline-secondary">Cancel</a>
             <button class="btn btn-lgu" type="submit">
                 <i class="bi bi-check2 me-1"></i>{{ $creating ? 'Create user' : 'Save changes' }}

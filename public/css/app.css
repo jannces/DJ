@@ -2051,6 +2051,15 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   margin-top:1.25rem; flex-wrap:wrap;
 }
 .form-actions .btn{ min-width:8rem; }
+/* The reason the button is off, beside the button. It takes the room on the
+   left so the buttons stay where they were. */
+.form-actions-hint{
+  margin:0 auto 0 0; align-self:center;
+  font-size:.8rem; color:var(--k-warn);
+}
+/* Off, and plainly so -- a primary button at full strength that does nothing
+   when pressed reads as broken rather than as waiting. */
+.form-actions .btn:disabled{ opacity:.5; cursor:not-allowed; }
 .user-form .card{ margin-bottom:0; }
 .user-form .card-header{
   display:flex; align-items:baseline; justify-content:space-between; gap:.75rem;
