@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Archive;
 use App\Models\Department;
+use App\Models\EmployeeProfile;
 use App\Models\Permission;
 use App\Models\Position;
 use App\Models\Role;
@@ -71,6 +72,9 @@ class UserController extends Controller
             'departments' => Department::orderBy('name')->get(),
             'positions' => Position::orderBy('title')->get(),
             'assignedRoles' => [],
+            // So that adding an account does not begin with opening the
+            // employee list and reading the last number off the bottom.
+            'suggestedEmployeeNo' => EmployeeProfile::nextEmployeeNo(),
         ]);
     }
 
@@ -139,7 +143,13 @@ class UserController extends Controller
             'username' => ['required', 'alpha_dash', 'min:3', 'max:255', 'unique:users,username'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'employee_no' => ['required', 'string', 'max:50', 'unique:employee_profiles,employee_no'],
-        ], $this->roleRules(), $this->profileRules()), self::messages());
+        ], $this->roleRules(), $this->profileRules()), self::messages() + [
+            // Two administrators adding accounts at the same time are offered
+            // the same number. Rather than only refusing it, say which one is
+            // free -- the point of the suggestion is not having to go and look.
+            'employee_no.unique' => 'That employee number is already taken. '
+                .EmployeeProfile::nextEmployeeNo().' is free.',
+        ]);
 
         $tempPassword = Str::password(14);
         $user = User::create([
