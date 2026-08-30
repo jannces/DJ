@@ -2966,6 +2966,38 @@ span.dash-link{ justify-content:flex-start; }
    URL whose panel is closed. */
 .modal-footer .btn{ min-width:7rem; }
 
+/* ---- What changed, in the audit trail ------------------------------------
+   This column used to be a block of pretty-printed JSON: the whole row before
+   the save, the differences after it, braces and quotes and nulls. The person
+   who reads the audit trail is an HR officer answering "who changed this and
+   when", and they were being asked to read a data structure.
+
+   The wording is done in PHP (AuditNarrator). What is left here is the shape:
+   one line per field, the label quiet, the old value struck through, the new
+   value the only thing in full contrast — so the eye lands on what it is. */
+.audit-changes{ max-width:34rem; }
+.audit-change{
+  display:flex; align-items:baseline; flex-wrap:wrap; gap:.3rem;
+  padding:.1rem 0; line-height:1.45;
+}
+.audit-change + .audit-change{ border-top:1px dashed var(--border); }
+.audit-field{ color:var(--muted); }
+.audit-field::after{ content:":"; }
+.audit-was{
+  color:var(--muted-2); text-decoration:line-through;
+  text-decoration-thickness:1px;
+}
+.audit-arrow{ color:var(--muted-2); font-size:.7rem; }
+.audit-now{ color:var(--text); font-weight:600; }
+/* Most entries change one or two fields. The few that change a dozen stay one
+   row high until asked, so a single wide entry cannot push the rest of the
+   page out of reach. */
+.audit-more > summary{
+  color:var(--primary); cursor:pointer; padding:.15rem 0;
+  font-size:var(--fs-xs);
+}
+.audit-more[open] > summary{ color:var(--muted); }
+
 /* ============================================================================
    TWO MESSAGE CHANNELS
    ----------------------------------------------------------------------------

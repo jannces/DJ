@@ -17,7 +17,7 @@
         <div class="card"><div class="card-header fw-semibold">Audit history</div>
             <ul class="list-group list-group-flush">
                 @forelse ($audits as $a)
-                    <li class="list-group-item small"><span class="fw-semibold">{{ $a->action }}</span>
+                    <li class="list-group-item small"><span class="fw-semibold">{{ $a->action_label }}</span>
                         <div class="text-muted">{{ $a->created_at->format('M d, H:i') }} &middot; {{ $a->ip }}</div></li>
                 @empty <li class="list-group-item text-muted small">None recorded.</li> @endforelse
             </ul></div>

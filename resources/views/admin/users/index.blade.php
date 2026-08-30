@@ -72,7 +72,7 @@
                                             {{-- The reason is asked inside the confirmation, not by a
                                                  browser prompt after it. --}}
                                             <form method="POST" action="{{ route('users.block', $user) }}"
-                                                  data-confirm="Block {{ $user->name }}? They will not be able to sign in."
+                                                  data-confirm="Block {{ $user->name }}? Use this when something is wrong with the account's activity — sign-ins from somewhere they are not, or actions they say were not theirs. They cannot sign in until the block is lifted."
                                                   data-confirm-tone="danger"
                                                   data-confirm-input="Reason for blocking"
                                                   data-confirm-field="reason">
@@ -82,12 +82,20 @@
                                         </li>
                                     @endif
                                     <li>
+                                        {{-- Deactivate and Block both stop a sign-in, and the reason
+                                             for choosing between them is the only thing that tells
+                                             them apart — so it is written into the question rather
+                                             than left for the administrator to remember. --}}
                                         <form method="POST" action="{{ route('users.toggle-active', $user) }}"
-                                              data-confirm="{{ $user->status === 'inactive' ? 'Activate' : 'Deactivate' }} {{ $user->name }}?"
+                                              data-confirm="{{ $user->status === 'inactive'
+                                                    ? 'Activate '.$user->name.'? They can sign in again from now on.'
+                                                    : 'Deactivate '.$user->name.'? Use this while they are away — on leave, or on detail elsewhere — so nobody can sign in as them in the meantime. Nothing is wrong with the account; activate it when they are back.' }}"
                                               data-confirm-tone="{{ $user->status === 'inactive' ? 'success' : 'danger' }}">@csrf<button class="dropdown-item">{{ $user->status==='inactive'?'Activate':'Deactivate' }}</button></form>
                                     </li>
                                     <li><hr class="dropdown-divider"></li>
-                                    <li><form method="POST" action="{{ route('users.archive', $user) }}" data-confirm="Archive {{ $user->name }}? The account will no longer appear in the list.">@csrf<button class="dropdown-item text-warning">Archive</button></form></li>
+                                    <li><form method="POST" action="{{ route('users.archive', $user) }}"
+                                              data-confirm="Archive {{ $user->name }}? Use this when they have left the LGU — resigned, dismissed or died. The account leaves the list but nothing is deleted: their leave record, their filed CSC Form 6 copies and their employee number all stay, and the account can be restored."
+                                              data-confirm-tone="danger">@csrf<button class="dropdown-item text-warning">Archive</button></form></li>
                                 </ul>
                             </div>
                         @endif
