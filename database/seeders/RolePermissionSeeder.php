@@ -136,9 +136,14 @@ class RolePermissionSeeder extends Seeder
         // Mayor and HR are the two authorized approvers. Any ONE of them can
         // decide an application — see ApprovalWorkflowService, which gates on
         // the permission rather than on a role slug.
+        // The Mayor decides applications and could not open Reports, so the
+        // person with final say had no way to look at the figures behind it.
+        // reports.generate is the right to run reports; each report names the
+        // permission its subject needs, so this opens the six leave ones and
+        // none of the four security ones.
         $grant($mayor, [
             ...self::EMPLOYEE_BASELINE,
-            'leave.approve.final', 'leave.requests.view-all',
+            'leave.approve.final', 'leave.requests.view-all', 'reports.generate',
         ]);
         $grant($sysAdmin, [
             'dashboard.view', 'users.manage', 'users.block', 'users.reset-password',

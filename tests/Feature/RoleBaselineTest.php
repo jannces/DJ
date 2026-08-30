@@ -122,6 +122,56 @@ class RoleBaselineTest extends TestCase
         $this->assertFalse($admin->hasPermission('employees.view-salary'));
     }
 
+    /**
+     * The Mayor decides applications, so the Mayor can look at the figures.
+     *
+     * reports.generate is the right to run reports, not the right to read what
+     * is in them: each report names the permission its subject needs, checked
+     * again in ReportController. So this opens the leave reports and none of
+     * the security ones.
+     */
+    public function test_the_mayor_can_run_the_leave_reports_and_not_the_security_ones(): void
+    {
+        $mayor = $this->makeUser('mayor');
+
+        $this->assertTrue($mayor->hasPermission('reports.generate'));
+        $this->assertFalse($mayor->hasPermission('reports.security'));
+
+        $visible = \App\Services\Reports\ReportService::visibleTo($mayor);
+
+        $this->assertArrayHasKey('leave', $visible, 'the Mayor sees no leave reports');
+        $this->assertArrayNotHasKey('security', $visible,
+            'the Mayor can open the intrusion and audit reports');
+        $this->assertCount(6, $visible['leave']);
+    }
+
+    /** And the page answers, rather than 403-ing on the way in. */
+    public function test_the_reports_page_opens_for_the_mayor(): void
+    {
+        $this->actingAs($this->makeUser('mayor'));
+        session(['otp_verified' => true]);
+
+        $this->get('/reports')->assertOk()
+            ->assertSee('Employee Leave Report')
+            ->assertDontSee('Intrusion Report');
+    }
+
+    /**
+     * A head is scoped to their own office, and every report in the catalogue
+     * is LGU-wide. reports.generate on its own would give them a nav item to
+     * an empty page; the permission the reports need would give them every
+     * office's applications, which is the thing the scoping exists to prevent.
+     */
+    public function test_a_department_head_is_not_given_reports(): void
+    {
+        $head = $this->makeUser('department-head');
+
+        $this->assertFalse($head->hasPermission('reports.generate'));
+        $this->assertFalse($head->hasPermission('leave.requests.view-all'),
+            'a head can see every office\'s applications, not just their own');
+        $this->assertSame([], \App\Services\Reports\ReportService::visibleTo($head));
+    }
+
     /** Nothing holds a permission that satisfies every check. */
     public function test_no_role_holds_everything(): void
     {
