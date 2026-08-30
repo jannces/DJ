@@ -2976,6 +2976,12 @@ span.dash-link{ justify-content:flex-start; }
    one line per field, the label quiet, the old value struck through, the new
    value the only thing in full contrast — so the eye lands on what it is. */
 .audit-changes{ max-width:34rem; }
+/* The sentence first, because it is the answer. A reader who stops here has
+   what they came for; the fields below are the working. */
+.audit-meaning{
+  margin:0 0 .35rem; color:var(--text-2); line-height:1.5;
+  padding-left:.6rem; border-left:2px solid var(--border-strong);
+}
 .audit-change{
   display:flex; align-items:baseline; flex-wrap:wrap; gap:.3rem;
   padding:.1rem 0; line-height:1.45;
@@ -2983,6 +2989,12 @@ span.dash-link{ justify-content:flex-start; }
 .audit-change + .audit-change{ border-top:1px dashed var(--border); }
 .audit-field{ color:var(--muted); }
 .audit-field::after{ content:":"; }
+/* What that one field did. It takes the whole width so it reads as a remark
+   about the line above rather than as another value on it. */
+.audit-note{
+  flex:1 0 100%; color:var(--muted); font-size:var(--fs-xs);
+  line-height:1.45; padding-left:.1rem;
+}
 .audit-was{
   color:var(--muted-2); text-decoration:line-through;
   text-decoration-thickness:1px;

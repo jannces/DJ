@@ -59,6 +59,13 @@ final class AuditNarrator
         'last_login_at' => 'Last signed in',
         'employee_no' => 'Employee number',
         'reference_no' => 'Reference number',
+        'contact_no' => 'Contact number',
+        'birth_date' => 'Date of birth',
+        'date_hired' => 'Date hired',
+        'date_filed' => 'Date filed',
+        'employment_status' => 'Employment status',
+        'signature_path' => 'Signature file',
+        'is_solo_parent' => 'Solo parent',
         'department_id' => 'Office',
         'position_id' => 'Position',
         'leave_type_id' => 'Leave type',
@@ -221,10 +228,11 @@ final class AuditNarrator
     // ----------------------------------------------------------- the changes
 
     /**
-     * The fields that moved, as [label, from, to]. `from` is null when there
-     * was no previous value to compare against.
+     * The fields that moved, as [label, from, to, note]. `from` is null when
+     * there was no previous value to compare against; `note` is null where
+     * the field speaks for itself.
      *
-     * @return list<array{label: string, from: ?string, to: string}>
+     * @return list<array{label: string, from: ?string, to: string, note: ?string}>
      */
     public static function changes(AuditLog $log): array
     {
@@ -274,20 +282,169 @@ final class AuditNarrator
         return $out;
     }
 
-    /** @return array{label: string, from: ?string, to: string} */
+    /** @return array{label: string, from: ?string, to: string, note: ?string} */
     private static function line(string $key, mixed $from, mixed $to): array
     {
         // The value itself is never stored, so there is nothing to show and
         // nothing to compare -- only that it changed.
         if ($to === '[REDACTED]') {
-            return ['label' => self::label($key), 'from' => null, 'to' => 'changed (never shown)'];
+            return [
+                'label' => self::label($key), 'from' => null,
+                'to' => 'changed (never shown)', 'note' => self::note($key, $to),
+            ];
         }
 
         return [
             'label' => self::label($key),
             'from' => $from === null ? null : self::value($key, $from),
             'to' => self::value($key, $to),
+            'note' => self::note($key, $to),
         ];
+    }
+
+    // --------------------------------------------------------- what it means
+
+    /**
+     * What the entry means, in one sentence.
+     *
+     * A field and its new value say what was written. They do not say what it
+     * did -- and that is the question somebody opens the audit trail with.
+     * "Status: active -> blocked" is a fact about a column; "they cannot sign
+     * in until an administrator lifts it" is the thing the reader came for.
+     *
+     * These are descriptions of behaviour that is actually in the system, not
+     * general advice: each one is a rule implemented somewhere else in this
+     * codebase, named in the comment beside it. If a rule changes, the
+     * sentence here is wrong and has to change with it.
+     */
+    public static function meaning(AuditLog $log): ?string
+    {
+        $new = $log->new_values ?? [];
+
+        return match ($log->action) {
+            // UserController::toggleActive. Deactivating is for somebody who
+            // is away; blocking is for an account behaving oddly. Both stop a
+            // sign-in, so which one this was is worth stating.
+            'user_status_toggled' => ($new['status'] ?? null) === 'inactive'
+                ? 'The account was switched off. Nobody can sign in as them until it is switched back on — this is what is used while somebody is away.'
+                : 'The account was switched back on. They can sign in again.',
+
+            // LoginSecurityService::blockAccount, reached from recordFailure.
+            'account_blocked' => 'The system blocked the account itself after too many wrong passwords in a row. It unblocks on its own when the block expires.',
+            'user_blocked_manual' => 'An administrator blocked the account, which is what is used when something is wrong with its activity. They cannot sign in until it is lifted.',
+            'account_unblocked' => 'The block was lifted. They can sign in again, and the failed-attempt count starts from zero.',
+
+            // UserController::archive -- soft delete. Nothing is destroyed.
+            'user_archived' => 'The account was archived, which is what happens when somebody leaves the LGU. It drops out of the list, but nothing about it is deleted: their leave record, their filed CSC Form 6 copies and their employee number all stay, and the account can be restored.',
+            'user_restored' => 'The archived account was brought back. It appears in the list again, with everything it had.',
+
+            // UserController::resetPassword + ForcePasswordChange middleware.
+            'password_reset_by_admin' => 'An administrator issued a temporary password. The employee is held on the change-password screen at their next sign-in until they set their own.',
+            'password_changed' => 'The employee set a new password themselves. The password is never stored in a form anyone can read, here or in the database.',
+            'password_reset' => 'The password was set again through the reset link sent to their email address.',
+
+            'user_access_changed' => 'What this person is allowed to open was changed by hand, on top of what their role already gives them.',
+            'user_created' => 'A new account was opened. The employee number was issued by the system and cannot be typed in or reused.',
+            // Worth saying even though it is obvious, because the trail keeps
+            // the whole row and the reader cannot otherwise tell that the two
+            // lines below are all that moved.
+            'user_updated' => 'An administrator changed this account. Only the fields below moved; everything else on it is as it was.',
+            'updated' => 'This record was changed. Only the fields below moved.',
+            'created' => 'This record was added, with the values below.',
+            'deleted' => 'This record was removed. What it held is listed below, because the trail is now the only copy of it.',
+            'restored' => 'A removed record was brought back.',
+
+            // RoleController. A role is held by several people at once.
+            'role_updated' => 'What a role is allowed to do was changed. This applies to everybody holding that role, not to one person.',
+
+            // OtpService mails the code; OtpController checks it.
+            'otp_failed' => 'The one-time code entered after the password was wrong. On its own this is usually a mistyped code.',
+            'otp_verified' => 'The one-time code sent to their email address was correct, so the sign-in completed.',
+
+            // IntrusionDetectionService::block -- automatic, on repeated events.
+            'ip_auto_blocked' => 'The system blocked this address on its own, after repeated attempts from it in a short time. No administrator decided this.',
+            'ip_blocked_manual' => 'An administrator blocked this address by hand. Nothing from it reaches the system until the block is lifted or expires.',
+            'ip_blocked_from_evidence' => 'An administrator blocked this address from the intrusion list, on the attempts recorded against it.',
+            'ip_blocked_again' => 'A block that had been lifted was put back, as a fresh decision by the administrator named above rather than by the system.',
+            'ip_unblocked' => 'The block was lifted, so this address can reach the system again. This is what is used when the block caught somebody who should not have been caught.',
+            'intrusions_reviewed' => 'An administrator marked intrusion alerts as seen. The alerts themselves stay in the log; only the "needs attention" flag was cleared.',
+            'intrusion_false_positives_purged' => 'Entries recorded as attacks that were not were removed from the intrusion log, so the counts reflect real attempts.',
+
+            // ApprovalWorkflowService -- CSC Form No. 6, parts 7.B and 7.C.
+            'leave_submitted' => 'A leave application was filed and is now waiting on the first person in its approval route.',
+            'leave_resubmitted' => 'A returned application was corrected and filed again. It starts its approval route from the beginning.',
+            'leave_recommended' => 'The head of office recommended the application — part 7.B of the CSC form. It now goes to the approving authority.',
+            'leave_approved' => 'The application was approved. The days are deducted from the employee\'s credits and the CSC form is complete.',
+            'leave_disapproved' => 'The application was disapproved. No credits are deducted, and the reason is recorded on the form.',
+            'leave_cancelled' => 'The employee withdrew the application before it was decided. Nothing is deducted.',
+
+            'settings_updated' => 'A system-wide setting was changed. It applies to everyone from now on.',
+            'device_registered' => 'A computer was added to the list allowed to reach the system on the LGU network.',
+            'device_deactivated' => 'A registered computer was switched off. The system stops accepting it.',
+
+            'login' => null,   // The user, time and address already say it.
+            'logout' => null,
+
+            default => null,
+        };
+    }
+
+    /**
+     * What one changed field means. Null where the label and value already
+     * say everything -- a name is a name, and explaining it is noise.
+     */
+    private static function note(string $key, mixed $to): ?string
+    {
+        // `events` and the like arrive as arrays, and a note that reads a
+        // value has to survive one.
+        $plain = is_scalar($to) ? (string) $to : null;
+        $yes = $to === true || $plain === '1';
+
+        return match (Str::afterLast($key, '.')) {
+            // LoginSecurityService::recordFailure blocks at this count.
+            'failed_attempts' => $plain === '0'
+                ? 'The count was cleared, so the account is no longer near locking itself.'
+                : 'Wrong passwords in a row. At '.SystemSetting::get('auth.lockout_attempts', 3)
+                    .' the account blocks itself.',
+
+            // ForcePasswordChange middleware.
+            'must_change_password' => $yes
+                ? 'They are held on the change-password screen at their next sign-in until they set one.'
+                : 'They set a password, so the hold is gone.',
+
+            // UnblockExpired, on the schedule.
+            'blocked_until', 'expires_at' => 'It lifts itself at this time; nobody has to remember to.',
+            'blocked_reason' => 'Kept with the account so whoever looks next can see why.',
+
+            'password' => 'The password is never stored in a readable form, so the trail can record that it changed and nothing more.',
+            'temp_password' => 'Issued by the system, shown once, and replaced by the employee at their next sign-in.',
+
+            // OtpService mails the code to this address.
+            'email' => 'Sign-in codes and notices go to this address from now on.',
+
+            // ApprovalWorkflowService routes on departments.head_user_id.
+            'department_id' => 'Their leave applications now go to the head of this office for recommendation.',
+            'head_user_id' => 'Leave from this office now goes to this person for recommendation.',
+
+            // EmployeeProfile::nextEmployeeNo.
+            'employee_no' => 'Issued once and never handed out again, even after the account is archived.',
+
+            'status' => match ($plain) {
+                'blocked' => 'They cannot sign in until the block is lifted or expires.',
+                'inactive' => 'They cannot sign in while the account is switched off.',
+                'active' => 'They can sign in.',
+                default => null,
+            },
+            'deleted_at' => $to === null
+                ? 'The account is no longer archived.'
+                : 'Archived. It leaves the list; nothing about it is deleted.',
+
+            'roles' => 'Changes which pages and actions they can reach.',
+            'events' => 'How many attempts were recorded before this was raised.',
+            'hours' => 'How long the block lasts before it lifts itself.',
+
+            default => null,
+        };
     }
 
     private static function same(mixed $a, mixed $b): bool
@@ -340,7 +497,7 @@ final class AuditNarrator
         $text = (string) $value;
 
         if (self::looksLikeATime($text)) {
-            return self::time($text);
+            return self::time($key, $text);
         }
 
         return Str::limit($text, 90);
@@ -383,7 +540,7 @@ final class AuditNarrator
         return (bool) preg_match('/^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}(:\d{2})?)?/', $text);
     }
 
-    private static function time(string $text): string
+    private static function time(string $key, string $text): string
     {
         try {
             $when = Carbon::parse($text);
@@ -392,10 +549,16 @@ final class AuditNarrator
         }
 
         // A date with no time of day is a date; printing "12:00 AM" onto it
-        // invents a precision that was never recorded.
-        return strlen(trim($text)) <= 10
-            ? $when->format('M d, Y')
-            : $when->format('M d, Y g:i A');
+        // invents a precision that was never recorded. A `date` cast stores
+        // midnight into a datetime column, so the column's shape cannot
+        // settle it -- a birth date arrives as "1980-05-09 00:00:00". The
+        // name of the field can: date_hired and birth_date are days.
+        $name = Str::afterLast($key, '.');
+        $isADay = strlen(trim($text)) <= 10
+            || str_ends_with($name, '_date')
+            || str_starts_with($name, 'date_');
+
+        return $isADay ? $when->format('M d, Y') : $when->format('M d, Y g:i A');
     }
 
     // ------------------------------------------------------------- lookups

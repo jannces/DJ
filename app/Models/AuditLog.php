@@ -50,12 +50,24 @@ class AuditLog extends Model
     }
 
     /**
-     * Only the fields that moved, as [label, from, to].
+     * Only the fields that moved, as [label, from, to, note].
      *
-     * @return list<array{label: string, from: ?string, to: string}>
+     * @return list<array{label: string, from: ?string, to: string, note: ?string}>
      */
     protected function changeList(): Attribute
     {
         return Attribute::get(fn () => AuditNarrator::changes($this));
+    }
+
+    /**
+     * What the entry means, in one sentence.
+     *
+     * The columns say what was written; this says what it did. "Status:
+     * active -> blocked" is a fact about a column, and "they cannot sign in
+     * until an administrator lifts it" is why anyone opened the page.
+     */
+    protected function meaning(): Attribute
+    {
+        return Attribute::get(fn () => AuditNarrator::meaning($this));
     }
 }

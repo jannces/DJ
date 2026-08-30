@@ -20,11 +20,19 @@
             <td><span class="badge bg-light text-dark">{{ $l->action_label }}</span></td>
             <td class="small">{{ $l->target_label ?? '—' }}</td>
             <td class="small">{{ $l->ip }}</td>
-            {{-- What changed, in words. The trail still stores the row as it
-                 was and the row as it is; this column shows the difference
-                 between them, which is the part anyone actually reads. --}}
+            {{-- What changed, in words, and what it did.
+
+                 The trail stores the row as it was and the row as it is; the
+                 difference between them is the part anyone reads. But a field
+                 and its new value only say what was written — "Status: active
+                 → blocked" is a fact about a column. Why somebody opened this
+                 page is the sentence underneath it: they cannot sign in until
+                 an administrator lifts it. --}}
             <td class="small audit-changes">
                 @php $changes = $l->change_list; @endphp
+                @if ($l->meaning)
+                    <p class="audit-meaning">{{ $l->meaning }}</p>
+                @endif
                 @forelse ($changes as $i => $c)
                     @if ($i === 3 && count($changes) > 4)
                         <details class="audit-more">
@@ -38,12 +46,15 @@
                             <span class="visually-hidden">changed to</span>
                         @endif
                         <span class="audit-now">{{ $c['to'] }}</span>
+                        @if ($c['note'])
+                            <span class="audit-note">{{ $c['note'] }}</span>
+                        @endif
                     </div>
                     @if ($loop->last && $i >= 3 && count($changes) > 4)
                         </details>
                     @endif
                 @empty
-                    <span class="text-muted">—</span>
+                    @unless ($l->meaning)<span class="text-muted">—</span>@endunless
                 @endforelse
             </td>
         </tr>

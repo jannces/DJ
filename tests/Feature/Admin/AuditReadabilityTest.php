@@ -6,9 +6,11 @@ use App\Models\AuditLog;
 use App\Models\Department;
 use App\Models\EmployeeProfile;
 use App\Models\Position;
+use App\Models\SystemSetting;
 use App\Models\User;
 use App\Support\AuditNarrator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 /**
@@ -278,13 +280,17 @@ class AuditReadabilityTest extends TestCase
             substr_count($html, '</details>'), 'the fold is not closed');
     }
 
-    /** An entry with nothing to list says nothing rather than an empty box. */
-    public function test_an_entry_with_no_field_changes_is_left_blank(): void
+    /**
+     * An entry with nothing to list and nothing to say shows a dash, not an
+     * empty box -- and not an explanation nobody wrote.
+     */
+    public function test_an_entry_with_nothing_to_show_shows_a_dash(): void
     {
-        $entry = $this->entry('user_archived', null, null, User::class, $this->admin->id);
+        $entry = $this->entry('some_unnarrated_action', null, null, User::class, $this->admin->id);
 
         $this->assertSame([], $entry->change_list);
-        $this->page();
+        $this->assertNull($entry->meaning);
+        $this->assertStringContainsString('—', $this->page());
     }
 
     /** Settings are logged as key => [old, new] already; that shape holds. */
@@ -313,6 +319,83 @@ class AuditReadabilityTest extends TestCase
 
         $this->assertSame('Attempts recorded', $entry->change_list[1]['label']);
         $this->assertSame('3 entries', $entry->change_list[1]['to']);
+    }
+
+    // ------------------------------------------------- what it actually did
+
+    /**
+     * A field and its new value say what was written; they do not say what it
+     * did, and that is the question somebody opens the audit trail with.
+     */
+    public function test_each_entry_says_what_it_meant(): void
+    {
+        $entry = $this->entry('account_blocked', ['reason' => 'Exceeded 3 failed login attempts'],
+            null, User::class, $this->admin->id);
+
+        $this->assertStringContainsString('after too many wrong passwords', $entry->meaning);
+        $this->assertStringContainsString('after too many wrong passwords', $this->page());
+    }
+
+    /** The one an administrator has to be able to tell apart from a block. */
+    public function test_deactivating_is_described_as_the_thing_it_is_for(): void
+    {
+        $away = $this->entry('user_status_toggled', ['status' => 'inactive'], null, User::class, $this->admin->id);
+        $back = $this->entry('user_status_toggled', ['status' => 'active'], null, User::class, $this->admin->id);
+
+        $this->assertStringContainsString('while somebody is away', $away->meaning);
+        $this->assertStringContainsString('can sign in again', $back->meaning);
+    }
+
+    /**
+     * An entry with no field changes carried nothing at all before. Archiving
+     * an account is the most consequential thing on the page and it printed a
+     * dash.
+     */
+    public function test_an_entry_with_no_fields_still_explains_itself(): void
+    {
+        $entry = $this->entry('user_archived', null, null, User::class, $this->admin->id);
+
+        $this->assertSame([], $entry->change_list);
+        $this->assertStringContainsString('nothing about it is deleted', $entry->meaning);
+        $this->assertStringContainsString('nothing about it is deleted', $this->page());
+    }
+
+    /** Per field, where the field has a consequence worth stating. */
+    public function test_a_field_carries_what_it_does(): void
+    {
+        $entry = $this->entry('user_updated', [
+            'status' => 'blocked', 'must_change_password' => 1, 'name' => 'Noly Jose Macarubbo',
+        ], $this->wholeRow, User::class, $this->admin->id);
+
+        $notes = collect($entry->change_list)->keyBy('label');
+
+        $this->assertStringContainsString('cannot sign in', $notes['Status']['note']);
+        $this->assertStringContainsString('change-password screen',
+            $notes['Must set a new password at next sign-in']['note']);
+        $this->assertNull($notes['Name']['note'], 'a name is being explained to somebody who can read it');
+    }
+
+    /** The threshold is a setting, so the sentence reads it rather than guessing. */
+    public function test_the_lockout_threshold_quoted_is_the_one_in_force(): void
+    {
+        SystemSetting::updateOrCreate(['key' => 'auth.lockout_attempts'],
+            ['value' => '5', 'type' => 'int', 'group' => 'auth']);
+        Cache::flush();
+
+        $entry = $this->entry('user_updated', ['failed_attempts' => 4],
+            $this->wholeRow, User::class, $this->admin->id);
+
+        $this->assertStringContainsString('At 5 the account blocks itself', $entry->change_list[0]['note']);
+    }
+
+    /**
+     * Descriptions are of behaviour that is in the system, not general
+     * advice, so an action nobody has written a sentence for gets none
+     * rather than an invented one.
+     */
+    public function test_an_unknown_action_is_not_given_an_invented_explanation(): void
+    {
+        $this->assertNull($this->entry('something_new_entirely', ['a' => 'b'])->meaning);
     }
 
     // ------------------------------------------- the record is not touched
