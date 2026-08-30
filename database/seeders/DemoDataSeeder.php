@@ -21,22 +21,18 @@ class DemoDataSeeder extends Seeder
 {
     public function run(): void
     {
-        $departments = collect([
-            ['name' => "Mayor's Office", 'code' => 'MO'],
-            ['name' => 'Human Resource Management Office', 'code' => 'HRMO'],
-            ['name' => 'Municipal Treasury Office', 'code' => 'MTO'],
-            ['name' => 'Municipal Engineering Office', 'code' => 'MEO'],
-            ['name' => 'Municipal Health Office', 'code' => 'MHO'],
-        ])->map(fn ($d) => Department::updateOrCreate(['code' => $d['code']], $d));
+        // The offices and positions are the LGU's own structure, not sample
+        // data, so they come from OrganizationSeeder and are seeded on every
+        // installation. This one only needs them present.
+        $this->call(OrganizationSeeder::class);
 
-        $positions = collect([
-            ['title' => 'Administrative Aide', 'salary_grade' => 'SG-4'],
-            ['title' => 'Administrative Officer II', 'salary_grade' => 'SG-11'],
-            ['title' => 'HR Management Officer', 'salary_grade' => 'SG-15'],
-            ['title' => 'Municipal Engineer', 'salary_grade' => 'SG-24'],
-            ['title' => 'Nurse II', 'salary_grade' => 'SG-16'],
-            ['title' => 'Municipal Mayor', 'salary_grade' => 'SG-27'],
-        ])->map(fn ($p) => Position::updateOrCreate(['title' => $p['title']], $p));
+        $departments = Department::whereIn('code', ['MO', 'HRMO', 'MTO', 'MEO', 'MHO'])
+            ->get()->keyBy('code');
+        $positions = Position::whereIn('title', [
+            'Administrative Aide IV', 'Administrative Officer II',
+            'Human Resource Management Officer II', 'Engineer II',
+            'Nurse II', 'Municipal Mayor',
+        ])->get()->keyBy('title');
 
         $password = Hash::make('Alicia@2026Demo!');
         $make = function (array $user, string $roleSlug, array $profile) use ($password): User {
@@ -73,7 +69,7 @@ class DemoDataSeeder extends Seeder
             'hr',
             ['employee_no' => 'EMP-0002', 'first_name' => 'Helen', 'last_name' => 'Reyes',
              'salary' => 42000, 'department_id' => $hrmo->id,
-             'position_id' => $positions->firstWhere('title', 'HR Management Officer')->id,
+             'position_id' => $positions->firstWhere('title', 'Human Resource Management Officer II')->id,
              'date_hired' => '2018-06-01', 'gender' => 'female', 'civil_status' => 'married',
              'address' => 'Barangay Calaocan, Alicia'],
         );
@@ -83,7 +79,7 @@ class DemoDataSeeder extends Seeder
             'department-head',
             ['employee_no' => 'EMP-0003', 'first_name' => 'Diego', 'last_name' => 'Santos',
              'salary' => 65000, 'department_id' => $meo->id,
-             'position_id' => $positions->firstWhere('title', 'Municipal Engineer')->id,
+             'position_id' => $positions->firstWhere('title', 'Engineer II')->id,
              'date_hired' => '2015-03-10', 'gender' => 'male', 'civil_status' => 'married',
              'address' => 'Barangay Magsaysay, Alicia'],
         );
@@ -105,7 +101,7 @@ class DemoDataSeeder extends Seeder
             'employee',
             ['employee_no' => 'EMP-0005', 'first_name' => 'Juan', 'last_name' => 'Dela Cruz',
              'salary' => 18000, 'department_id' => $meo->id,
-             'position_id' => $positions->firstWhere('title', 'Administrative Aide')->id,
+             'position_id' => $positions->firstWhere('title', 'Administrative Aide IV')->id,
              'date_hired' => '2023-02-20', 'gender' => 'male', 'civil_status' => 'single',
              'address' => 'Barangay Victoria, Alicia', 'is_solo_parent' => false],
         );

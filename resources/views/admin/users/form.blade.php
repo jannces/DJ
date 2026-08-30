@@ -177,6 +177,38 @@
                         <span class="card-note">printed on every CSC Form 6 this employee files</span>
                     </div>
                     <div class="card-body">
+                        {{-- An empty required dropdown with no explanation is a
+                             dead end, and it is the state a clean install
+                             starts in. Departments and positions are HR's to
+                             maintain, so a System Administrator -- who holds
+                             users.manage and not departments.manage -- is told
+                             who can add them rather than shown a link they
+                             cannot follow. --}}
+                        @if ($departments->isEmpty() || $positions->isEmpty())
+                            @php
+                                $missing = collect([
+                                    $departments->isEmpty() ? 'department' : null,
+                                    $positions->isEmpty() ? 'position' : null,
+                                ])->filter();
+                            @endphp
+                            <div class="alert alert-warning small" role="alert">
+                                <strong>No {{ $missing->map(fn ($m) => Str::plural($m))->join(' or ') }} to choose from.</strong>
+                                Every account has to name {{ $missing->count() > 1 ? 'both' : 'one' }},
+                                so this form cannot be completed until
+                                {{ $missing->count() > 1 ? 'they are' : 'it is' }} added.
+                                @can('departments.manage')
+                                    @if ($departments->isEmpty())
+                                        <a href="{{ route('departments.index') }}">Add a department</a>@if ($positions->isEmpty()), @endif
+                                    @endif
+                                    @if ($positions->isEmpty())
+                                        <a href="{{ route('positions.index') }}">add a position</a>
+                                    @endif
+                                @else
+                                    Ask HR to add {{ $missing->count() > 1 ? 'them' : 'it' }} first.
+                                @endcan
+                            </div>
+                        @endif
+
                         <div class="row g-3">
                             <div class="col-md-4">
                                 <label class="form-label" for="f-dept">Department <span class="req">*</span></label>
