@@ -103,6 +103,17 @@
         @endforeach
     </div>
 
+    @if ($n < 2)
+        {{-- A polyline through one point draws nothing at all, so the first
+             year of use rendered an empty grid. The markers are shown instead
+             — the figures are still readable — and the panel says plainly that
+             a trend needs a second year rather than looking broken. --}}
+        <p class="dash-note ml-single">
+            One year on record. This becomes a trend once there is a second one to
+            compare it with; the figures are on the markers and in the list.
+        </p>
+    @endif
+
     {{-- No legend row here: the breakdown beside the chart already carries a
          dot and a name for every line, and repeating them underneath was the
          same six labels twice. Identity is still never colour alone. --}}

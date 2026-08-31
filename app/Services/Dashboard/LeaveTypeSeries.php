@@ -303,7 +303,19 @@ final class LeaveTypeSeries
     public function byYear(int $years = 5): array
     {
         $latest = (int) now()->year;
-        $earliest = $latest - $years + 1;
+
+        // Start where the record starts, not five years back from today. The
+        // system went in this year, so counting back to 2022 draws four empty
+        // columns and a flat line along the floor -- a picture of the axis
+        // rather than of the leave, and one that reads as though the LGU filed
+        // nothing for four years.
+        //
+        // The cap still applies from the other end: once there are more years
+        // on file than fit, the chart shows the most recent $years of them.
+        $first = LeaveRequest::min('date_filed');
+        $earliest = $first === null
+            ? $latest
+            : max((int) Carbon::parse($first)->year, $latest - $years + 1);
 
         $labels = [];
         for ($y = $earliest; $y <= $latest; $y++) {

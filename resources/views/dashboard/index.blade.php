@@ -187,7 +187,10 @@
          their breakdown do not fit in half. --}}
     <div class="dash-frame" id="an-trend">
         <div class="dash-head">
-            <p class="dash-title">Applications filed per month</p>
+            {{-- "per month" was in the title while the Yearly view was on
+                 screen. The switch says which period; the title says what is
+                 being counted. --}}
+            <p class="dash-title">Applications filed</p>
             <div class="an-switch">
                 <label><input type="radio" name="trend-window" id="trend-month" checked>Monthly</label>
                 <label><input type="radio" name="trend-window" id="trend-year">Yearly</label>

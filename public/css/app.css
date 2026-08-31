@@ -1654,7 +1654,15 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   border-color:var(--primary); background:var(--primary-soft);
   color:var(--primary); font-weight:600;
 }
-.lf-seg label:focus-within{ outline:2px solid var(--primary); outline-offset:2px; }
+/* :focus-visible, not :focus-within.
+   A label wrapping a radio takes focus when it is CLICKED as well as when it
+   is tabbed to, so :focus-within drew the keyboard ring around every chip the
+   moment a mouse touched it -- on top of the border the checked state already
+   gives it. Two rings, and the outer one meaning nothing to somebody who is
+   using a mouse. :focus-visible is the browser's own judgement of "this person
+   is navigating by keyboard", so the ring appears exactly when it is useful
+   and the click leaves one border behind. */
+.lf-seg label:has(input:focus-visible){ outline:2px solid var(--primary); outline-offset:2px; }
 
 /* ---- The legal citation for the chosen type ----------------------------- */
 .lf-cite{
@@ -1789,7 +1797,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   border-color:var(--primary); background:color-mix(in srgb,var(--primary) 10%,transparent);
   color:var(--primary); font-weight:600;
 }
-.an-switch label:focus-within{ outline:2px solid var(--primary); outline-offset:2px; }
+.an-switch label:has(input:focus-visible){ outline:2px solid var(--primary); outline-offset:2px; }
 
 .an-pane{ display:none; }
 #an-types:has(#types-month:checked) .pane-month,
@@ -1940,7 +1948,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   background:var(--surface); color:var(--text); font-weight:600;
   box-shadow:0 1px 2px rgba(22,18,31,.10);
 }
-.period-seg label:focus-within{ outline:2px solid var(--primary); outline-offset:1px; }
+.period-seg label:has(input:focus-visible){ outline:2px solid var(--primary); outline-offset:1px; }
 
 .report-period select,
 .report-dept{
@@ -2128,7 +2136,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   background:color-mix(in srgb,var(--primary) 8%,transparent);
   border-color:color-mix(in srgb,var(--primary) 35%,transparent);
 }
-.role-option:focus-within{ outline:2px solid var(--primary); outline-offset:1px; }
+.role-option:has(input:focus-visible){ outline:2px solid var(--primary); outline-offset:1px; }
 .role-option input{ margin-top:.2rem; flex:none; }
 .role-name{ display:block; font-size:.85rem; font-weight:600; }
 .role-desc{ display:block; font-size:.72rem; color:var(--muted); line-height:1.35; }
@@ -3019,6 +3027,10 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   box-shadow:0 0 0 2px var(--surface);
   opacity:0; transition:opacity var(--dur) var(--ease);
 }
+/* With a single point there is no line to read, so the markers carry the
+   values on their own and stay visible. */
+.ml:has(.ml-single) .ml-dot{ opacity:1; width:.65rem; height:.65rem; margin:-.325rem 0 0 -.325rem; }
+.ml-single{ margin-top:.9rem; }
 .ml-hit{ position:absolute; top:0; bottom:0; cursor:default; }
 .ml-hit:focus-visible{ outline:2px solid var(--primary); outline-offset:-2px; border-radius:.3rem; }
 .ml-rule{
@@ -3165,7 +3177,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .rk-tabs label:has(input:checked){
   background:var(--primary); border-color:var(--primary); color:#fff; font-weight:600;
 }
-.rk-tabs label:focus-within{ outline:2px solid var(--primary); outline-offset:2px; }
+.rk-tabs label:has(input:focus-visible){ outline:2px solid var(--primary); outline-offset:2px; }
 .rk-count{
   font-size:.7rem; padding:0 .35rem; border-radius:1rem;
   background:color-mix(in srgb,var(--text) 8%,transparent);
@@ -3291,7 +3303,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .dash-tabs label:has(input:checked){
   background:var(--surface); border-color:var(--border-strong); color:var(--text);
 }
-.dash-tabs label:focus-within{ outline:2px solid var(--primary); outline-offset:2px; }
+.dash-tabs label:has(input:focus-visible){ outline:2px solid var(--primary); outline-offset:2px; }
 
 #dash-tabs:has(#pane-mine:checked) .pane-mine,
 #dash-tabs:has(#pane-mgt:checked)  .pane-mgt{ display:block; }

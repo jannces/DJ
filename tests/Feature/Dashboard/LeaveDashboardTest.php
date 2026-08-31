@@ -70,7 +70,7 @@ class LeaveDashboardTest extends TestCase
             $this->visit($role)
                 ->assertOk()
                 ->assertSee('Waiting on a decision')
-                ->assertSee('Applications filed per month')
+                ->assertSee('Applications filed')
                 ->assertSee('Most applied leave type')
                 ->assertSee('Applications by office', false);
         }
@@ -121,7 +121,7 @@ class LeaveDashboardTest extends TestCase
         $this->assertStringContainsString('id="pane-mine"', $html);
         $this->assertStringContainsString('id="pane-mgt"', $html);
         $this->assertStringContainsString('Credits remaining, by type', $html, 'HR lost their own leave');
-        $this->assertStringContainsString('Applications filed per month', $html);
+        $this->assertStringContainsString('Applications filed', $html);
 
         // The rail did not grow an entry for the second pane. Counted against
         // an employee's rail rather than against a fixed number, so the
@@ -152,7 +152,7 @@ class LeaveDashboardTest extends TestCase
 
             $this->assertSame(
                 $user->hasPermission('leave.requests.view-all'),
-                str_contains($this->visit($role)->assertOk()->getContent(), 'Applications filed per month'),
+                str_contains($this->visit($role)->assertOk()->getContent(), 'Period breakdown'),
                 $role.' sees the management pane exactly when it holds the permission'
             );
         }
@@ -395,6 +395,55 @@ class LeaveDashboardTest extends TestCase
         // LeaveTypeSeries, and the test below.
         $this->assertStringNotContainsString('tone-', $html,
             'the per-row colour slots are back; the ranking is now encoded twice');
+    }
+
+    /**
+     * The yearly view starts where the record starts.
+     *
+     * Counting five years back from today drew four empty columns and a flat
+     * line along the floor before the first real one -- a picture of the axis
+     * rather than of the leave, and one that reads as though the LGU filed
+     * nothing for four years. It went in this year; the chart starts this year.
+     */
+    public function test_the_yearly_view_starts_at_the_first_year_on_record(): void
+    {
+        $this->file($this->makeUser('employee'), 'approved',
+            now()->toDateString(), now()->toDateString());
+
+        $chart = app(\App\Services\Dashboard\LeaveTypeSeries::class)->byYear();
+
+        $this->assertSame([(string) now()->year], $chart['labels'],
+            'the axis reaches back into years the system did not exist for');
+    }
+
+    /** With nothing filed at all it is still this year, not five of them. */
+    public function test_an_empty_system_shows_one_year_not_five(): void
+    {
+        $this->assertSame(
+            [(string) now()->year],
+            app(\App\Services\Dashboard\LeaveTypeSeries::class)->byYear()['labels']
+        );
+    }
+
+    /**
+     * A chip is not focus-ringed for being clicked.
+     *
+     * A label wrapping a radio takes focus on a mouse click as well as a tab,
+     * so :focus-within drew the keyboard ring around every switch the moment
+     * it was clicked -- on top of the border its checked state already gives
+     * it. Two rings, the outer one meaning nothing to somebody using a mouse.
+     */
+    public function test_a_clicked_switch_does_not_get_a_keyboard_ring(): void
+    {
+        $css = file_get_contents(public_path('css/app.css'));
+
+        foreach (['.lf-seg label', '.an-switch label', '.period-seg label',
+            '.role-option', '.rk-tabs label', '.dash-tabs label'] as $selector) {
+            $this->assertStringNotContainsString($selector.':focus-within{ outline', $css,
+                $selector.' still rings on a mouse click');
+            $this->assertStringContainsString($selector.':has(input:focus-visible){ outline', $css,
+                $selector.' lost its keyboard ring entirely');
+        }
     }
 
     /**
