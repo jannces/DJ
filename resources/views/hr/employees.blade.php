@@ -17,7 +17,12 @@
         <tbody>
         @forelse ($employees as $e)
             <tr>
-                <td>{{ $e->name }}<div class="text-muted small">{{ $e->email }}</div></td>
+                {{-- The name is the way in, so the View button is no longer the
+                     only one. Same destination, so nothing new is reachable. --}}
+                <td>
+                    <a href="{{ route('employees.show', $e) }}" class="name-link fw-semibold">{{ $e->name }}</a>
+                    <div class="text-muted small">{{ $e->email }}</div>
+                </td>
                 <td>{{ $e->employeeProfile?->employee_no }}</td>
                 <td>{{ $e->employeeProfile?->department?->name }}</td>
                 <td>{{ $e->employeeProfile?->position?->title }}</td>

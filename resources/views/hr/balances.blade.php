@@ -14,7 +14,13 @@
     <tbody>
     @forelse ($users as $u)
         <tr>
-            <td>{{ $u->name }}</td>
+            <td>
+                @can('employees.view')
+                    <a href="{{ route('employees.show', $u) }}" class="name-link fw-semibold">{{ $u->name }}</a>
+                @else
+                    <span class="fw-semibold">{{ $u->name }}</span>
+                @endcan
+            </td>
             <td>{{ $u->employeeProfile?->department?->name }}</td>
             <td class="small">@foreach ($u->leaveBalances as $b)<span class="badge bg-light text-dark">{{ $b->leaveType->code }}: {{ number_format($b->balance,2) }}</span> @endforeach</td>
             <td class="text-end"><button class="btn btn-sm btn-lgu" data-bs-toggle="modal" data-bs-target="#adj{{ $u->id }}">Adjust</button></td>

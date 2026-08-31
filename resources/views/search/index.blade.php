@@ -13,7 +13,14 @@
             <div class="card"><div class="card-header fw-semibold">Employees ({{ $employees->count() }})</div>
                 <ul class="list-group list-group-flush">
                     @forelse ($employees as $e)
-                        <li class="list-group-item small">{{ $e->fullName() }} <span class="text-muted">— {{ $e->employee_no }}</span></li>
+                        <li class="list-group-item small">
+                            @can('employees.view')
+                                <a href="{{ route('employees.show', $e->user_id) }}" class="name-link fw-semibold">{{ $e->fullName() }}</a>
+                            @else
+                                {{ $e->fullName() }}
+                            @endcan
+                            <span class="text-muted">— {{ $e->employee_no }}</span>
+                        </li>
                     @empty <li class="list-group-item text-muted small">No matches.</li> @endforelse
                 </ul></div>
         </div>

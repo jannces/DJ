@@ -32,7 +32,15 @@
             @forelse ($users as $user)
                 <tr>
                     <td>
-                        <div class="fw-semibold">{{ $user->name }}</div>
+                        {{-- An archived account has no edit page to open, so it
+                             keeps a plain name rather than a link that refuses. --}}
+                        @if ($user->trashed())
+                            <div class="fw-semibold">{{ $user->name }}</div>
+                        @else
+                            <div class="fw-semibold">
+                                <a href="{{ route('users.edit', $user) }}" class="name-link">{{ $user->name }}</a>
+                            </div>
+                        @endif
                         <div class="text-muted small">{{ $user->email }}</div>
                     </td>
                     <td>@foreach ($user->roles as $r)<span class="badge bg-secondary">{{ $r->name }}</span> @endforeach</td>

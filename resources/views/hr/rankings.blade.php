@@ -76,7 +76,17 @@
                                     <td>
                                         <span class="rk-who">
                                             <span class="rk-av" data-n="{{ $row['rank'] % 5 }}">{{ $row['initials'] }}</span>
-                                            <span class="rk-name">{{ $row['name'] }}</span>
+                                            {{-- A link only for a reader who can open the
+                                                 other end. This page is also given to a
+                                                 department head, who does not hold
+                                                 employees.view — a blue name would send
+                                                 them to a 403. --}}
+                                            @can('employees.view')
+                                                <a href="{{ route('employees.show', $row['user_id']) }}"
+                                                   class="rk-name name-link">{{ $row['name'] }}</a>
+                                            @else
+                                                <span class="rk-name">{{ $row['name'] }}</span>
+                                            @endcan
                                         </span>
                                     </td>
                                     <td class="small text-muted">{{ $row['office'] }}</td>
@@ -104,7 +114,8 @@
         <div class="card-body">
             <p class="dash-note mb-0">
                 Approved leave only, counted in the year it was taken. A pending application is a
-                request, not leave used. Top {{ 20 }} per type.
+                request, not leave used. Top 20 per type.
+                @can('employees.view') Click a name to open that employee&rsquo;s record. @endcan
             </p>
         </div>
     @endif
