@@ -364,7 +364,14 @@
                     <div class="wl-r">
                         <span class="wl-ref">{{ $row['reference'] }}</span>
                         <span class="wl-m">
-                            <b>{{ $row['who'] }}</b>
+                            {{-- The row had no destination at all; now the
+                                 name is one, and it is the application this
+                                 row is about. The row cannot be wrapped in a
+                                 link: the department pane carries a form
+                                 inside it, and a form inside an anchor is not
+                                 valid HTML. --}}
+                            <b><a href="{{ route('leave.show', $row['id']) }}"
+                                  class="name-link">{{ $row['who'] }}</a></b>
                             <small>{{ $row['what'] }}</small>
                         </span>
                         <span class="wl-age {{ $row['stale'] ? 'hot' : '' }}">
@@ -437,7 +444,14 @@
                     <div class="wl-r">
                         <span class="wl-ref">{{ $row['reference'] }}</span>
                         <span class="wl-m">
-                            <b>{{ $row['who'] }}</b>
+                            {{-- The row had no destination at all; now the
+                                 name is one, and it is the application this
+                                 row is about. The row cannot be wrapped in a
+                                 link: the department pane carries a form
+                                 inside it, and a form inside an anchor is not
+                                 valid HTML. --}}
+                            <b><a href="{{ route('leave.show', $row['id']) }}"
+                                  class="name-link">{{ $row['who'] }}</a></b>
                             <small>{{ $row['what'] }}</small>
                         </span>
                         <span class="wl-age {{ $row['stale'] ? 'hot' : '' }}">{{ $row['age'] }}d waiting</span>

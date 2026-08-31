@@ -17,7 +17,13 @@
             @forelse ($requests as $r)
                 <tr>
                     <td class="fw-semibold">{{ $r->reference_no }}</td>
-                    <td>{{ $r->user->name }}<div class="text-muted small">{{ $r->user->employeeProfile?->department?->name }}</div></td>
+                    {{-- Same destination as the View button beside it. An
+                         officer working down this queue clicks a name meaning
+                         "show me that request", and that is where it goes. --}}
+                    <td>
+                        <a href="{{ route('leave.show', $r) }}" class="name-link fw-semibold">{{ $r->user->name }}</a>
+                        <div class="text-muted small">{{ $r->user->employeeProfile?->department?->name }}</div>
+                    </td>
                     <td>{{ $r->leaveType->name }}</td>
                     <td class="small">{{ $r->start_date->format('M d') }} – {{ $r->end_date->format('M d, Y') }}</td>
                     <td>{{ rtrim(rtrim(number_format($r->working_days,1),'0'),'.') }}</td>

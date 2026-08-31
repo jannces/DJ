@@ -22,7 +22,12 @@
         @forelse ($requests as $r)
             <tr>
                 <td class="fw-semibold">{{ $r->reference_no }}</td>
-                <td>{{ $r->user->name }}</td>
+                {{-- The name goes where the row goes: this row is a leave
+                     application, so the applicant's name opens the application
+                     and not their HR record. One row, one destination. --}}
+                <td>
+                    <a href="{{ route('leave.show', $r) }}" class="name-link fw-semibold">{{ $r->user->name }}</a>
+                </td>
                 <td>{{ $r->leaveType->name }}</td>
                 <td class="small">{{ $r->start_date->format('M d') }} – {{ $r->end_date->format('M d, Y') }}</td>
                 <td>@include('leave._status_badge', ['status' => $r->status])</td>
