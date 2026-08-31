@@ -179,18 +179,70 @@
         @endforeach
     </div>
 
+    {{-- ---------- Filing over the year, by type ---------- --}}
+    {{-- One line per leave type rather than one line for everything. The
+         single line said filings rose in June without saying what kind, and
+         Vacation rising into the school holidays is a plan being made while
+         Sick Leave rising is an outbreak. Full width, because five lines and
+         their breakdown do not fit in half. --}}
+    <div class="dash-frame" id="an-trend">
+        <div class="dash-head">
+            <p class="dash-title">Applications filed per month</p>
+            <div class="an-switch">
+                <label><input type="radio" name="trend-window" id="trend-month" checked>Monthly</label>
+                <label><input type="radio" name="trend-window" id="trend-year">Yearly</label>
+            </div>
+        </div>
+        <div class="dash-body">
+            <div class="ml-split">
+                <div class="an-pane pane-month">
+                    @include('dashboard._multiline', ['chart' => $management['trend_month'], 'id' => 'ml-m'])
+                </div>
+                <div class="an-pane pane-year">
+                    @include('dashboard._multiline', ['chart' => $management['trend_year'], 'id' => 'ml-y'])
+                </div>
+
+                <div class="ml-side">
+                    <p class="ml-side-h">Period breakdown</p>
+                    <div class="an-pane pane-month">
+                        @include('dashboard._breakdown', ['chart' => $management['trend_month']])
+                    </div>
+                    <div class="an-pane pane-year">
+                        @include('dashboard._breakdown', ['chart' => $management['trend_year']])
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="dash-split">
-        {{-- ---------- Filing over the year ---------- --}}
-        <div class="dash-frame">
+        {{-- ---------- Leave types ---------- --}}
+        {{-- Every type, including the ones nobody used. A type with no
+             applications is a real answer to "what do people apply for", and a
+             chart that silently omits it cannot be told apart from one where
+             the type does not exist. The zeros are sorted to the bottom and
+             marked with a rule rather than dropped. --}}
+        <div class="dash-frame" id="an-types">
             <div class="dash-head">
-                <p class="dash-title">Applications filed per month</p>
-                <span class="dash-link">{{ now()->year }}</span>
+                <p class="dash-title">Most applied leave type</p>
+                <div class="an-switch">
+                    <label><input type="radio" name="types-window" id="types-month" checked>This month</label>
+                    <label><input type="radio" name="types-window" id="types-year">This year</label>
+                </div>
             </div>
             <div class="dash-body">
-                @include('dashboard._line', [
-                    'series' => $management['filed_by_month'],
-                    'peakLabel' => 'peak',
-                ])
+                <div class="an-pane pane-month">
+                    @include('dashboard._donut', ['ring' => $management['ring_month'],
+                        'empty' => 'Nothing filed this month.'])
+                </div>
+                <div class="an-pane pane-year">
+                    @include('dashboard._donut', ['ring' => $management['ring_year'],
+                        'empty' => 'Nothing filed this year.'])
+                </div>
+                <p class="dash-note">
+                    Share of the total, so two types can be read together. The five most
+                    filed hold a colour for the whole year; the rest are Other.
+                </p>
             </div>
         </div>
 
@@ -242,31 +294,6 @@
     </div>
 
     <div class="dash-split">
-        {{-- ---------- Leave types ---------- --}}
-        {{-- Every type, including the ones nobody used. A type with no
-             applications is a real answer to "what do people apply for", and a
-             chart that silently omits it cannot be told apart from one where
-             the type does not exist. The zeros are sorted to the bottom and
-             marked with a rule rather than dropped. --}}
-        <div class="dash-frame" id="an-types">
-            <div class="dash-head">
-                <p class="dash-title">Most applied leave type</p>
-                <div class="an-switch">
-                    <label><input type="radio" name="types-window" id="types-month" checked>This month</label>
-                    <label><input type="radio" name="types-window" id="types-year">This year</label>
-                </div>
-            </div>
-            <div class="dash-body">
-                <div class="an-pane pane-month">
-                    @include('dashboard._hbars', ['rows' => $management['types_month'], 'markZeros' => true])
-                </div>
-                <div class="an-pane pane-year">
-                    @include('dashboard._hbars', ['rows' => $management['types_year'], 'markZeros' => true])
-                </div>
-                <p class="dash-note">All {{ count($management['types_month']) }} leave types, whether or not they were applied for.</p>
-            </div>
-        </div>
-
         {{-- ---------- Offices ---------- --}}
         <div class="dash-frame">
             <div class="dash-head">
@@ -274,10 +301,39 @@
                 <span class="dash-link">{{ now()->year }} to date</span>
             </div>
             <div class="dash-body">
-                @include('dashboard._hbars', ['rows' => $management['departments']])
+                @include('dashboard._stack', ['stack' => $management['office_stack']])
                 <p class="dash-note">
-                    Every office appears whether or not it filed. A missing row would read as
-                    &ldquo;no data&rdquo;; a zero reads as &ldquo;none&rdquo;.
+                    Each bar is divided by leave type &mdash; hover a row for the figures.
+                    Composition, not just size: an office three-quarters Sick Leave is a
+                    different situation from one three-quarters Vacation.
+                </p>
+            </div>
+        </div>
+        {{-- ---------- Coverage risk ---------- --}}
+        {{-- The only forward-looking figure here. Everything else reports what
+             already happened, which cannot be acted on; four of six Treasury
+             staff away in the same week can be, but only before the week
+             arrives. --}}
+        <div class="dash-frame">
+            <div class="dash-head">
+                <p class="dash-title">Coverage risk</p>
+                <span class="dash-link">peak absence &middot; next 14 days</span>
+            </div>
+            <div class="dash-body">
+                @forelse ($management['coverage'] as $row)
+                    <div class="cv-r" @if ($row['at_risk']) data-risk @endif>
+                        <span class="hb-l" title="{{ $row['office'] }}">{{ $row['office'] }}</span>
+                        <span class="cv-t"><span class="cv-f" style="width:{{ $row['pct'] }}%"></span></span>
+                        <span class="cv-v">{{ $row['out'] }}/{{ $row['staff'] }}</span>
+                    </div>
+                    @if ($row['when'])
+                        <p class="cv-when">{{ $row['when'] }}</p>
+                    @endif
+                @empty
+                    <p class="dash-empty">No offices on record.</p>
+                @endforelse
+                <p class="dash-note">
+                    Red is {{ (int) (\App\Services\DashboardService::COVERAGE_RISK * 100) }}% or more of an office away at once.
                 </p>
             </div>
         </div>
@@ -318,38 +374,8 @@
             </div>
         </div>
 
-        {{-- ---------- Coverage risk ---------- --}}
-        {{-- The only forward-looking figure here. Everything else reports what
-             already happened, which cannot be acted on; four of six Treasury
-             staff away in the same week can be, but only before the week
-             arrives. --}}
-        <div class="dash-frame">
-            <div class="dash-head">
-                <p class="dash-title">Coverage risk</p>
-                <span class="dash-link">peak absence &middot; next 14 days</span>
-            </div>
-            <div class="dash-body">
-                @forelse ($management['coverage'] as $row)
-                    <div class="cv-r" @if ($row['at_risk']) data-risk @endif>
-                        <span class="hb-l" title="{{ $row['office'] }}">{{ $row['office'] }}</span>
-                        <span class="cv-t"><span class="cv-f" style="width:{{ $row['pct'] }}%"></span></span>
-                        <span class="cv-v">{{ $row['out'] }}/{{ $row['staff'] }}</span>
-                    </div>
-                    @if ($row['when'])
-                        <p class="cv-when">{{ $row['when'] }}</p>
-                    @endif
-                @empty
-                    <p class="dash-empty">No offices on record.</p>
-                @endforelse
-                <p class="dash-note">
-                    Red is {{ (int) (\App\Services\DashboardService::COVERAGE_RISK * 100) }}% or more of an office away at once.
-                </p>
-            </div>
-        </div>
-    </div>
-
-    {{-- ---------- Mandatory Leave ---------- --}}
-    @if ($management['mandatory']['tracked'])
+        {{-- ---------- Mandatory Leave ---------- --}}
+        @if ($management['mandatory']['tracked'])
         <div class="dash-frame">
             <div class="dash-head">
                 <p class="dash-title">Mandatory Leave not yet filed</p>
@@ -378,7 +404,8 @@
                 </p>
             </div>
         </div>
-    @endif
+        @endif
+    </div>
 
 </div>
 @endif

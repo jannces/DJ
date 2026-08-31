@@ -8,6 +8,7 @@ use App\Models\LeaveBalance;
 use App\Models\LeaveRequest;
 use App\Models\LeaveType;
 use App\Models\User;
+use App\Services\Dashboard\LeaveTypeSeries;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 
@@ -21,6 +22,10 @@ use Illuminate\Support\Carbon;
  */
 class DashboardService
 {
+    public function __construct(
+        private readonly LeaveTypeSeries $types = new LeaveTypeSeries,
+    ) {}
+
     /**
      * Statuses that are still waiting on somebody. Everything the workflow can
      * be sitting in before a decision is made — kept in one place so the
@@ -282,7 +287,8 @@ class DashboardService
 
     public function managementPane(): array
     {
-        $outcome = $this->applicationsByOutcome((int) now()->year);
+        $year = (int) now()->year;
+        $outcome = $this->applicationsByOutcome($year);
         $onLeave = $this->onLeaveWindows();
         $queue = $this->waitingQueue();
         $decided = $this->decisionsThisMonth();
@@ -290,8 +296,24 @@ class DashboardService
         $thisMonth = $outcome['months'][now()->month - 1]['total'];
         $lastYear = $this->filedInMonth(now()->copy()->subYear());
 
+        $headcount = $this->headcount();
+        $away = $this->onLeaveThisMonth();
+        $lastMonth = $this->filedInMonth(now()->copy()->subMonth());
+
         return [
             'kpis' => [
+                // Headcount first: every other figure on this row is a count of
+                // applications, and how many people the LGU employs is what
+                // says whether twelve of them is a lot.
+                [
+                    'label' => 'Total employees',
+                    'value' => $headcount['now'],
+                    'sub' => 'with an active account',
+                    'icon' => 'people',
+                    'tone' => 'info',
+                    'delta' => self::delta($headcount['now'], $headcount['before'],
+                        'vs last month', 'neutral'),
+                ],
                 [
                     'label' => 'Waiting on a decision',
                     'value' => $queue['total'],
@@ -302,12 +324,20 @@ class DashboardService
                     'icon' => 'inbox',
                     'tone' => $queue['stale'] > 0 ? 'warn' : ($queue['total'] > 0 ? 'info' : 'good'),
                 ],
+                // The month, not the day. "On leave today" read zero on most
+                // mornings and every afternoon of a quiet week, which says
+                // nothing about whether the office is short-handed -- and it
+                // could not be compared with anything, because yesterday is not
+                // a period.
                 [
-                    'label' => 'On leave today',
-                    'value' => $onLeave['today'],
-                    'sub' => 'across '.$this->plural($onLeave['offices_today'], 'office'),
+                    'label' => 'On leave this month',
+                    'value' => $away['now'],
+                    'sub' => 'across '.$this->plural($away['offices'], 'office')
+                        .' · '.$onLeave['today'].' out today',
                     'icon' => 'walk',
                     'tone' => 'info',
+                    'delta' => self::delta($away['now'], $away['before'],
+                        'vs last month', 'inverse'),
                 ],
                 [
                     'label' => 'Filed this month',
@@ -315,30 +345,116 @@ class DashboardService
                     'sub' => $lastYear.' in '.now()->copy()->subYear()->format('F Y'),
                     'icon' => 'file',
                     'tone' => 'info',
-                ],
-                [
-                    'label' => 'Decided this month',
-                    'value' => $decided['count'],
-                    'sub' => $decided['median'] !== null
-                        ? 'median '.$decided['median'].' days to decide'
-                        : 'nothing decided yet',
-                    'icon' => 'gavel',
-                    'tone' => 'good',
+                    'delta' => self::delta($thisMonth, $lastMonth, 'vs last month', 'neutral'),
                 ],
             ],
+            // Kept for the panel that reads it, though no card shows it now.
+            'decided' => $decided,
             'outcome' => $outcome,
-            'filed_by_month' => [
-                'labels' => array_column($outcome['months'], 'label'),
-                'data' => array_column($outcome['months'], 'total'),
-            ],
-            'types_month' => $this->mostAppliedTypes(now()->startOfMonth(), now()->endOfMonth(), 'this month'),
-            'types_year' => $this->mostAppliedTypes(now()->startOfYear(), now()->endOfYear(), 'this year'),
-            'departments' => $this->applicationsByDepartment(now()->startOfYear(), now()->endOfYear()),
+
+            // Leave type as a series across three panels — the ring, the office
+            // stack and the twelve-month lines. One service decides which types
+            // hold a colour so the same type is the same colour in all three;
+            // see LeaveTypeSeries.
+            'ring_month' => $this->types->distribution(now()->startOfMonth(), now()->endOfMonth(), $year),
+            'ring_year' => $this->types->distribution(now()->startOfYear(), now()->endOfYear(), $year),
+            'office_stack' => $this->types->byOffice(now()->startOfYear(), now()->endOfYear(), $year),
+            'trend_month' => $this->types->byMonth($year),
+            'trend_year' => $this->types->byYear(),
+
+            // mostAppliedTypes() and applicationsByDepartment() used to be
+            // read here. The ring and the stack answer both questions and say
+            // more, so the ranked bars they fed are gone from this pane. The
+            // methods stay: the department head's pane still ranks types, and
+            // three reports are built on them.
 
             // The three additions. All read columns that already existed.
             'worklist' => $queue['rows'],
             'coverage' => $this->coverageRisk(),
             'mandatory' => $this->mandatoryLeaveCompliance(),
+        ];
+    }
+
+    /**
+     * A figure against the same figure last period.
+     *
+     * The arrow says which way it moved; the colour says whether that is good
+     * news, and they are different questions. Three employees more is a rise
+     * and neither good nor bad ('neutral'); three more people away is a rise
+     * and a staffing problem ('inverse'). Nothing here assumes green means up.
+     *
+     * No comparison is offered against a period of zero. "+1200%" on a base of
+     * one application is a number that means nothing and reads as though it
+     * means a great deal, so the count itself is shown instead.
+     *
+     * @return array{value: string, dir: string, of: string, tone: string}|null
+     */
+    private static function delta(int $now, int $before, string $of, string $sense): ?array
+    {
+        if ($before === 0 && $now === 0) {
+            return null;
+        }
+
+        $change = $now - $before;
+        $dir = $change > 0 ? 'up' : ($change < 0 ? 'down' : 'flat');
+
+        $tone = match (true) {
+            $dir === 'flat' || $sense === 'neutral' => 'flat',
+            $sense === 'inverse' => $dir === 'up' ? 'bad' : 'good',
+            default => $dir === 'up' ? 'good' : 'bad',
+        };
+
+        return [
+            'value' => ($change > 0 ? '+' : '').$change,
+            'dir' => $dir,
+            // "+13 from none vs last month" is a sentence nobody says. With no
+            // previous figure the change IS the whole story.
+            'of' => $before === 0 ? 'since last month' : $of,
+            'tone' => $tone,
+        ];
+    }
+
+    /** Active accounts with an employee record, now and a month ago. */
+    private function headcount(): array
+    {
+        $now = User::where('status', User::STATUS_ACTIVE)->whereHas('employeeProfile')->count();
+
+        // Accounts opened since the start of last month have not been here a
+        // month, so taking them off gives the figure as it stood then. An
+        // archived account is soft-deleted and already out of the count.
+        $joinedSince = User::where('status', User::STATUS_ACTIVE)
+            ->whereHas('employeeProfile')
+            ->where('created_at', '>=', now()->copy()->subMonth()->endOfMonth())
+            ->count();
+
+        return ['now' => $now, 'before' => $now - $joinedSince];
+    }
+
+    /**
+     * How many people had approved leave covering any day of this month, and
+     * of last month.
+     *
+     * Distinct people, not applications: somebody who filed twice in March was
+     * away once as far as the office is concerned.
+     */
+    private function onLeaveThisMonth(): array
+    {
+        $count = function (CarbonInterface $from, CarbonInterface $to) {
+            return LeaveRequest::query()
+                ->leftJoin('employee_profiles', 'employee_profiles.user_id', '=', 'leave_requests.user_id')
+                ->where('leave_requests.status', 'approved')
+                ->whereDate('leave_requests.start_date', '<=', $to)
+                ->whereDate('leave_requests.end_date', '>=', $from)
+                ->get(['leave_requests.user_id', 'employee_profiles.department_id']);
+        };
+
+        $thisMonth = $count(now()->startOfMonth(), now()->endOfMonth());
+        $lastMonth = $count(now()->copy()->subMonth()->startOfMonth(), now()->copy()->subMonth()->endOfMonth());
+
+        return [
+            'now' => $thisMonth->pluck('user_id')->unique()->count(),
+            'before' => $lastMonth->pluck('user_id')->unique()->count(),
+            'offices' => $thisMonth->pluck('department_id')->filter()->unique()->count(),
         ];
     }
 
@@ -903,5 +1019,4 @@ class DashboardService
 
         return $rows;
     }
-
 }

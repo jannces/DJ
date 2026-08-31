@@ -49,12 +49,15 @@ return [
         'permission' => ['leave.approve.final', 'leave.review.department']],
     ['label' => 'All Leave Requests', 'icon' => 'bi-collection', 'route' => 'leave.all', 'permission' => 'leave.requests.view-all'],
 
-
     ['heading' => 'HR Management'],
     ['label' => 'Employees', 'icon' => 'bi-person-badge', 'route' => 'employees.index', 'permission' => 'employees.view'],
     ['label' => 'Departments', 'icon' => 'bi-diagram-3', 'route' => 'departments.index', 'permission' => 'departments.manage'],
     ['label' => 'Positions', 'icon' => 'bi-briefcase', 'route' => 'positions.index', 'permission' => 'positions.manage'],
     ['label' => 'Leave Balances', 'icon' => 'bi-calculator', 'route' => 'balances.index', 'permission' => 'leave.balances.manage'],
+    // Days used per employee, per type. Two permissions, either of which is
+    // enough: HR sees every office, a head sees the one they head.
+    ['label' => 'Leave Rankings', 'icon' => 'bi-bar-chart-steps', 'route' => 'rankings.index',
+        'permission' => ['employees.view', 'leave.review.department']],
     ['label' => 'Leave Types', 'icon' => 'bi-list-check', 'route' => 'leave-types.index', 'permission' => 'leave-types.manage'],
     ['label' => 'Holidays', 'icon' => 'bi-calendar-event', 'route' => 'holidays.index', 'permission' => 'holidays.manage'],
 

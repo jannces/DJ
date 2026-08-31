@@ -1761,12 +1761,14 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 
 .an-pane{ display:none; }
 #an-types:has(#types-month:checked) .pane-month,
-#an-types:has(#types-year:checked)  .pane-year{ display:block; }
+#an-types:has(#types-year:checked)  .pane-year,
+#an-trend:has(#trend-month:checked) .pane-month,
+#an-trend:has(#trend-year:checked)  .pane-year{ display:block; }
 
 /* Without :has() no pane would ever show. Fall back to the first one. */
 @supports not selector(:has(*)){
   .an-switch{ display:none; }
-  #an-types .pane-month{ display:block; }
+  #an-types .pane-month, #an-trend .pane-month{ display:block; }
 }
 
 /* ---- Two-column arrangement ---------------------------------------------- */
@@ -2472,7 +2474,40 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   --k-good-f:#2E8F68;
   --k-warn-f:#B0862F;
   --k-bad-f:#C2564E;
+
+  --lt-s1:#3987e5; --lt-s2:#d95926; --lt-s3:#199e70;
+  --lt-s4:#9085e9; --lt-s5:#d55181; --lt-other:#4A4657;
 }
+
+/* ---- Leave types as a series --------------------------------------------
+   Five hues held by five leave types, and one grey for the tail.
+
+   The CSC has sixteen types; a categorical palette has five hues that a
+   colour-blind reader can still separate. Rather than invent a sixth, LGU
+   practice is used: Vacation, Sick, Mandatory, Special Privilege and one more
+   are what an office actually files, and Terminal, Adoption and Rehabilitation
+   -- filed once in a decade -- fold into Other.
+
+   The set is decided once a year and the slots handed out in leave-type order,
+   never by rank; see LeaveTypeSeries. So the same type is the same colour in
+   the ring, the office stack and the twelve-month lines, and a quiet month
+   cannot repaint the page.
+
+   Validated as a set against both card colours (worst adjacent CVD ΔE 9.2
+   light / 9.4 dark, normal-vision 27.6 / 19.7). Aqua and magenta fall under
+   3:1 on the light card, so every panel that uses them writes its figures out
+   -- the legend carries the number and the percentage, the stack names each
+   segment on hover. Colour never carries a value alone. */
+:root{
+  --lt-s1:#2a78d6; --lt-s2:#eb6834; --lt-s3:#1baf7a;
+  --lt-s4:#4a3aa7; --lt-s5:#e87ba4; --lt-other:#C9C6D4;
+}
+[data-k="s1"]{ --lt:var(--lt-s1); }
+[data-k="s2"]{ --lt:var(--lt-s2); }
+[data-k="s3"]{ --lt:var(--lt-s3); }
+[data-k="s4"]{ --lt:var(--lt-s4); }
+[data-k="s5"]{ --lt:var(--lt-s5); }
+[data-k="other"]{ --lt:var(--lt-other); }
 
 /* ---- KPI card ------------------------------------------------------------ */
 /* Four roles and nothing outside them, so a red number means the same thing on
@@ -2508,6 +2543,19 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 }
 .kpi-s{ font-size:.75rem; color:var(--muted); margin:.35rem 0 0; }
 .kpi-s b{ font-weight:600; color:var(--text-2); }
+
+/* The same figure last period. The arrow carries the direction and the colour
+   carries whether that is good news — two different questions, so the tone is
+   named by the service rather than assumed from the arrow. A rise in headcount
+   is neither good nor bad and stays grey; a rise in people away is not. */
+.kpi-d{
+  display:flex; align-items:center; gap:.3rem;
+  font-size:.72rem; color:var(--muted); margin:.5rem 0 0;
+}
+.kpi-d b{ font-weight:600; font-variant-numeric:tabular-nums; color:var(--text-2); }
+.kpi-arrow{ font-size:.8rem; line-height:1; }
+.kpi-d[data-tone="good"] b, .kpi-d[data-tone="good"] .kpi-arrow{ color:var(--k-good); }
+.kpi-d[data-tone="bad"]  b, .kpi-d[data-tone="bad"]  .kpi-arrow{ color:var(--k-bad); }
 
 /* ---- Panel captions ------------------------------------------------------ */
 .dash-note{
@@ -2756,6 +2804,399 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 
 .sv-up{ color:var(--k-bad); }
 .sv-down{ color:var(--k-good); }
+
+/* ============================================================================
+   THREE PANELS THAT READ LEAVE TYPE
+   ----------------------------------------------------------------------------
+   A ring for its share of the year, a stack for its split across the offices,
+   lines for its shape month by month. They share one palette (above) so the
+   same type is the same colour in all three.
+
+   All three are hoverable, and none of them uses script. A hover is a :hover
+   plus :has() — the same mechanism as the dashboard's tabs and period
+   switches — so the panels print, work with the keyboard, and cannot break the
+   page if a file fails to load.
+   ========================================================================== */
+
+/* ---- The ring ------------------------------------------------------------ */
+/* Ring above, legend beneath at full width. Side by side is what the panel
+   wants at this size, and it is what was tried: the panel is half the page and
+   the ring takes 200px of it, which leaves the legend too narrow for
+   "Special Privilege Leave" — every name arrived clipped to "Special Priv…",
+   and a legend whose names cannot be read is not a legend. */
+.dn-wrap{ display:flex; flex-direction:column; align-items:center; gap:1.25rem; }
+.dn{ position:relative; flex:0 0 auto; width:12.5rem; height:12.5rem; }
+/* No rotation here: a dash starts at 3 o'clock, and the service already offsets
+   each slice by a quarter turn to start the ring at twelve. Rotating as well
+   would move it to nine. */
+.dn svg{ width:100%; height:100%; }
+.dn-track{ fill:none; stroke:var(--ch-grid); stroke-width:4.2; }
+.dn-arc{
+  fill:none; stroke:var(--lt); stroke-width:4.2;
+  transition:stroke-width var(--dur) var(--ease), opacity var(--dur) var(--ease);
+}
+/* The hovered arc thickens outward and the rest step back. Opacity, not a
+   colour change: the hue is the identity and must not move. */
+.dn:hover .dn-arc{ opacity:.28; }
+.dn .dn-arc:hover{ opacity:1; stroke-width:5.6; }
+.dn-wrap:has(.dn-key li:hover) .dn-arc{ opacity:.28; }
+.dn-wrap:has(.dn-key li[data-i="0"]:hover) .dn-arc[data-i="0"]{ opacity:1; stroke-width:5.6; }
+.dn-wrap:has(.dn-key li[data-i="1"]:hover) .dn-arc[data-i="1"]{ opacity:1; stroke-width:5.6; }
+.dn-wrap:has(.dn-key li[data-i="2"]:hover) .dn-arc[data-i="2"]{ opacity:1; stroke-width:5.6; }
+.dn-wrap:has(.dn-key li[data-i="3"]:hover) .dn-arc[data-i="3"]{ opacity:1; stroke-width:5.6; }
+.dn-wrap:has(.dn-key li[data-i="4"]:hover) .dn-arc[data-i="4"]{ opacity:1; stroke-width:5.6; }
+.dn-wrap:has(.dn-key li[data-i="5"]:hover) .dn-arc[data-i="5"]{ opacity:1; stroke-width:5.6; }
+.dn-wrap:has(.dn-arc[data-i="0"]:hover) .dn-read[data-i="0"],
+.dn-wrap:has(.dn-key li[data-i="0"]:hover) .dn-read[data-i="0"]{ opacity:1; }
+.dn-wrap:has(.dn-arc[data-i="1"]:hover) .dn-read[data-i="1"],
+.dn-wrap:has(.dn-key li[data-i="1"]:hover) .dn-read[data-i="1"]{ opacity:1; }
+.dn-wrap:has(.dn-arc[data-i="2"]:hover) .dn-read[data-i="2"],
+.dn-wrap:has(.dn-key li[data-i="2"]:hover) .dn-read[data-i="2"]{ opacity:1; }
+.dn-wrap:has(.dn-arc[data-i="3"]:hover) .dn-read[data-i="3"],
+.dn-wrap:has(.dn-key li[data-i="3"]:hover) .dn-read[data-i="3"]{ opacity:1; }
+.dn-wrap:has(.dn-arc[data-i="4"]:hover) .dn-read[data-i="4"],
+.dn-wrap:has(.dn-key li[data-i="4"]:hover) .dn-read[data-i="4"]{ opacity:1; }
+.dn-wrap:has(.dn-arc[data-i="5"]:hover) .dn-read[data-i="5"],
+.dn-wrap:has(.dn-key li[data-i="5"]:hover) .dn-read[data-i="5"]{ opacity:1; }
+
+.dn-mid, .dn-read{
+  position:absolute; inset:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; text-align:center;
+  pointer-events:none; padding:0 2.6rem;
+}
+.dn-read{ opacity:0; }
+.dn-total{ margin:0; font-size:1.65rem; font-weight:700; color:var(--text); line-height:1.1;
+  font-variant-numeric:tabular-nums; }
+.dn-unit{ margin:.2rem 0 0; font-size:var(--fs-xs); color:var(--muted); line-height:1.3; }
+/* The readout replaces the total in the hole rather than floating over the
+   ring it is describing. */
+.dn-wrap:has(.dn-arc:hover) .dn-mid,
+.dn-wrap:has(.dn-key li:hover) .dn-mid{ opacity:0; }
+
+.dn-key{ list-style:none; margin:0; padding:0; align-self:stretch; }
+.dn-key li{
+  display:grid; grid-template-columns:auto minmax(0,1fr) 3.5rem 2.3rem 2.2rem;
+  align-items:center; gap:.5rem; padding:.35rem .2rem; border-radius:.4rem;
+  transition:background var(--dur) var(--ease);
+}
+.dn-key li:hover{ background:var(--surface-hover); }
+.dn-dot{
+  width:.55rem; height:.55rem; border-radius:50%; background:var(--lt);
+  flex:0 0 auto; display:inline-block;
+}
+/* "Special Privilege Leave" wraps to three lines and the rows stop lining up,
+   so the name is clipped and the full text stays in the title attribute. */
+.dn-name{
+  font-size:var(--fs-sm); color:var(--text-2);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;
+}
+.dn-bar{ height:.3rem; border-radius:2px; background:var(--ch-grid); overflow:hidden; }
+.dn-bar > span{ display:block; height:100%; background:var(--lt); border-radius:2px; }
+.dn-pct, .dn-n{ font-size:var(--fs-sm); text-align:right; font-variant-numeric:tabular-nums; }
+.dn-pct{ color:var(--text); font-weight:600; }
+.dn-n{ color:var(--muted); }
+
+/* ---- The office stack ---------------------------------------------------- */
+.sk{ position:relative; }
+.sk-r{
+  display:grid; grid-template-columns:9.5rem 1fr 2.6rem; align-items:center;
+  gap:.65rem; padding:.28rem .3rem; border-radius:.45rem; position:relative;
+  transition:background var(--dur) var(--ease);
+}
+.sk-r:hover, .sk-r:focus-visible{ background:var(--surface-hover); outline:none; }
+.sk-l{
+  font-size:var(--fs-sm); color:var(--text-2); text-align:right;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.sk-t{ height:1.1rem; background:var(--ch-grid); border-radius:3px; overflow:hidden; }
+.sk-fill{ display:flex; height:100%; min-width:0; }
+/* A 2px gap of card colour between segments: two fills meeting flush read as
+   one shape, and the pair most likely to meet is the pair hardest to tell
+   apart. box-shadow rather than a margin, so the widths still sum to 100%. */
+.sk-s{ display:block; height:100%; background:var(--lt); box-shadow:2px 0 0 var(--surface); }
+.sk-s:last-child{ box-shadow:none; }
+.sk-v{ font-size:var(--fs-sm); font-weight:600; color:var(--text);
+  text-align:right; font-variant-numeric:tabular-nums; }
+
+.sk-tip, .ml-tip{
+  position:absolute; z-index:5; display:none;
+  background:var(--surface); border:1px solid var(--border-strong);
+  border-radius:.6rem; box-shadow:var(--shadow-lg); padding:.6rem .75rem;
+  min-width:12.5rem; pointer-events:none;
+}
+.sk-tip{ left:10.5rem; top:calc(100% - .2rem); }
+.sk-r:hover .sk-tip, .sk-r:focus-visible .sk-tip{ display:block; }
+/* The last rows would open off the bottom of the card. */
+.sk-r:nth-last-child(-n+3) .sk-tip{ top:auto; bottom:calc(100% - .2rem); }
+.sk-tip-h{ margin:0 0 .4rem; font-weight:600; font-size:var(--fs-sm); color:var(--text); }
+.sk-tip-r{
+  display:grid; grid-template-columns:auto 1fr auto; align-items:center;
+  gap:.5rem; margin:0 0 .18rem; font-size:var(--fs-sm);
+}
+.sk-tip-n{ color:var(--text-2); }
+.sk-tip-v{ color:var(--text); font-weight:600; font-variant-numeric:tabular-nums; }
+.sk-tip-f{
+  margin:.45rem 0 0; padding-top:.35rem; border-top:1px solid var(--border);
+  font-size:var(--fs-xs); color:var(--muted);
+}
+
+.sk-axis{
+  position:relative; height:1.1rem; margin:.5rem 0 0 10.15rem; margin-right:3.25rem;
+}
+.sk-axis span{
+  position:absolute; transform:translateX(-50%); font-size:var(--fs-xs);
+  color:var(--muted-2); font-variant-numeric:tabular-nums;
+}
+.sk-axis span[data-first]{ transform:none; }
+.sk-axis span[data-last]{ transform:translateX(-100%); }
+.sk-silent{
+  margin:.9rem 0 0; font-size:var(--fs-xs); color:var(--muted); line-height:1.5;
+}
+.sk-silent b{ color:var(--text-2); font-weight:600; }
+
+/* ---- The lines ----------------------------------------------------------- */
+.ml-plot{ display:flex; gap:.6rem; }
+/* The axis column is shared with the single-line chart, which is 8.5rem tall.
+   Five lines need more room, and the labels have to move with the plot or they
+   land between the gridlines they name. */
+.ml-plot .ln-y{ height:13rem; flex:0 0 2.1rem; }
+.ml-area{ position:relative; flex:1; min-width:0; height:13rem; }
+.ml-area svg{ width:100%; height:100%; overflow:visible; }
+.ml-area .gl{ stroke:var(--ch-grid); stroke-width:1; }
+.ml-area .ax{ stroke:var(--border-strong); stroke-width:1; }
+.ml-line{
+  fill:none; stroke:var(--lt); stroke-width:2;
+  stroke-linejoin:round; stroke-linecap:round;
+  transition:opacity var(--dur) var(--ease);
+}
+.ml-dot{
+  position:absolute; width:.5rem; height:.5rem; margin:-.25rem 0 0 -.25rem;
+  border-radius:50%; background:var(--lt);
+  /* A ring of card colour, so two series crossing stay two marks. */
+  box-shadow:0 0 0 2px var(--surface);
+  opacity:0; transition:opacity var(--dur) var(--ease);
+}
+.ml-hit{ position:absolute; top:0; bottom:0; cursor:default; }
+.ml-hit:focus-visible{ outline:2px solid var(--primary); outline-offset:-2px; border-radius:.3rem; }
+.ml-rule{
+  position:absolute; top:0; bottom:0; width:1px; background:var(--border-strong);
+  opacity:0; pointer-events:none;
+}
+.ml-tip{ top:.4rem; transform:translateX(.6rem); }
+.ml-tip[data-flip]{ transform:translateX(calc(-100% - .6rem)); }
+
+/* Each column raises its own rule, its own markers and its own panel. Written
+   out per index because :has() cannot compare one attribute against another. */
+.ml-area:has(.ml-hit[data-i="0"]:hover) .ml-rule[data-i="0"],
+.ml-area:has(.ml-hit[data-i="0"]:focus-within) .ml-rule[data-i="0"]{ opacity:1; }
+.ml-area:has(.ml-hit[data-i="0"]:hover) .ml-tip[data-i="0"],
+.ml-area:has(.ml-hit[data-i="0"]:focus-within) .ml-tip[data-i="0"]{ display:block; }
+.ml-area:has(.ml-hit[data-i="0"]:hover) .ml-dot[data-i="0"],
+.ml-area:has(.ml-hit[data-i="0"]:focus-within) .ml-dot[data-i="0"]{ opacity:1; }
+.ml-area:has(.ml-hit[data-i="1"]:hover) .ml-rule[data-i="1"],
+.ml-area:has(.ml-hit[data-i="1"]:focus-within) .ml-rule[data-i="1"]{ opacity:1; }
+.ml-area:has(.ml-hit[data-i="1"]:hover) .ml-tip[data-i="1"],
+.ml-area:has(.ml-hit[data-i="1"]:focus-within) .ml-tip[data-i="1"]{ display:block; }
+.ml-area:has(.ml-hit[data-i="1"]:hover) .ml-dot[data-i="1"],
+.ml-area:has(.ml-hit[data-i="1"]:focus-within) .ml-dot[data-i="1"]{ opacity:1; }
+.ml-area:has(.ml-hit[data-i="2"]:hover) .ml-rule[data-i="2"],
+.ml-area:has(.ml-hit[data-i="2"]:focus-within) .ml-rule[data-i="2"]{ opacity:1; }
+.ml-area:has(.ml-hit[data-i="2"]:hover) .ml-tip[data-i="2"],
+.ml-area:has(.ml-hit[data-i="2"]:focus-within) .ml-tip[data-i="2"]{ display:block; }
+.ml-area:has(.ml-hit[data-i="2"]:hover) .ml-dot[data-i="2"],
+.ml-area:has(.ml-hit[data-i="2"]:focus-within) .ml-dot[data-i="2"]{ opacity:1; }
+.ml-area:has(.ml-hit[data-i="3"]:hover) .ml-rule[data-i="3"],
+.ml-area:has(.ml-hit[data-i="3"]:focus-within) .ml-rule[data-i="3"]{ opacity:1; }
+.ml-area:has(.ml-hit[data-i="3"]:hover) .ml-tip[data-i="3"],
+.ml-area:has(.ml-hit[data-i="3"]:focus-within) .ml-tip[data-i="3"]{ display:block; }
+.ml-area:has(.ml-hit[data-i="3"]:hover) .ml-dot[data-i="3"],
+.ml-area:has(.ml-hit[data-i="3"]:focus-within) .ml-dot[data-i="3"]{ opacity:1; }
+.ml-area:has(.ml-hit[data-i="4"]:hover) .ml-rule[data-i="4"],
+.ml-area:has(.ml-hit[data-i="4"]:focus-within) .ml-rule[data-i="4"]{ opacity:1; }
+.ml-area:has(.ml-hit[data-i="4"]:hover) .ml-tip[data-i="4"],
+.ml-area:has(.ml-hit[data-i="4"]:focus-within) .ml-tip[data-i="4"]{ display:block; }
+.ml-area:has(.ml-hit[data-i="4"]:hover) .ml-dot[data-i="4"],
+.ml-area:has(.ml-hit[data-i="4"]:focus-within) .ml-dot[data-i="4"]{ opacity:1; }
+.ml-area:has(.ml-hit[data-i="5"]:hover) .ml-rule[data-i="5"],
+.ml-area:has(.ml-hit[data-i="5"]:focus-within) .ml-rule[data-i="5"]{ opacity:1; }
+.ml-area:has(.ml-hit[data-i="5"]:hover) .ml-tip[data-i="5"],
+.ml-area:has(.ml-hit[data-i="5"]:focus-within) .ml-tip[data-i="5"]{ display:block; }
+.ml-area:has(.ml-hit[data-i="5"]:hover) .ml-dot[data-i="5"],
+.ml-area:has(.ml-hit[data-i="5"]:focus-within) .ml-dot[data-i="5"]{ opacity:1; }
+.ml-area:has(.ml-hit[data-i="6"]:hover) .ml-rule[data-i="6"],
+.ml-area:has(.ml-hit[data-i="6"]:focus-within) .ml-rule[data-i="6"]{ opacity:1; }
+.ml-area:has(.ml-hit[data-i="6"]:hover) .ml-tip[data-i="6"],
+.ml-area:has(.ml-hit[data-i="6"]:focus-within) .ml-tip[data-i="6"]{ display:block; }
+.ml-area:has(.ml-hit[data-i="6"]:hover) .ml-dot[data-i="6"],
+.ml-area:has(.ml-hit[data-i="6"]:focus-within) .ml-dot[data-i="6"]{ opacity:1; }
+.ml-area:has(.ml-hit[data-i="7"]:hover) .ml-rule[data-i="7"],
+.ml-area:has(.ml-hit[data-i="7"]:focus-within) .ml-rule[data-i="7"]{ opacity:1; }
+.ml-area:has(.ml-hit[data-i="7"]:hover) .ml-tip[data-i="7"],
+.ml-area:has(.ml-hit[data-i="7"]:focus-within) .ml-tip[data-i="7"]{ display:block; }
+.ml-area:has(.ml-hit[data-i="7"]:hover) .ml-dot[data-i="7"],
+.ml-area:has(.ml-hit[data-i="7"]:focus-within) .ml-dot[data-i="7"]{ opacity:1; }
+.ml-area:has(.ml-hit[data-i="8"]:hover) .ml-rule[data-i="8"],
+.ml-area:has(.ml-hit[data-i="8"]:focus-within) .ml-rule[data-i="8"]{ opacity:1; }
+.ml-area:has(.ml-hit[data-i="8"]:hover) .ml-tip[data-i="8"],
+.ml-area:has(.ml-hit[data-i="8"]:focus-within) .ml-tip[data-i="8"]{ display:block; }
+.ml-area:has(.ml-hit[data-i="8"]:hover) .ml-dot[data-i="8"],
+.ml-area:has(.ml-hit[data-i="8"]:focus-within) .ml-dot[data-i="8"]{ opacity:1; }
+.ml-area:has(.ml-hit[data-i="9"]:hover) .ml-rule[data-i="9"],
+.ml-area:has(.ml-hit[data-i="9"]:focus-within) .ml-rule[data-i="9"]{ opacity:1; }
+.ml-area:has(.ml-hit[data-i="9"]:hover) .ml-tip[data-i="9"],
+.ml-area:has(.ml-hit[data-i="9"]:focus-within) .ml-tip[data-i="9"]{ display:block; }
+.ml-area:has(.ml-hit[data-i="9"]:hover) .ml-dot[data-i="9"],
+.ml-area:has(.ml-hit[data-i="9"]:focus-within) .ml-dot[data-i="9"]{ opacity:1; }
+.ml-area:has(.ml-hit[data-i="10"]:hover) .ml-rule[data-i="10"],
+.ml-area:has(.ml-hit[data-i="10"]:focus-within) .ml-rule[data-i="10"]{ opacity:1; }
+.ml-area:has(.ml-hit[data-i="10"]:hover) .ml-tip[data-i="10"],
+.ml-area:has(.ml-hit[data-i="10"]:focus-within) .ml-tip[data-i="10"]{ display:block; }
+.ml-area:has(.ml-hit[data-i="10"]:hover) .ml-dot[data-i="10"],
+.ml-area:has(.ml-hit[data-i="10"]:focus-within) .ml-dot[data-i="10"]{ opacity:1; }
+.ml-area:has(.ml-hit[data-i="11"]:hover) .ml-rule[data-i="11"],
+.ml-area:has(.ml-hit[data-i="11"]:focus-within) .ml-rule[data-i="11"]{ opacity:1; }
+.ml-area:has(.ml-hit[data-i="11"]:hover) .ml-tip[data-i="11"],
+.ml-area:has(.ml-hit[data-i="11"]:focus-within) .ml-tip[data-i="11"]{ display:block; }
+.ml-area:has(.ml-hit[data-i="11"]:hover) .ml-dot[data-i="11"],
+.ml-area:has(.ml-hit[data-i="11"]:focus-within) .ml-dot[data-i="11"]{ opacity:1; }
+
+.ml-x{ margin-left:2.1rem; }
+.ml-key{
+  list-style:none; display:flex; flex-wrap:wrap; gap:.35rem 1.1rem;
+  margin:1.5rem 0 0; padding:0;
+}
+.ml-key li{
+  display:flex; align-items:center; gap:.4rem;
+  font-size:var(--fs-xs); color:var(--muted);
+}
+
+/* ---- The breakdown beside the lines -------------------------------------- */
+.ml-side{ min-width:0; }
+.ml-side-h{
+  margin:0 0 .6rem; font-size:var(--fs-xs); font-weight:600;
+  letter-spacing:.06em; text-transform:uppercase; color:var(--muted);
+}
+.ml-side li{
+  display:grid; grid-template-columns:auto 1fr auto; align-items:center;
+  gap:.55rem; padding:.45rem .65rem; margin-bottom:.3rem;
+  background:var(--surface-2); border-radius:.5rem;
+}
+.ml-side-n{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ml-side ul{ list-style:none; margin:0; padding:0; }
+.ml-side-n{ font-size:var(--fs-sm); color:var(--text-2); }
+.ml-side-v{ text-align:right; }
+.ml-side-t{ display:block; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; }
+.ml-side-d{ display:block; font-size:var(--fs-xs); color:var(--muted); }
+.ml-side-d[data-up]{ color:var(--k-bad); }
+.ml-side-d[data-down]{ color:var(--k-good); }
+
+/* The chart and its breakdown. The panes are the flex children, not the charts
+   inside them — the period switch wraps each one — so the sizing is on the
+   pane or the chart collapses to its content width. */
+.ml-split{ display:flex; gap:1.75rem; align-items:flex-start; flex-wrap:wrap; }
+.ml-split > .an-pane{ flex:1 1 26rem; min-width:0; }
+.ml-split > .ml-side{ flex:0 0 16rem; }
+
+@media (max-width: 900px){
+  .ml-side{ flex:1 1 100%; }
+  .sk-r{ grid-template-columns:7rem 1fr 2.4rem; }
+  .sk-tip{ left:0; }
+  .sk-axis{ margin-left:7.65rem; }
+}
+
+/* ---- Employee leave rankings --------------------------------------------- */
+/* One table per leave type behind a row of tabs. Radio inputs and :has(),
+   like every other switch on this system — no script, and it prints. */
+.rk-tabs{
+  display:flex; gap:.35rem; flex-wrap:wrap;
+  padding:.85rem 1.15rem; border-bottom:1px solid var(--hair);
+}
+.rk-tabs label{
+  cursor:pointer; margin:0; display:inline-flex; align-items:center; gap:.4rem;
+  font-size:.78rem; padding:.35rem .8rem; border-radius:2rem;
+  border:1px solid var(--border); background:var(--surface-2);
+  color:var(--muted); white-space:nowrap; transition:.15s;
+}
+.rk-tabs label:hover{ color:var(--text); }
+.rk-tabs input{ position:absolute; opacity:0; pointer-events:none; }
+.rk-tabs label:has(input:checked){
+  background:var(--primary); border-color:var(--primary); color:#fff; font-weight:600;
+}
+.rk-tabs label:focus-within{ outline:2px solid var(--primary); outline-offset:2px; }
+.rk-count{
+  font-size:.7rem; padding:0 .35rem; border-radius:1rem;
+  background:color-mix(in srgb,var(--text) 8%,transparent);
+}
+.rk-tabs label:has(input:checked) .rk-count{ background:rgb(255 255 255 / .22); }
+
+.rk-pane{ display:none; }
+#rk:has(#rk-VL:checked) .rk-pane[data-code="VL"],
+#rk:has(#rk-FL:checked) .rk-pane[data-code="FL"],
+#rk:has(#rk-SL:checked) .rk-pane[data-code="SL"],
+#rk:has(#rk-ML:checked) .rk-pane[data-code="ML"],
+#rk:has(#rk-PL:checked) .rk-pane[data-code="PL"],
+#rk:has(#rk-SPL:checked) .rk-pane[data-code="SPL"],
+#rk:has(#rk-SOLO:checked) .rk-pane[data-code="SOLO"],
+#rk:has(#rk-STL:checked) .rk-pane[data-code="STL"],
+#rk:has(#rk-VAWC:checked) .rk-pane[data-code="VAWC"],
+#rk:has(#rk-RL:checked) .rk-pane[data-code="RL"],
+#rk:has(#rk-SLBW:checked) .rk-pane[data-code="SLBW"],
+#rk:has(#rk-SEL:checked) .rk-pane[data-code="SEL"],
+#rk:has(#rk-MON:checked) .rk-pane[data-code="MON"],
+#rk:has(#rk-TL:checked) .rk-pane[data-code="TL"],
+#rk:has(#rk-AL:checked) .rk-pane[data-code="AL"]{ display:block; }
+.rk-table th{ font-size:.7rem; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); }
+.rk-th-rank{ width:4.5rem; }
+.rk-th-days{ width:13rem; }
+
+/* The rank number, with the first three marked. A medal on every row is a
+   decoration; on three it is a ranking. */
+.rk-rank{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:1.6rem; height:1.6rem; border-radius:50%;
+  font-size:.78rem; color:var(--muted); font-variant-numeric:tabular-nums;
+}
+.rk-rank[data-top]{ font-weight:700; color:var(--text); }
+.rk-rank[data-top="1"]{ background:#F6E4B0; color:#6B4E05; }
+.rk-rank[data-top="2"]{ background:#E3E3EA; color:#4A4757; }
+.rk-rank[data-top="3"]{ background:#EFD8C6; color:#6E4526; }
+
+.rk-who{ display:inline-flex; align-items:center; gap:.6rem; min-width:0; }
+/* Initials, not a photograph. Nobody uploads one, and a row of identical
+   placeholder silhouettes is worse than no avatar at all. The colour is by
+   position in the list, so it decorates without claiming to mean anything. */
+.rk-av{
+  display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;
+  width:1.9rem; height:1.9rem; border-radius:50%;
+  font-size:.68rem; font-weight:700; color:#fff; letter-spacing:.02em;
+}
+.rk-av[data-n="0"]{ background:var(--lt-s1); }
+.rk-av[data-n="1"]{ background:var(--lt-s2); }
+.rk-av[data-n="2"]{ background:var(--lt-s3); }
+.rk-av[data-n="3"]{ background:var(--lt-s4); }
+.rk-av[data-n="4"]{ background:var(--lt-s5); }
+.rk-name{ font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+.rk-days{ display:flex; align-items:center; gap:.55rem; }
+.rk-days b{ font-variant-numeric:tabular-nums; color:var(--text); min-width:1.6rem; }
+.rk-t{ flex:1; height:.35rem; border-radius:2px; background:var(--ch-grid); overflow:hidden; }
+.rk-t > span{ display:block; height:100%; background:var(--lt-s1); border-radius:2px; }
+
+/* The only colour that judges anything, and it judges the balance rather than
+   the ranking: running out is a fact the employee needs before they file. */
+.rk-left{ font-size:var(--fs-sm); font-variant-numeric:tabular-nums; color:var(--text-2); }
+.rk-left[data-state="spent"]{ color:var(--k-bad); font-weight:600; }
+.rk-left[data-state="low"]{ color:var(--k-warn); font-weight:600; }
+.rk-left[data-state="none"]{ color:var(--muted-2); }
+
+@supports not selector(:has(*)){
+  .rk-tabs{ display:none; }
+  .rk-pane:first-of-type{ display:block; }
+}
+@media print{
+  .rk-tabs{ display:none !important; }
+  .rk-pane{ display:block !important; }
+}
 
 /* ---- Coverage risk ------------------------------------------------------- */
 .cv-r{

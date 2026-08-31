@@ -7,8 +7,10 @@ use App\Models\EmployeeProfile;
 use App\Models\LeaveRequest;
 use App\Models\LeaveType;
 use App\Models\User;
+use App\Services\Dashboard\LeaveTypeSeries;
 use App\Services\DashboardService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 /**
@@ -36,7 +38,7 @@ class LeaveDashboardTest extends TestCase
         $this->vl = LeaveType::where('code', 'VL')->firstOrFail();
     }
 
-    private function visit(string $role): \Illuminate\Testing\TestResponse
+    private function visit(string $role): TestResponse
     {
         $this->actingAs($this->makeUser($role));
         session(['otp_verified' => true]);
@@ -45,7 +47,7 @@ class LeaveDashboardTest extends TestCase
     }
 
     /** The role that actually holds leave.requests.view-all. */
-    private function manager(): \Illuminate\Testing\TestResponse
+    private function manager(): TestResponse
     {
         return $this->visit('hr');
     }
@@ -386,12 +388,49 @@ class LeaveDashboardTest extends TestCase
 
         $html = $this->manager()->assertOk()->getContent();
 
-        // One hero per chart, and never one on a chart whose leader is zero.
-        preg_match_all('/<div class="hb-r"\s*\n?\s*data-hero/', $html, $heroes);
-        $this->assertNotEmpty($heroes[0], 'no chart is naming its leader');
-
+        // The ranked bars that are left — the department head's pane, mandatory
+        // leave — still work this way. The three panels that read leave type do
+        // not: there the colour is the type's identity and is fixed for the
+        // year, which is a different rule for a different job. See
+        // LeaveTypeSeries, and the test below.
         $this->assertStringNotContainsString('tone-', $html,
             'the per-row colour slots are back; the ranking is now encoded twice');
+    }
+
+    /**
+     * A leave type keeps its colour whatever the ranking does.
+     *
+     * The ring, the office stack and the twelve-month lines are only readable
+     * together if Sick Leave is the same colour in all three, and the month /
+     * year switch must not repaint it because a type slipped a place in a
+     * smaller sample. The slots are handed out in leave-type order from the
+     * year's figures, once.
+     */
+    public function test_a_leave_type_holds_its_colour_across_the_panels(): void
+    {
+        $employee = $this->makeUser('employee');
+        $this->file($employee, 'approved', now()->toDateString(), now()->toDateString());
+
+        $series = app(LeaveTypeSeries::class);
+        $palette = $series->palette((int) now()->year);
+
+        $this->assertLessThanOrEqual(
+            LeaveTypeSeries::SLOTS + 1, $palette->count(),
+            'more hues are in use than the palette was validated for'
+        );
+        $this->assertSame('other', $palette[0]['key'], 'the tail has no Other to fold into');
+
+        // Same type, same key, in the narrow window and the wide one.
+        $month = collect($series->distribution(now()->startOfMonth(), now()->endOfMonth())['slices']);
+        $year = collect($series->distribution(now()->startOfYear(), now()->endOfYear())['slices']);
+
+        foreach ($month as $slice) {
+            $inYear = $year->firstWhere('name', $slice['name']);
+            if ($inYear !== null) {
+                $this->assertSame($slice['key'], $inYear['key'],
+                    $slice['name'].' changes colour between the month and the year');
+            }
+        }
     }
 
     /** The service no longer hands the view a colour slot to key off. */
@@ -453,15 +492,44 @@ class LeaveDashboardTest extends TestCase
 
         $this->assertStringNotContainsString('<canvas', $html);
 
-        // Three forms: filing over the year is a line, outcome is one split
-        // bar, leave types and offices are sideways bars.
-        $this->assertStringContainsString('class="ln"', $html);
-        $this->assertStringContainsString('class="hb-f"', $html);
+        // Four forms: a ring for share of the total, a stack for the offices,
+        // lines for the twelve months, a split bar for the outcome. All four
+        // are HTML and inline SVG.
+        $this->assertStringContainsString('class="dn-arc"', $html);
+        $this->assertStringContainsString('class="sk-s"', $html);
+        $this->assertStringContainsString('class="ml-line"', $html);
         $this->assertStringContainsString('<div class="sb">', $html);
+
+        // Including the hovers. A tooltip that needs a listener is a tooltip
+        // that is gone the moment a script fails to load, and these panels
+        // print with the rest of the page.
+        $this->assertStringContainsString('class="ml-tip"', $html);
+        $this->assertStringContainsString('class="sk-tip"', $html);
 
         // The outcome chart carries its table, so it is not readable by colour
         // alone.
         $this->assertStringContainsString('Show the numbers', $html);
+    }
+
+    /**
+     * Every figure the colours carry is also written out.
+     *
+     * Two of the five hues fall below 3:1 against the light card, which the
+     * palette's relief rule allows only where the numbers are visible. The
+     * ring writes its percentage and its count on every legend row; the lines
+     * have the breakdown beside them; the stack names each segment on hover.
+     */
+    public function test_no_figure_is_carried_by_colour_alone(): void
+    {
+        $this->file($this->makeUser('employee'), 'approved',
+            now()->toDateString(), now()->toDateString());
+
+        $html = $this->manager()->assertOk()->getContent();
+
+        $this->assertStringContainsString('class="dn-pct"', $html, 'the ring shows no percentages');
+        $this->assertStringContainsString('class="dn-n"', $html, 'the ring shows no counts');
+        $this->assertStringContainsString('Period breakdown', $html);
+        $this->assertStringContainsString('class="ml-side-t"', $html);
     }
 
     /**
