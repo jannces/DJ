@@ -58,30 +58,30 @@ class DemoDataSeeder extends Seeder
             ['name' => 'Sam Icta', 'username' => 'sysadmin', 'email' => 'sysadmin@alicia.gov.ph'],
             'system-admin',
             ['employee_no' => 'EMP-0001', 'first_name' => 'Sam', 'last_name' => 'Icta',
-             'salary' => 35000, 'department_id' => $mo->id,
-             'position_id' => $positions->firstWhere('title', 'Administrative Officer II')->id,
-             'date_hired' => '2020-01-15', 'gender' => 'male', 'civil_status' => 'single',
-             'address' => 'Poblacion, Alicia'],
+                'salary' => 35000, 'department_id' => $mo->id,
+                'position_id' => $positions->firstWhere('title', 'Administrative Officer II')->id,
+                'date_hired' => '2020-01-15', 'gender' => 'male', 'civil_status' => 'single',
+                'address' => 'Poblacion, Alicia'],
         );
 
         $hr = $make(
             ['name' => 'Helen Reyes', 'username' => 'hrofficer', 'email' => 'hr@alicia.gov.ph'],
             'hr',
             ['employee_no' => 'EMP-0002', 'first_name' => 'Helen', 'last_name' => 'Reyes',
-             'salary' => 42000, 'department_id' => $hrmo->id,
-             'position_id' => $positions->firstWhere('title', 'Human Resource Management Officer II')->id,
-             'date_hired' => '2018-06-01', 'gender' => 'female', 'civil_status' => 'married',
-             'address' => 'Barangay Calaocan, Alicia'],
+                'salary' => 42000, 'department_id' => $hrmo->id,
+                'position_id' => $positions->firstWhere('title', 'Human Resource Management Officer II')->id,
+                'date_hired' => '2018-06-01', 'gender' => 'female', 'civil_status' => 'married',
+                'address' => 'Barangay Calaocan, Alicia'],
         );
 
         $head = $make(
             ['name' => 'Diego Santos', 'username' => 'depthead', 'email' => 'depthead@alicia.gov.ph'],
             'department-head',
             ['employee_no' => 'EMP-0003', 'first_name' => 'Diego', 'last_name' => 'Santos',
-             'salary' => 65000, 'department_id' => $meo->id,
-             'position_id' => $positions->firstWhere('title', 'Engineer II')->id,
-             'date_hired' => '2015-03-10', 'gender' => 'male', 'civil_status' => 'married',
-             'address' => 'Barangay Magsaysay, Alicia'],
+                'salary' => 65000, 'department_id' => $meo->id,
+                'position_id' => $positions->firstWhere('title', 'Engineer II')->id,
+                'date_hired' => '2015-03-10', 'gender' => 'male', 'civil_status' => 'married',
+                'address' => 'Barangay Magsaysay, Alicia'],
         );
         $meo->update(['head_user_id' => $head->id]);
 
@@ -89,10 +89,10 @@ class DemoDataSeeder extends Seeder
             ['name' => 'Maria Alicia Cruz', 'username' => 'mayor', 'email' => 'mayor@alicia.gov.ph'],
             'mayor',
             ['employee_no' => 'EMP-0004', 'first_name' => 'Maria Alicia', 'last_name' => 'Cruz',
-             'salary' => 105000, 'department_id' => $mo->id,
-             'position_id' => $positions->firstWhere('title', 'Municipal Mayor')->id,
-             'date_hired' => '2022-07-01', 'gender' => 'female', 'civil_status' => 'married',
-             'address' => 'Poblacion, Alicia'],
+                'salary' => 105000, 'department_id' => $mo->id,
+                'position_id' => $positions->firstWhere('title', 'Municipal Mayor')->id,
+                'date_hired' => '2022-07-01', 'gender' => 'female', 'civil_status' => 'married',
+                'address' => 'Poblacion, Alicia'],
         );
         $mo->update(['head_user_id' => $mayor->id]);
 
@@ -100,10 +100,10 @@ class DemoDataSeeder extends Seeder
             ['name' => 'Juan Dela Cruz', 'username' => 'employee', 'email' => 'employee@alicia.gov.ph'],
             'employee',
             ['employee_no' => 'EMP-0005', 'first_name' => 'Juan', 'last_name' => 'Dela Cruz',
-             'salary' => 18000, 'department_id' => $meo->id,
-             'position_id' => $positions->firstWhere('title', 'Administrative Aide IV')->id,
-             'date_hired' => '2023-02-20', 'gender' => 'male', 'civil_status' => 'single',
-             'address' => 'Barangay Victoria, Alicia', 'is_solo_parent' => false],
+                'salary' => 18000, 'department_id' => $meo->id,
+                'position_id' => $positions->firstWhere('title', 'Administrative Aide IV')->id,
+                'date_hired' => '2023-02-20', 'gender' => 'male', 'civil_status' => 'single',
+                'address' => 'Barangay Victoria, Alicia', 'is_solo_parent' => false],
         );
 
         // Additional rank-and-file employees for report volume.
@@ -127,5 +127,11 @@ class DemoDataSeeder extends Seeder
                 );
             }
         }
+
+        // Accounts and opening balances are not a demonstration on their own.
+        // Without a single application filed, every figure on the Leave
+        // management dashboard is zero and the page reads as broken when it
+        // is only empty.
+        $this->call(DemoLeaveSeeder::class);
     }
 }
