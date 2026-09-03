@@ -273,12 +273,6 @@ a:hover { color:var(--primary-hover); }
 .crumbs .sep { opacity:.5; }
 
 /* ---- 7. Cards ------------------------------------------------------------ */
-.card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg);
-  box-shadow:var(--shadow-sm); transition:box-shadow var(--dur) var(--ease),transform var(--dur) var(--ease); }
-.card-header { background:transparent; border-bottom:1px solid var(--border);
-  padding:1rem 1.25rem; font-weight:700; font-size:.95rem; }
-.card-body { padding:1.25rem; }
-.card-footer { background:var(--surface-2); border-top:1px solid var(--border); }
 
 /* Stat cards (dashboard) */
 .stat-card { display:flex; align-items:center; gap:1rem; padding:1.15rem 1.25rem;
@@ -656,7 +650,6 @@ footer.app-foot{ text-align:center; color:var(--muted-2); font-size:.76rem; padd
   --shadow-lg:0 6px 20px rgba(22,17,41,.10);
   --shadow:0 2px 6px rgba(22,17,41,.07);
 }
-.card{ box-shadow:var(--shadow-xs); border:1px solid var(--border); }
 .stat-card{ box-shadow:var(--shadow-xs); border:1px solid var(--border); }
 /* Flat sidebar: the gradient cost contrast at the bottom of the nav. */
 .lms-sidebar{ background:var(--brand-800); box-shadow:none; border-right:1px solid var(--brand-900); }
@@ -1009,15 +1002,6 @@ body{ background:var(--bg); color:var(--text); }
 .dot-badge{ background:var(--danger); }
 
 /* ---- 4. Surfaces, tables, controls --------------------------------------- */
-.card{
-  background:var(--surface); border:1px solid var(--border);
-  border-radius:.75rem; box-shadow:none;
-}
-.card-header{
-  background:transparent; border-bottom:1px solid var(--border);
-  font-size:.85rem; font-weight:600; padding:.85rem 1.15rem;
-}
-.card-footer{ background:transparent; border-top:1px solid var(--border); }
 
 .stat-card{
   border:1px solid var(--border); border-radius:.75rem; box-shadow:none;
@@ -1377,7 +1361,6 @@ body{ background:var(--bg); color:var(--text); }
 }
 :root[data-bs-theme="dark"] .dash-frame,
 :root[data-bs-theme="dark"] .kpi-card,
-:root[data-bs-theme="dark"] .card{ box-shadow:0 1px 2px rgba(0,0,0,.5); }
 
 /* Split bar reads as brand vs muted rather than black vs grey. */
 .split-a{ background:var(--muted-2); }
@@ -1514,19 +1497,71 @@ span.dash-link:hover{ transform:none; box-shadow:none; color:var(--muted); }
 :root[data-bs-theme="dark"] .dash .dash-frame{ background:var(--surface); }
 
 /* ---- Panels: a card is a dash-frame ------------------------------------- */
-.card{
-  border:1px solid var(--hair); border-radius:.75rem;
-  background:var(--surface); margin-bottom:1rem;
+/* ==========================================================================
+   THE CARD
+   Four things separate a card that looks deliberate from one that looks like
+   a default: SPACING, TYPE HIERARCHY, SHADOW and BORDER. This had none of
+   them by accident -- four `.card` blocks had grown up in four sections of
+   this file, disagreeing on radius and shadow, and the last one won. It
+   declared no shadow at all, so every panel in the application sat flat on
+   the page with nothing but a hairline separating it.
+
+   THE NUMBERS ARE SCALED TO THIS APPLICATION, not copied from a product
+   card. 40px of padding and a 24px radius read as premium on a marketing
+   page showing one card; on a list of ninety leave applications they would
+   spend a third of the row width on air and turn every page into scrolling.
+   The move is from "cramped default" to "deliberate", which here is 24px and
+   14px -- enough that the spacing reads as a decision, not so much that it
+   costs the density HR actually works in.
+
+   NO HOVER LIFT. A lift says "click me", and not one of the 121 cards in
+   this application is clickable -- they are panels, not tiles. A card that
+   rises under the pointer and then does nothing is a promise the interface
+   cannot keep, which is worse than a card that sits still.
+   ========================================================================== */
+:root{
+  /* Two shadows, not one. The tight dark one gives the edge its contrast so
+     the card separates from the page; the wide soft one is the ambient light
+     that makes it sit ABOVE the page rather than on it. One shadow can do
+     either, never both. */
+  --card-shadow:
+      0 1px 2px rgb(16 24 40 / .06),
+      0 8px 24px -6px rgb(16 24 40 / .10);
 }
+[data-bs-theme="dark"]{
+  /* Dark backgrounds swallow a soft shadow, so the depth has to come from
+     the border instead -- and a black glow under a dark card is invisible
+     anyway. The tight layer stays; the ambient one goes. */
+  --card-shadow:0 1px 2px rgb(0 0 0 / .45);
+}
+
+.card{
+  border:1px solid var(--hair); border-radius:.875rem;
+  background:var(--surface); margin-bottom:1rem;
+  box-shadow:var(--card-shadow);
+}
+/* The title wins the eye: heavier and a size up from the body it sits over.
+   The secondary text beside it -- the CSC box reference, the row count -- is
+   already --muted, which measures 5.4:1 on white. It is deliberately NOT
+   dropped further: 55% opacity would put it at 3.96:1, under the 4.5:1 that
+   body text on a government system has to hold. Hierarchy here comes from
+   weight and size, which cost nothing in legibility. */
 .card-header{
   display:flex; align-items:center; justify-content:space-between; gap:.75rem;
-  padding:.85rem 1.15rem; border-bottom:1px solid var(--hair);
+  padding:1rem 1.5rem; border-bottom:1px solid var(--hair);
   background:transparent; color:var(--text);
-  font-size:.85rem; font-weight:600;
+  font-size:.9rem; font-weight:650; letter-spacing:-.01em;
 }
 .card-header i{ color:var(--muted); font-size:.9rem; }
-.card-body{ padding:1.15rem; }
-.card > .table-responsive:first-child{ border-top-left-radius:.75rem; border-top-right-radius:.75rem; }
+.card-header .lf-ref,.card-header .dash-link,.card-header .text-muted{
+  font-weight:500; font-size:.8rem;
+}
+.card-body{ padding:1.5rem; }
+.card-footer{ background:transparent; border-top:1px solid var(--hair); padding:1rem 1.5rem; }
+.card > .table-responsive:first-child{ border-top-left-radius:.875rem; border-top-right-radius:.875rem; }
+/* A table fills the card edge to edge; body padding would double the cell
+   padding it already has. */
+.card > .table-responsive + .card-body{ padding-top:1rem; }
 
 /* ---- Tables: work with Bootstrap's variables, not against them ---------- */
 .card .table{
