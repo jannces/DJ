@@ -771,39 +771,11 @@ footer.app-foot{ text-align:center; color:var(--muted-2); font-size:.76rem; padd
   background:var(--dash-surface); overflow:hidden; margin-bottom:1rem;
 }
 
-/* ---- KPI strip: one connected row divided by hairlines, not separate cards */
-.kpi-strip{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); }
-@media (max-width:1100px){ .kpi-strip{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
-@media (max-width:560px){ .kpi-strip{ grid-template-columns:minmax(0,1fr); } }
-.kpi{ padding:1rem 1.15rem 1.15rem; border-right:1px solid var(--hair); min-width:0; }
-.kpi:last-child{ border-right:0; }
-@media (max-width:1100px){
-  .kpi:nth-child(2n){ border-right:0; }
-  .kpi:nth-child(-n+2){ border-bottom:1px solid var(--hair); }
-}
-@media (max-width:560px){
-  .kpi{ border-right:0; border-bottom:1px solid var(--hair); }
-  .kpi:last-child{ border-bottom:0; }
-}
-.kpi-label{
-  display:flex; align-items:center; gap:.4rem;
-  font-size:.78rem; color:var(--muted); font-weight:500; margin-bottom:.5rem;
-}
-.kpi-label i{ font-size:.85rem; opacity:.85; }
-.kpi-row{ display:flex; align-items:center; justify-content:space-between; gap:.5rem; }
-.kpi-value{
-  font-size:1.65rem; font-weight:600; letter-spacing:-.02em; line-height:1.1;
-  font-variant-numeric:tabular-nums; color:var(--text);
-}
-.kpi-pill{
-  display:inline-flex; align-items:center; gap:.25rem; flex:none;
-  border-radius:var(--r-full); padding:.15rem .45rem;
-  font-size:.72rem; font-weight:600; font-variant-numeric:tabular-nums;
-}
-.kpi-pill i{ font-size:.7rem; }
-.kpi-up{ color:#16a34a; background:color-mix(in srgb,#16a34a 12%,transparent); }
-.kpi-down{ color:#dc2626; background:color-mix(in srgb,#dc2626 12%,transparent); }
-.kpi-flat{ color:var(--muted); background:color-mix(in srgb,var(--muted) 12%,transparent); }
+/* The KPI tile itself is defined once, further down -- search "THE KPI TILE".
+   A connected strip divided by hairlines used to live here, along with
+   .kpi-label / .kpi-row / .kpi-value / .kpi-pill and an up/down/flat pill.
+   Every one of those classes had stopped appearing in any view; the strip
+   became separate cards and nothing removed the CSS behind it. */
 
 /* ---- Panels ------------------------------------------------------------- */
 .dash-head{
@@ -1253,20 +1225,13 @@ body{ background:var(--bg); color:var(--text); }
 .kpi-grid{
   /* 1rem, the same as every other vertical gap on these pages: the counter row
      and the panels below it are one rhythm, not two. */
-  display:grid; gap:1rem; margin-bottom:1rem;
+  display:grid; gap:1.15rem; margin-bottom:1rem;
   /* auto-fit so three cards (employee) and four (administrator) both fill the
      row evenly, without a separate rule for each count. */
   grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));
 }
 @media (max-width:560px){ .kpi-grid{ grid-template-columns:minmax(0,1fr); } }
 
-.kpi-card{
-  background:var(--surface); border:1px solid var(--border);
-  border-radius:.75rem; padding:1.1rem 1.2rem; min-width:0;
-}
-.kpi-card .kpi-label{ margin-bottom:.45rem; }
-.kpi-card .kpi-value{ font-size:1.75rem; }
-.kpi-hint{ font-size:.78rem; color:var(--muted); margin-top:.2rem; }
 
 /* A single remaining panel should fill the row, not sit in a third of it. */
 .dash-row1{ grid-template-columns:minmax(0,1fr) !important; }
@@ -1331,38 +1296,22 @@ body{ background:var(--bg); color:var(--text); }
 .st-wait{ color:var(--warning); background:var(--warning-soft); }
 .st-bad{  color:var(--danger);  background:var(--danger-soft); }
 .st-off{  color:var(--muted);   background:var(--surface-2); }
-.kpi-up{   color:var(--success); background:var(--success-soft); }
-.kpi-down{ color:var(--danger);  background:var(--danger-soft); }
-.kpi-flat{ color:var(--muted);   background:var(--surface-2); }
-
-/* Each counter gets a tinted icon chip instead of a bare glyph. */
-.kpi-label i{
-  display:inline-flex; align-items:center; justify-content:center;
-  width:1.6rem; height:1.6rem; border-radius:.5rem; flex:none;
-  background:var(--primary-soft); color:var(--primary); font-size:.85rem;
-}
-/* Keyed off the icon, not the card's position: the administrator strip lists a
-   different set of counters in a different order, and a positional rule would
-   paint its "Approved" card red. */
-.kpi-label i.bi-hourglass-split{ background:var(--warning-soft); color:var(--warning); }
-.kpi-label i.bi-check2-circle{   background:var(--success-soft); color:var(--success); }
-.kpi-label i.bi-x-circle{        background:var(--danger-soft);  color:var(--danger); }
-.kpi-label i.bi-people,
-.kpi-label i.bi-diagram-3{       background:var(--info-soft);    color:var(--info); }
-.kpi-label{ gap:.55rem; font-weight:600; color:var(--text-2); }
-
 /* Panel titles pick up the brand, so headers are not a wall of grey. */
 .dash-title i{ color:var(--primary); }
 .card-header{ color:var(--text); }
 
-/* Cards lift very slightly off the tinted page. */
-.dash-frame,.kpi-card,.card,.stat-card{
-  box-shadow:0 1px 2px rgba(22,18,31,.05);
-}
-:root[data-bs-theme="dark"] .dash-frame,
-:root[data-bs-theme="dark"] .kpi-card,
+/* Cards lift very slightly off the tinted page. .card is not listed: it has
+   its own two-layer shadow now, and naming it here only meant two rules
+   fighting over the same property. */
+.dash-frame{ box-shadow:0 1px 2px rgba(22,18,31,.05); }
 
-/* Split bar reads as brand vs muted rather than black vs grey. */
+/* Split bar reads as brand vs muted rather than black vs grey.
+   This rule used to begin with two orphaned dark-mode selectors --
+   `:root[data-bs-theme="dark"] .dash-frame,` and `... .kpi-card,` -- whose
+   own declaration block had been deleted, leaving them attached to whatever
+   came next. Comments do not break a selector list, so in dark mode every
+   .dash-frame was being given a mid-grey background; it only looked right
+   because a later, more specific rule painted over it. */
 .split-a{ background:var(--muted-2); }
 .split-b{ background:var(--primary); }
 .splitbar{ background:var(--surface-2); }
@@ -3079,13 +3028,27 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .kpi[data-tone="warn"]{ --tone:var(--k-warn); }
 .kpi[data-tone="bad"]{  --tone:var(--k-bad); }
 
+/* ---- THE KPI TILE -------------------------------------------------------
+   The same four moves the card got -- spacing, hierarchy, shadow, border --
+   sized for a page that also carries tables and charts.
+
+   NOT the reference's own numbers. 40px of padding and a 24px radius look
+   expensive on a product card showing one figure; measured on this row they
+   cost 60px of height, which pushes the charts below down the page on every
+   load, and at a 15rem minimum column the tiles go tall while staying narrow
+   so the content clusters in a band with air above and below it. 28px and
+   16px take the same step for 31px.
+
+   The description is also NOT dropped to 55% opacity. That measures 3.96:1,
+   under the 4.5:1 body text has to hold -- and on the tile reading "1 older
+   than 5 days" that line is the actionable half of the card.
+
+   AND NO HOVER LIFT. A lift says "click me"; these tiles are not links. See
+   CardTest, which fails the day one of them becomes one. */
 .dash .kpi{
   background:var(--surface); border:1px solid var(--border);
-  border-radius:.75rem; padding:.9rem 1rem; min-width:0;
-  /* The retired connected strip put a divider on every card. Each metric is
-     its own frame now, and a hairline down the right of a bordered card reads
-     as a rendering fault. */
-  border-right:1px solid var(--border);
+  border-radius:1rem; padding:1.75rem; min-width:0;
+  box-shadow:var(--card-shadow);
 }
 .kpi-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:.5rem; }
 .kpi-lb{
@@ -3100,7 +3063,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   stroke-linecap:round; stroke-linejoin:round;
 }
 .kpi-v{
-  font-size:1.85rem; font-weight:650; letter-spacing:-.03em; line-height:1;
+  font-size:2.125rem; font-weight:600; letter-spacing:-.03em; line-height:1;
   margin:0; color:var(--tone,var(--text)); font-variant-numeric:tabular-nums;
 }
 .kpi-s{ font-size:.75rem; color:var(--muted); margin:.35rem 0 0; }
