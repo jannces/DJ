@@ -74,20 +74,15 @@
                                         </span>
                                     </td>
                                     <td>
-                                        <span class="rk-who">
-                                            <span class="rk-av" data-n="{{ $row['rank'] % 5 }}">{{ $row['initials'] }}</span>
-                                            {{-- A link only for a reader who can open the
-                                                 other end. This page is also given to a
-                                                 department head, who does not hold
-                                                 employees.view — a blue name would send
-                                                 them to a 403. --}}
-                                            @can('employees.view')
-                                                <a href="{{ route('employees.show', $row['user_id']) }}"
-                                                   class="rk-name name-link">{{ $row['name'] }}</a>
-                                            @else
-                                                <span class="rk-name">{{ $row['name'] }}</span>
-                                            @endcan
-                                        </span>
+                                        {{-- A link only for a reader who can open the
+                                             other end. This page is also given to a
+                                             department head, who does not hold
+                                             employees.view — a blue name would send
+                                             them to a 403, so they get the same row
+                                             without one. --}}
+                                        <x-person :name="$row['name']"
+                                            :url="auth()->user()->hasPermission('employees.view')
+                                                ? route('employees.show', $row['user_id']) : null" />
                                     </td>
                                     <td class="small text-muted">{{ $row['office'] }}</td>
                                     <td class="small text-muted">{{ $row['position'] }}</td>

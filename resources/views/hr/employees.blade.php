@@ -17,12 +17,12 @@
         <tbody>
         @forelse ($employees as $e)
             <tr>
-                {{-- The name is the way in, so the View button is no longer the
-                     only one. Same destination, so nothing new is reachable. --}}
-                <td>
-                    <a href="{{ route('employees.show', $e) }}" class="name-link fw-semibold">{{ $e->name }}</a>
-                    <div class="text-muted small">{{ $e->email }}</div>
-                </td>
+                {{-- The same row the rankings draw, from the same component:
+                     initials, the name as the way in, and the address under it.
+                     The name is a link as well as the View button — same
+                     destination, so nothing new is reachable. --}}
+                <td><x-person :name="$e->name" :sub="$e->email"
+                        :url="route('employees.show', $e)" /></td>
                 <td>{{ $e->employeeProfile?->employee_no }}</td>
                 <td>{{ $e->employeeProfile?->department?->name }}</td>
                 <td>{{ $e->employeeProfile?->position?->title }}</td>

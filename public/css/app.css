@@ -3714,22 +3714,34 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .rk-rank[data-top="2"]{ background:#E3E3EA; color:#4A4757; }
 .rk-rank[data-top="3"]{ background:#EFD8C6; color:#6E4526; }
 
-.rk-who{ display:inline-flex; align-items:center; gap:.6rem; min-width:0; }
-/* Initials, not a photograph. Nobody uploads one, and a row of identical
-   placeholder silhouettes is worse than no avatar at all. The colour is by
-   position in the list, so it decorates without claiming to mean anything. */
-.rk-av{
+/* ---- A person in a list -------------------------------------------------
+   One definition, used by the rankings and the employee list. It used to be
+   `.rk-*`, which meant the employee page could only have it by borrowing
+   classes named after a page it is not on. See components/person.blade.php
+   for why the initials are initials and why the colour comes from the name. */
+.person{ display:inline-flex; align-items:center; gap:.6rem; min-width:0; }
+.person-av{
   display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;
   width:1.9rem; height:1.9rem; border-radius:50%;
   font-size:.68rem; font-weight:700; color:#fff; letter-spacing:.02em;
 }
-.rk-av[data-n="0"]{ background:var(--lt-s1); }
-.rk-av[data-n="1"]{ background:var(--lt-s2); }
-.rk-av[data-n="2"]{ background:var(--lt-s3); }
-.rk-av[data-n="3"]{ background:var(--lt-s4); }
-.rk-av[data-n="4"]{ background:var(--lt-s5); }
-.rk-name{ font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.rk-name.name-link:hover{ color:var(--primary); }
+.person-av[data-n="0"]{ background:var(--lt-s1); }
+.person-av[data-n="1"]{ background:var(--lt-s2); }
+.person-av[data-n="2"]{ background:var(--lt-s3); }
+.person-av[data-n="3"]{ background:var(--lt-s4); }
+.person-av[data-n="4"]{ background:var(--lt-s5); }
+/* The name and its second line stack, so the disc stays centred against the
+   pair rather than against the name alone. */
+.person-id{ display:flex; flex-direction:column; min-width:0; line-height:1.25; }
+.person-name{
+  font-weight:600; color:var(--text);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.person-name.name-link:hover{ color:var(--primary); }
+.person-sub{
+  font-size:.78rem; color:var(--muted);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
 
 .rk-days{ display:flex; align-items:center; gap:.55rem; }
 .rk-days b{ font-variant-numeric:tabular-nums; color:var(--text); min-width:1.6rem; }

@@ -131,7 +131,6 @@ class RankingController extends Controller
                 'rank' => $i + 1,
                 'user_id' => $row->user_id,
                 'name' => $row->name,
-                'initials' => self::initials($row->name),
                 'office' => $row->office ?? '—',
                 'position' => $row->position ?? '—',
                 'days' => self::trim((float) $row->days),
@@ -149,15 +148,6 @@ class RankingController extends Controller
                 },
             ];
         })->all();
-    }
-
-    private static function initials(string $name): string
-    {
-        $parts = preg_split('/\s+/', trim($name)) ?: [];
-        $first = mb_substr($parts[0] ?? '', 0, 1);
-        $last = count($parts) > 1 ? mb_substr(end($parts), 0, 1) : '';
-
-        return mb_strtoupper($first.$last);
     }
 
     private static function trim(float $value): string
