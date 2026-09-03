@@ -36,7 +36,6 @@
             <div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="annual_reset" value="1" id="ar" @checked(old('annual_reset',$type->annual_reset))><label class="form-check-label" for="ar">Resets annually</label></div>
             <div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="active" value="1" id="act" @checked(old('active',$type->active ?? true))><label class="form-check-label" for="act">Active</label></div>
             <button class="btn btn-lgu w-100">Save leave type</button>
-            <p class="text-muted small mt-2 mb-0">Detail fields, documents and workflow of the built-in CSC types are managed in code/seed; custom types use the standard Dept→HR→Mayor flow.</p>
         </div></div></div>
     </div>
 </form>

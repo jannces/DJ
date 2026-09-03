@@ -32,29 +32,15 @@
     :has() reading the selected <option>'s data-code — no JavaScript. Every
     input stays in the DOM whatever is visible, so nothing becomes unreachable
     or unsubmittable, and printing forces all blocks back on.
-  • Section 7 is drawn read-only for fidelity with the official sheet. It
-    contains no input at all; it is completed through the approval workflow.
+  • Section 7 is NOT on this page. It is completed by HR and signed by the
+    applicant's department head, carries no field an applicant can fill, and
+    on an entry form it was four boxes of somebody else's work. The official
+    sheet still draws it in full -- see preview-form.blade.php and
+    form6.blade.php, which is where fidelity actually matters.
 --}}
 
 @php
     $user = auth()->user();
-
-    // Official citations as printed on the CSC form, keyed by database code.
-    $citations = [
-        'VL' => 'Sec. 51, Rule XVI, Omnibus Rules Implementing E.O. No. 292',
-        'FL' => 'Sec. 25, Rule XVI, Omnibus Rules Implementing E.O. No. 292',
-        'SL' => 'Sec. 43, Rule XVI, Omnibus Rules Implementing E.O. No. 292',
-        'ML' => 'R.A. No. 11210 / IRR issued by CSC, DOLE and SSS',
-        'PL' => 'R.A. No. 8187 / CSC MC No. 71, s. 1998, as amended',
-        'SPL' => 'Sec. 21, Rule XVI, Omnibus Rules Implementing E.O. No. 292',
-        'SOLO' => 'R.A. No. 8972 / CSC MC No. 8, s. 2004',
-        'STL' => 'Sec. 68, Rule XVI, Omnibus Rules Implementing E.O. No. 292',
-        'VAWC' => 'R.A. No. 9262 / CSC MC No. 15, s. 2005',
-        'RL' => 'Sec. 55, Rule XVI, Omnibus Rules Implementing E.O. No. 292',
-        'SLBW' => 'R.A. No. 9710 / CSC MC No. 25, s. 2010',
-        'SEL' => 'CSC MC No. 2, s. 2012, as amended',
-        'AL' => 'R.A. No. 8552',
-    ];
 
     // Codes the sheet prints a 6.B block for. Anything else — an admin-added
     // type — falls through to the catch-all block, so no field is ever hidden
@@ -164,7 +150,6 @@
             <span class="d-flex align-items-center gap-2">
                 <i class="bi bi-person-badge"></i>Employee information
             </span>
-            <span class="lf-ref">Items 1&ndash;5</span>
         </div>
         <div class="card-body">
             <div class="lf-g lf-g3">
@@ -207,13 +192,7 @@
         </div>
     </div>
         <div class="lf-nav no-print">
-            <span class="note">
-        <span class="note">
-            Employee information and Section 7 are filled in for you. Your credits:
-            Vacation <strong>{{ number_format($vlBalance, 2) }}</strong>,
-            Sick <strong>{{ number_format($slBalance, 2) }}</strong>.
-        </span>
-            </span>
+            <span></span>
             <label class="lf-next" for="lf-s2">Continue<i class="bi bi-arrow-right"></i></label>
         </div>
     </section>
@@ -224,11 +203,9 @@
             <span class="d-flex align-items-center gap-2">
                 <i class="bi bi-file-earmark-text"></i>Type of leave
             </span>
-            <span class="lf-ref">Section 6.A &ndash; 6.B</span>
         </div>
         <div class="card-body">
             {{-- ---------- 6.A TYPE OF LEAVE ---------- --}}
-            <div class="lf-sub"><b>Type of leave</b><span class="code">6.A</span></div>
             @error('leave_type_id')
                 <div class="alert alert-danger py-2 px-3 mb-3">{{ $message }}</div>
             @enderror
@@ -247,7 +224,6 @@
                                     @selected(in_array((string) $t->id, $chosen, true))>{{ $t->name }}</option>
                         @endforeach
                     </select>
-                    <span class="hint">One type per application, as the CSC form requires.</span>
                 </div>
                 <div class="lf-f">
                     <label for="purpose">Others, if not listed</label>
@@ -257,7 +233,7 @@
             </div>
 
             {{-- ---------- 6.B DETAILS OF LEAVE ---------- --}}
-            <div class="lf-sub"><b>Details of leave</b><span class="code">6.B</span></div>
+            <div class="lf-sub"><b>Details of leave</b></div>
             @if ($errors->has('policy'))
                 <div class="alert alert-danger py-2 px-3 mb-3">
                     @foreach ($errors->get('policy') as $e)<div>{{ $e }}</div>@endforeach
@@ -270,7 +246,6 @@
 
             {{-- Vacation, Mandatory/Forced and Special Privilege share a block. --}}
             <div class="lf-grp lf-grp-vl">
-                <div class="lf-cite">{{ $citations['VL'] }}</div>
                 <div class="lf-g lf-g2">
                     <div class="lf-f">
                         <label>Where will it be spent? <span class="req">*</span></label>
@@ -286,7 +261,6 @@
                         <input id="location_specify" type="text" name="details[location_specify]"
                                class="form-control" value="{{ old('details.location_specify') }}"
                                placeholder="Country or city">
-                        <span class="hint">Only required when Abroad is selected.</span>
                     </div>
                     <div class="lf-f">
                         <label for="travel_details">Purpose / travel details</label>
@@ -299,7 +273,6 @@
             </div>
 
             <div class="lf-grp lf-grp-sl">
-                <div class="lf-cite">{{ $citations['SL'] }}</div>
                 <div class="lf-g lf-g2">
                     <div class="lf-f">
                         <label>Where <span class="req">*</span></label>
@@ -337,7 +310,6 @@
             </div>
 
             <div class="lf-grp lf-grp-slbw">
-                <div class="lf-cite">{{ $citations['SLBW'] }}</div>
                 <div class="lf-g lf-g2">
                     <div class="lf-f">
                         <label for="surgery_details">Surgery details <span class="req">*</span></label>
@@ -349,7 +321,6 @@
             </div>
 
             <div class="lf-grp lf-grp-stl">
-                <div class="lf-cite">{{ $citations['STL'] }}</div>
                 <div class="lf-g lf-g2">
                     <div class="lf-f">
                         <label>Purpose <span class="req">*</span></label>
@@ -372,7 +343,6 @@
             </div>
 
             <div class="lf-grp lf-grp-ml">
-                <div class="lf-cite">{{ $citations['ML'] }}</div>
                 <div class="lf-g lf-g2">
                     <div class="lf-f">
                         <label for="expected_delivery">Expected / actual date of delivery <span class="req">*</span></label>
@@ -390,7 +360,6 @@
             </div>
 
             <div class="lf-grp lf-grp-rl">
-                <div class="lf-cite">{{ $citations['RL'] }}</div>
                 <div class="lf-g lf-g2">
                     <div class="lf-f">
                         <label for="accident_details">Details of work-related accident <span class="req">*</span></label>
@@ -402,7 +371,6 @@
             </div>
 
             <div class="lf-grp lf-grp-sel">
-                <div class="lf-cite">{{ $citations['SEL'] }}</div>
                 <div class="lf-g lf-g2">
                     <div class="lf-f">
                         <label for="calamity">Declared calamity <span class="req">*</span></label>
@@ -419,7 +387,6 @@
             </div>
 
             <div class="lf-grp lf-grp-mon">
-                <div class="lf-cite">Monetization of leave credits</div>
                 <div class="lf-g lf-g2">
                     <div class="lf-f">
                         <label for="reason">Reason for monetization <span class="req">*</span></label>
@@ -436,7 +403,6 @@
             </div>
 
             <div class="lf-grp lf-grp-tl">
-                <div class="lf-cite">Terminal leave</div>
                 <div class="lf-g lf-g2">
                     <div class="lf-f">
                         <label>Separation <span class="req">*</span></label>
@@ -471,11 +437,9 @@
             <span class="d-flex align-items-center gap-2">
                 <i class="bi bi-calendar-range"></i>When you will be away
             </span>
-            <span class="lf-ref">Section 6.C</span>
         </div>
         <div class="card-body">
             {{-- ---------- 6.C WORKING DAYS ---------- --}}
-            <div class="lf-sub"><b>Number of working days applied for</b><span class="code">6.C</span></div>
             <div class="lf-g lf-g3">
                 <div class="lf-f">
                     <label for="start_date">From <span class="req">*</span></label>
@@ -522,7 +486,6 @@
             <span class="d-flex align-items-center gap-2">
                 <i class="bi bi-pen"></i>Documents and signature
             </span>
-            <span class="lf-ref">Section 6.D &ndash; 7</span>
         </div>
         <div class="card-body">
             {{-- ---------- SUPPORTING DOCUMENTS ---------- --}}
@@ -545,111 +508,16 @@
                 </div>
             </div>
 
-            {{-- Its own heading: without one the signature sat directly under
-                 the document hints and read as a caption to them. --}}
-            <div class="lf-sub"><b>Signature of applicant</b><span class="code">6.D</span></div>
             <div class="lf-g lf-g2">
                 <div class="lf-f">
                     <label for="applicant_signature">Signature of applicant <span class="req">*</span></label>
                     <input id="applicant_signature" type="text" name="applicant_signature"
                            class="form-control" value="{{ old('applicant_signature', $user->name) }}" required>
-                    <span class="hint">Your typed name stands as your signature.</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <details class="card lf-after">
-        <summary>What happens after you submit &mdash; Section 7, completed by HR and your department head</summary>
-        <div>
-        <div class="card-header">
-            <span class="d-flex align-items-center gap-2">
-                <i class="bi bi-patch-check"></i>Action on application
-            </span>
-            <span class="lf-ref">Section 7</span>
-        </div>
-        <div class="card-body">
-            <div class="lf-official">
-                <i class="bi bi-info-circle"></i>
-                <span>These four subsections are completed after you submit &mdash; 7.A, 7.C
-                    and 7.D by the HR Office, which validates and decides, and 7.B signed by
-                    your department head, who is notified but approves nothing. They are shown
-                    here so the form matches the official sheet, and carry no field you can
-                    edit.</span>
-            </div>
-
-            <div class="lf-sub"><b>Certification of leave credits</b><span class="code">7.A</span></div>
-            <div class="lf-g lf-g2" style="align-items:start">
-                <div class="table-responsive">
-                    <table class="lf-credits">
-                        <tr><th>As of {{ now()->format('F d, Y') }}</th><th>Vacation Leave</th><th>Sick Leave</th></tr>
-                        <tr><td>Total earned</td>
-                            <td>{{ number_format($vlBalance, 3) }}</td>
-                            <td>{{ number_format($slBalance, 3) }}</td></tr>
-                        <tr><td>Less this application</td><td>&mdash;</td><td>&mdash;</td></tr>
-                        <tr><td>Balance</td><td>&mdash;</td><td>&mdash;</td></tr>
-                    </table>
-                </div>
-                <div class="lf-f">
-                    <label>Certified by</label>
-                    <div class="lf-fixed">
-                        {{ \App\Models\SystemSetting::get('general.hr_officer_name', 'ATTY. MARIAH LEAH D. VALEROZO-GARCIA') }}
-                    </div>
-                    <span class="hint">
-                        {{ \App\Models\SystemSetting::get('general.hr_officer_title', 'Municipal General Services Officer / OIC-HRM OFFICE') }}
-                    </span>
-                </div>
-            </div>
-
-            <div class="lf-sub"><b>Recommendation</b><span class="code">7.B</span></div>
-            <div class="lf-g lf-g2">
-                <div class="lf-f">
-                    <label>Decision</label>
-                    <div class="lf-seg is-locked">
-                        <label>For approval</label>
-                        <label>For disapproval due to</label>
-                    </div>
-                </div>
-                <div class="lf-f">
-                    <label>Authorized officer</label>
-                    {{-- The head of this employee's own office. Shown here
-                         because it answers the question the box raises -- who
-                         signs this -- and because it tells the applicant, on
-                         the form itself, who is going to be informed. --}}
-                    <div class="lf-fixed">{{ $departmentHead?->name ?? '&mdash;' }}</div>
-                    <span class="hint">
-                        Your department head. They are notified when you submit and
-                        sign this box by hand; the decision itself is HR&rsquo;s.
-                    </span>
-                </div>
-            </div>
-
-            <div class="lf-sub"><b>Approved for</b><span class="code">7.C</span></div>
-            <div class="lf-g lf-g3">
-                <div class="lf-f"><label>Days with pay</label><div class="lf-fixed">&mdash;</div></div>
-                <div class="lf-f"><label>Days without pay</label><div class="lf-fixed">&mdash;</div></div>
-                <div class="lf-f"><label>Others (specify)</label><div class="lf-fixed">&mdash;</div></div>
-            </div>
-
-            <div class="lf-sub"><b>Disapproved due to</b><span class="code">7.D</span></div>
-            <div class="lf-g">
-                <div class="lf-f"><label>Reason for disapproval</label><div class="lf-fixed">&mdash;</div></div>
-            </div>
-
-            <div class="lf-g lf-g2 mt-4">
-                <div class="lf-f">
-                    <label>Approving authority</label>
-                    <div class="lf-fixed">
-                        {{ \App\Models\SystemSetting::get('general.mayor_name', 'ATTY. JOEL AMOS P. ALEJANDRO, CPA') }}
-                    </div>
-                    <span class="hint">
-                        {{ \App\Models\SystemSetting::get('general.mayor_title', 'Municipal Mayor') }}
-                    </span>
-                </div>
-            </div>
-        </div>
-    </div>
-    </details>
         <div class="lf-nav no-print">
             <label class="lf-back" for="lf-s3"><i class="bi bi-arrow-left"></i>Back</label>
             <button class="btn btn-lgu" type="submit"><i class="bi bi-send me-1"></i>Submit application</button>

@@ -100,7 +100,9 @@ class EmployeeNumberTest extends TestCase
 
         $this->assertMatchesRegularExpression('#<input id="f-empno"[^>]*value="EMP-0004"#s', $html,
             'the administrator still has to go and look the number up');
-        $this->assertStringContainsString('Never reused, even after an account is archived', $html);
+        // The caption is now just "Issued automatically." The never-reused
+        // guarantee is asserted where it is actually enforced, not in a hint.
+        $this->assertStringContainsString('Issued automatically.', $html);
     }
 
     /** Shown, not asked for: the number is the system's to issue. */

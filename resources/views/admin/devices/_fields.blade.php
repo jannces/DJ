@@ -14,7 +14,6 @@
            class="form-control @error('ip_address') is-invalid @enderror"
            value="{{ old('ip_address') }}" placeholder="192.168.1.10">
     @error('ip_address')<div class="invalid-feedback">{{ $message }}</div>@enderror
-    <div class="form-text">The address this office computer holds on the LAN.</div>
 </div>
 
 <div class="mb-3">

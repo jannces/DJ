@@ -11,7 +11,7 @@
 
 <x-page-head class="no-print"
     title="Instructions and Requirements"
-    sub="Civil Service Form No. 6 (Revised 2020) · documentary requirements per leave type"
+    sub="Civil Service Form No. 6 (Revised 2020)"
     :back-url="route('leave.create')" back-label="Apply for Leave">
         <div class="d-flex gap-2">
             @can('leave.apply')

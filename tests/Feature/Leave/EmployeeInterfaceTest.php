@@ -257,10 +257,12 @@ class EmployeeInterfaceTest extends TestCase
             ->assertOk()
             ->assertSee('Application for Leave')
             ->assertSee('Civil Service Form No. 6')
-            // The CSC section numbers survive as labels, so the form stays
-            // auditable against the paper original.
-            ->assertSee('6.A')->assertSee('6.B')->assertSee('6.C')->assertSee('6.D')
-            ->assertSee('7.A')->assertSee('7.B')->assertSee('7.C')->assertSee('7.D')
+            // The CSC box references (6.A, 7.B and the rest) were dropped from
+            // the ENTRY form: they are a filing clerk's index, and an employee
+            // choosing a leave type has no use for them. The printed sheet
+            // still carries every one -- see PrintedFormTest.
+            ->assertDontSee('6.A')
+            ->assertDontSee('7.B')
             // Types come from the database, not a hardcoded list.
             ->assertSee('Vacation Leave')
             ->assertSee('Special Leave Benefits for Women')
@@ -343,27 +345,21 @@ class EmployeeInterfaceTest extends TestCase
     }
 
     /**
-     * Section 7 belongs to the approving officer. It is rendered for fidelity
-     * with the paper form but must contain no control the applicant could use.
+     * Section 7 is NOT on the entry form.
+     *
+     * It is completed by HR and signed by the applicant's department head. It
+     * was drawn read-only here for fidelity with the paper sheet, which meant
+     * an applicant scrolled past four boxes of somebody else's work to reach
+     * the submit button. Fidelity belongs on the printed sheet, and that is
+     * where it still lives -- see test_form_preview_draws_section_seven_in_full
+     * below, and PrintedFormTest.
      */
-    public function test_section_seven_on_the_entry_form_has_no_inputs(): void
+    public function test_section_seven_is_not_on_the_entry_form(): void
     {
         $html = $this->asEmployee()->get('/leave/apply')->assertOk()->getContent();
 
-        // Section 7 is folded into a <details> at the end of the last step, so
-        // it runs from its header to the close of that fold. It used to run to
-        // `lf-foot`, which the stepped form replaced with a per-step nav.
-        $start = strpos($html, 'Action on application');
-        $this->assertNotFalse($start, 'section 7 is missing from the entry form');
-        $end = strpos($html, '</details>', $start);
-        $this->assertNotFalse($end, 'section 7 is no longer inside the fold');
-        $section = substr($html, $start, $end - $start);
-
-        $this->assertStringContainsString('7.A', $section);
-        $this->assertStringContainsString('7.D', $section);
-        $this->assertStringNotContainsString('<input', $section);
-        $this->assertStringNotContainsString('<select', $section);
-        $this->assertStringNotContainsString('<textarea', $section);
+        $this->assertStringNotContainsString('Action on application', $html);
+        $this->assertStringNotContainsString('Certification of leave credits', $html);
     }
 
     /** The submitted-form preview draws section 7 filled in. */

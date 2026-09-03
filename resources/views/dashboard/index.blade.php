@@ -91,10 +91,12 @@
                 @empty
                     <p class="dash-empty">No leave credits on record yet.</p>
                 @endforelse
-                <p class="dash-note">
-                    Grey is used; colour is what remains. A dashed track means no credits
-                    have accrued in that type &mdash; which is not the same as none left.
-                </p>
+                {{-- A legend, shown only when there is something to decode. A
+                     caption explaining a dashed track under a panel that has
+                     no dashed track is noise. --}}
+                @if (collect($mine['balances'])->contains(fn ($r) => $r['state'] === 'none'))
+                    <p class="dash-note">A dashed track means no credits have accrued in that type.</p>
+                @endif
             </div>
         </div>
 
@@ -245,10 +247,7 @@
                     @include('dashboard._donut', ['ring' => $management['ring_year'],
                         'empty' => 'Nothing filed this year.'])
                 </div>
-                <p class="dash-note">
-                    Share of the total, so two types can be read together. The five most
-                    filed hold a colour for the whole year; the rest are Other.
-                </p>
+                <p class="dash-note">The five most filed keep a colour; the rest are Other.</p>
             </div>
         </div>
 
@@ -309,9 +308,7 @@
             <div class="dash-body">
                 @include('dashboard._stack', ['stack' => $management['office_stack']])
                 <p class="dash-note">
-                    Each bar is divided by leave type &mdash; hover a row for the figures.
-                    Composition, not just size: an office three-quarters Sick Leave is a
-                    different situation from one three-quarters Vacation.
+                    Hover a row for the figures.
                 </p>
             </div>
         </div>
@@ -411,10 +408,7 @@
                     'rows' => $management['mandatory']['by_office'],
                     'empty' => 'Nobody has Mandatory Leave credits on record.',
                 ])
-                <p class="dash-note">
-                    The CSC requires five days a year and they do not carry over. HR is the
-                    office accountable when they lapse.
-                </p>
+                <p class="dash-note">Five days a year, and they do not carry over.</p>
             </div>
         </div>
         @endif
@@ -464,10 +458,7 @@
                 @empty
                     <p class="dash-empty">Nothing from your office is waiting.</p>
                 @endforelse
-                <p class="dash-note">
-                    You are notified when somebody in your office files. HR validates
-                    and decides &mdash; no approval is needed from you.
-                </p>
+                <p class="dash-note">HR decides these &mdash; no approval is needed from you.</p>
             </div>
         </div>
 
@@ -498,7 +489,7 @@
                 @endif
                 <p class="dash-note">
                     Red is {{ (int) (\App\Services\DashboardService::COVERAGE_RISK * 100) }}% or more
-                    of the office away on the same day &mdash; the only figure here that looks forward.
+                    of the office away on the same day.
                 </p>
             </div>
         </div>

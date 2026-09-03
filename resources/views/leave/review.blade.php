@@ -12,7 +12,7 @@
      silently assumes authority is a template that grants it the day the guard
      is loosened. --}}
 <x-page-head :title="$title"
-    sub="Applications waiting on HR to validate and decide. The first decision is final." />
+    sub="Waiting on a decision" />
 <div class="card">
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">

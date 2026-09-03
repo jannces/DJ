@@ -132,7 +132,6 @@
                class="form-control @error('reason') is-invalid @enderror"
                value="{{ old('reason') }}">
         @error('reason')<div class="invalid-feedback">{{ $message }}</div>@enderror
-        <div class="form-text">Recorded against the block, and shown in this list.</div>
     </div>
 
     <div class="mb-0">

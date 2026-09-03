@@ -38,7 +38,7 @@
 <div class="user-form">
     <x-page-head class="mb-3" :title="$creating ? 'Create user' : 'Edit user: '.$user->name"
         :sub="$creating
-            ? 'They sign in with the first-time password '.config('security.first_password').' and set their own before they can go any further.'
+            ? 'First-time password: '.config('security.first_password')
             : $user->email"
         :back-url="route('users.index')" back-label="Users" />
 
@@ -106,7 +106,7 @@
                                     <input id="f-empno"
                                            class="form-control"
                                            value="{{ $suggestedEmployeeNo ?? '' }}" readonly>
-                                    <div class="form-text">Issued automatically. Never reused, even after an account is archived.</div>
+                                    <div class="form-text">Issued automatically.</div>
                                 </div>
                             @endif
                         </div>

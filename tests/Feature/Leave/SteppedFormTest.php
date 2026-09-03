@@ -213,22 +213,7 @@ class SteppedFormTest extends TestCase
             ->assertSessionHasErrors(['leave_type_id', 'start_date', 'end_date', 'applicant_signature']);
     }
 
-    // ------------------------------------------------------ section 7 & print
-
-    public function test_section_seven_is_folded_and_holds_no_input(): void
-    {
-        $html = $this->form();
-
-        $this->assertStringContainsString('<details class="card lf-after">', $html);
-
-        $fold = substr($html, strpos($html, 'lf-after'));
-        $fold = substr($fold, 0, strpos($fold, '</details>'));
-
-        $this->assertStringContainsString('Action on application', $fold);
-        $this->assertStringNotContainsString('<input', $fold,
-            'section 7 is read-only and must carry no field the applicant can fill');
-        $this->assertStringNotContainsString('<select', $fold);
-    }
+    // -------------------------------------------------------------- print
 
     /** The sheet is a CSC form: steps are a screen convenience, printing is not. */
     public function test_the_stylesheet_prints_every_step(): void

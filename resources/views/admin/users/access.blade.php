@@ -18,7 +18,7 @@
 
 <div class="user-form">
     <x-page-head class="mb-3" title="Access for {{ $user->name }}"
-        :sub="$user->roles->pluck('name')->implode(', ').' · an override sits on top of what the role already grants'"
+        :sub="$user->roles->pluck('name')->implode(', ')"
         :back-url="route('users.edit', $user)" back-label="Edit user" />
 
     @if ($errors->any())
