@@ -1708,6 +1708,216 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   .lf-grp-none{ display:none; }
 }
 
+/* ---- The four steps ----------------------------------------------------
+   Who you are, what kind of leave, when, and signing it off.
+
+   THE WHOLE MECHANISM IS FOUR RADIO INPUTS AND :has(). No script anywhere,
+   which is not a purity exercise: because no panel is ever removed from the
+   DOM, everything already typed survives Back, survives Continue, survives a
+   rejected submission through old(), and the sheet still prints whole. A
+   JavaScript stepper that unmounts a panel loses all four of those, and the
+   last one matters most -- this is a CSC form, and it has to print.
+
+   Keyboard: the radios are visually hidden but NOT removed from the tab
+   order, so the stepper is a normal radio group -- tab to it, arrow keys to
+   move between steps. That is why the focus ring below is drawn on the dot
+   rather than on the input nobody can see. Back and Continue are <label>s and
+   so are pointer controls; the radios are the keyboard path to the same
+   place, which is why both exist. */
+
+.lf-radio{
+  position:absolute; width:1px; height:1px; opacity:0;
+  /* NOT display:none, and not pointer-events:none -- either would take the
+     radios out of the tab order and leave the form keyboard-inoperable. */
+}
+
+/* ---- The indicator ---- */
+.lf-track{
+  list-style:none; display:flex; margin:0 0 1.5rem; padding:0;
+}
+.lf-track li{ flex:1; position:relative; text-align:center; min-width:0; }
+/* The rail, drawn behind the dots. Each segment reaches back to the previous
+   dot, so the first one has none to reach to. */
+.lf-track li::before{
+  content:""; position:absolute; top:1rem; left:-50%; width:100%; height:3px;
+  background:var(--border-strong); z-index:0;
+}
+.lf-track li:first-child::before{ display:none; }
+.lf-track label{
+  position:relative; z-index:1; display:flex; flex-direction:column;
+  align-items:center; gap:.45rem; margin:0;
+  /* A step ahead cannot be jumped to: it would skip the required fields the
+     Continue button is there to hold. Steps already passed get this back. */
+  cursor:default; pointer-events:none;
+}
+.lf-dot{
+  width:2rem; height:2rem; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:.82rem; font-weight:700; line-height:1;
+  position:relative;                 /* the tick below is positioned against it */
+  background:var(--surface); color:var(--muted);
+  border:3px solid var(--border-strong);
+  transition:background var(--dur) var(--ease), border-color var(--dur) var(--ease),
+             color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.lf-lbl{
+  font-size:.78rem; color:var(--muted); font-weight:600;
+  max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+
+/* A finished step: filled green, a tick instead of its number, and the rail
+   behind it filled too so progress reads left to right at a glance. */
+.lf-steps:has(#lf-s2:checked) .lf-track li:nth-child(-n+1) .lf-dot,
+.lf-steps:has(#lf-s3:checked) .lf-track li:nth-child(-n+2) .lf-dot,
+.lf-steps:has(#lf-s4:checked) .lf-track li:nth-child(-n+3) .lf-dot{
+  background:var(--success); border-color:var(--success); color:transparent;
+}
+.lf-steps:has(#lf-s2:checked) .lf-track li:nth-child(-n+1) .lf-dot::after,
+.lf-steps:has(#lf-s3:checked) .lf-track li:nth-child(-n+2) .lf-dot::after,
+.lf-steps:has(#lf-s4:checked) .lf-track li:nth-child(-n+3) .lf-dot::after{
+  /* Drawn, not a glyph: a tick from a font is one missing character away from
+     a tofu box, and this one is the only mark on a 2rem circle. */
+  content:""; position:absolute; width:.32rem; height:.62rem;
+  border:solid #fff; border-width:0 2.5px 2.5px 0;
+  transform:rotate(45deg) translate(-1px,-1px);
+}
+.lf-steps:has(#lf-s2:checked) .lf-track li:nth-child(-n+2)::before,
+.lf-steps:has(#lf-s3:checked) .lf-track li:nth-child(-n+3)::before,
+.lf-steps:has(#lf-s4:checked) .lf-track li:nth-child(-n+4)::before{
+  background:var(--success);
+}
+.lf-steps:has(#lf-s2:checked) .lf-track li:nth-child(-n+1) .lf-lbl,
+.lf-steps:has(#lf-s3:checked) .lf-track li:nth-child(-n+2) .lf-lbl,
+.lf-steps:has(#lf-s4:checked) .lf-track li:nth-child(-n+3) .lf-lbl{
+  color:var(--success);
+}
+/* ...and a finished step CAN be gone back to. */
+.lf-steps:has(#lf-s2:checked) .lf-track li:nth-child(-n+1) label,
+.lf-steps:has(#lf-s3:checked) .lf-track li:nth-child(-n+2) label,
+.lf-steps:has(#lf-s4:checked) .lf-track li:nth-child(-n+3) label{
+  cursor:pointer; pointer-events:auto;
+}
+
+/* The step being filled in. */
+.lf-steps:has(#lf-s1:checked) .lf-track li:nth-child(1) .lf-dot,
+.lf-steps:has(#lf-s2:checked) .lf-track li:nth-child(2) .lf-dot,
+.lf-steps:has(#lf-s3:checked) .lf-track li:nth-child(3) .lf-dot,
+.lf-steps:has(#lf-s4:checked) .lf-track li:nth-child(4) .lf-dot{
+  border-color:var(--primary); color:var(--primary);
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--primary) 14%,transparent);
+}
+.lf-steps:has(#lf-s1:checked) .lf-track li:nth-child(1) .lf-lbl,
+.lf-steps:has(#lf-s2:checked) .lf-track li:nth-child(2) .lf-lbl,
+.lf-steps:has(#lf-s3:checked) .lf-track li:nth-child(3) .lf-lbl,
+.lf-steps:has(#lf-s4:checked) .lf-track li:nth-child(4) .lf-lbl{
+  color:var(--text);
+}
+
+/* Keyboard focus, drawn on the dot because the radio itself is invisible.
+   :focus-visible, not :focus -- a mouse click on the label focuses the radio
+   too, and a ring appearing on every click reads as an error. */
+.lf-steps:has(#lf-s1:focus-visible) .lf-track li:nth-child(1) .lf-dot,
+.lf-steps:has(#lf-s2:focus-visible) .lf-track li:nth-child(2) .lf-dot,
+.lf-steps:has(#lf-s3:focus-visible) .lf-track li:nth-child(3) .lf-dot,
+.lf-steps:has(#lf-s4:focus-visible) .lf-track li:nth-child(4) .lf-dot{
+  outline:2px solid var(--primary); outline-offset:3px;
+}
+
+/* ---- The panels ---- */
+.lf-step{ display:none; }
+.lf-steps:has(#lf-s1:checked) [data-step="1"],
+.lf-steps:has(#lf-s2:checked) [data-step="2"],
+.lf-steps:has(#lf-s3:checked) [data-step="3"],
+.lf-steps:has(#lf-s4:checked) [data-step="4"]{ display:block; }
+
+/* ---- Moving between them ---- */
+.lf-nav{
+  display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+  gap:1rem; margin-top:1.25rem; padding-bottom:1.4rem; position:relative;
+}
+.lf-nav .note{ font-size:.8rem; color:var(--muted); max-width:34rem; }
+.lf-back, .lf-next{
+  display:inline-flex; align-items:center; gap:.5rem; margin:0;
+  font-size:.9rem; font-weight:600; padding:.6rem 1.4rem;
+  border-radius:.6rem; cursor:pointer; border:1px solid transparent;
+  transition:background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.lf-back{ background:transparent; border-color:var(--border-strong); color:var(--text-2); }
+.lf-back:hover{ background:var(--surface-hover); }
+.lf-next{ background:var(--primary); color:#fff; border:0; }
+.lf-next:hover{ background:var(--primary-hover); }
+
+/* Continue is held shut while anything required IN THIS STEP is still empty.
+   A selector, not a listener -- and it is honest, because the five required
+   fields are spread one per step (two on the dates step) and the hidden 6.B
+   blocks deliberately carry no `required`. A block that is not on screen can
+   therefore never hold the step shut, which is the failure mode that makes
+   stepped forms unusable.
+
+   This is a convenience, not the validation: the server rejects the same
+   fields whatever the browser allows through. */
+.lf-step:has(:invalid) .lf-next{
+  background:var(--border-strong); color:var(--muted); pointer-events:none;
+}
+.lf-step:has(:invalid) .lf-nav::after{
+  content:"Fill the starred fields to continue";
+  position:absolute; right:0; bottom:0; font-size:.75rem; color:var(--muted);
+}
+
+/* Red only once the applicant has actually left the field: :user-invalid, not
+   :invalid. An empty required field is invalid the moment the page loads, and
+   a form that greets you in red has told you off for nothing. */
+.lf input:user-invalid, .lf select:user-invalid{
+  border-color:var(--danger);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--danger) 12%,transparent);
+}
+
+/* ---- Section 7, folded --------------------------------------------------
+   Four sub-sections the applicant cannot fill. Open on the last step it
+   doubled that step's height for something nobody acts on; folded, it is
+   still on the sheet and still one click away. */
+.lf-after{ padding:0; }
+.lf-after > summary{
+  cursor:pointer; padding:.85rem 1.15rem; font-weight:600; font-size:.9rem;
+  color:var(--text-2); list-style:none;
+}
+.lf-after > summary::-webkit-details-marker{ display:none; }
+.lf-after > summary::before{
+  content:""; display:inline-block; margin-right:.6rem;
+  width:.42rem; height:.42rem; border:2px solid var(--muted);
+  border-left:0; border-top:0; transform:rotate(-45deg) translateY(-1px);
+  transition:transform var(--dur) var(--ease);
+}
+.lf-after[open] > summary::before{ transform:rotate(45deg) translateY(-2px); }
+.lf-after > summary:hover{ color:var(--primary); }
+.lf-after > div > .card-header{ border-top:1px solid var(--border); }
+
+@media (max-width:640px){
+  /* Four labels do not fit; the numbers and the rail still say where you are,
+     and the card heading names the step you are on. */
+  .lf-lbl{ display:none; }
+}
+
+/* Printing has no steps: the sheet prints whole, as it always did, and
+   Section 7 prints open whether or not it was unfolded on screen. */
+@media print{
+  .lf-step{ display:block !important; }
+  .lf-after > summary{ display:none; }
+  .lf-after > div{ display:block !important; }
+}
+
+/* Browsers without :has() get the form in one piece rather than a first step
+   with a dead Continue button -- the same fallback the 6.B blocks take. */
+@supports not selector(:has(*)){
+  .lf-step{ display:block; }
+  .lf-track{ display:none; }
+  /* The nav itself STAYS: the last one holds the submit button, and hiding it
+     would leave a form that cannot be sent. Only the step controls go, since
+     with every panel on screen there is nothing left for them to move to. */
+  .lf-back, .lf-next{ display:none; }
+  .lf-after > summary{ display:none; }
+}
+
 /* ---- Footer ------------------------------------------------------------- */
 .lf-foot{
   display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center;

@@ -13,6 +13,17 @@
   leave/form6.blade.php still draw the official sheet, so what an employee fills
   in is modern and what the LGU files is still CSC Form No. 6.
 
+  The form is presented in FOUR STEPS -- who you are, what kind of leave, when,
+  and signing it off -- grouped by meaning rather than by field count. It is
+  still ONE <form> posting once: the steps are radio inputs revealed with
+  :has(), the same mechanism as the dashboard tabs, so there is no script in
+  it anywhere.
+
+  That is not a purity exercise. Because no panel is ever removed from the DOM,
+  everything already typed survives Back, survives Continue and survives a
+  rejected submission through old() -- which is the one rule a stepped form
+  cannot afford to break. It also means the sheet still prints whole.
+
   Design notes:
   • 6.A is a <select name="leave_type_id[]">. A non-multiple select posts a
     one-element array, so the controller's `size:1` rule is unchanged and the
@@ -50,10 +61,63 @@
     // with no way to reach it.
     $known = ['VL', 'FL', 'SPL', 'SL', 'SLBW', 'STL', 'ML', 'RL', 'SEL', 'MON', 'TL'];
     $chosen = (array) old('leave_type_id', []);
+
+    /**
+     * Which step opens on load.
+     *
+     * Normally the first. But when the server rejects the form the page comes
+     * back on step 1 by default, and the field it complained about is two
+     * steps away behind a Continue button -- an error message pointing at
+     * something you cannot see is worse than no error message. So the step
+     * holding the FIRST rejected field opens instead, and the applicant lands
+     * on the problem.
+     *
+     * The first, not the last: errors are fixed from the top, and a form with
+     * a fault on step 2 and step 4 should not open on 4 and then refuse to
+     * submit for a reason that is now behind them.
+     */
+    $stepOf = function (string $field): int {
+        if ($field === 'date_filed') {
+            return 1;
+        }
+        if (in_array($field, ['start_date', 'end_date', 'commutation'], true)) {
+            return 3;
+        }
+        if ($field === 'applicant_signature' || str_starts_with($field, 'documents')) {
+            return 4;
+        }
+
+        // Everything else -- 6.A, every 6.B block, the policy messages -- is
+        // section 6, which is also the safe default for a field this list has
+        // never heard of: it holds the most inputs, so an unknown name is most
+        // likely to be one of them.
+        return 2;
+    };
+
+    $openStep = $errors->any()
+        ? min(array_map($stepOf, array_keys($errors->messages())))
+        : 1;
 @endphp
 
+{{--
+  novalidate is deliberate, and it is what makes the stepped form safe.
+
+  With the browser's own validation on, a required field left empty on a step
+  that is not currently shown makes the whole form UNSUBMITTABLE AND SILENT:
+  Chrome refuses to submit, tries to focus the offending control, finds it
+  hidden, and logs "An invalid form control is not focusable" to a console no
+  employee will ever open. The Submit button simply does nothing. That is the
+  worst failure this page could have, and it is invisible.
+
+  So the browser stops being the gate and goes back to being an assistant. The
+  `required` attributes stay — they are what drives the :has(:invalid) rule
+  that holds Continue shut, and the :user-invalid outline on a field you have
+  left empty — but LeaveRequestController::store() is what actually decides,
+  as it always was. This is the project rule stated plainly in markup: do not
+  rely only on client-side validation.
+--}}
 <form id="lf-form" class="lf" method="POST" action="{{ route('leave.store') }}"
-      enctype="multipart/form-data" data-no-loader>
+      enctype="multipart/form-data" data-no-loader novalidate>
     @csrf
 
     <div class="lf-head no-print">
@@ -81,6 +145,20 @@
     @endif
 
     {{-- ================= EMPLOYEE INFORMATION (items 1–5) ================= --}}
+<div class="lf-steps">
+    <input class="lf-radio" type="radio" name="lf-step" id="lf-s1" aria-label="Step 1 of 4: Employee" @checked($openStep === 1)>
+    <input class="lf-radio" type="radio" name="lf-step" id="lf-s2" aria-label="Step 2 of 4: Leave type" @checked($openStep === 2)>
+    <input class="lf-radio" type="radio" name="lf-step" id="lf-s3" aria-label="Step 3 of 4: Dates" @checked($openStep === 3)>
+    <input class="lf-radio" type="radio" name="lf-step" id="lf-s4" aria-label="Step 4 of 4: Sign and submit" @checked($openStep === 4)>
+
+    <ol class="lf-track no-print">
+        <li><label for="lf-s1"><span class="lf-dot">1</span><span class="lf-lbl">Employee</span></label></li>
+        <li><label for="lf-s2"><span class="lf-dot">2</span><span class="lf-lbl">Leave type</span></label></li>
+        <li><label for="lf-s3"><span class="lf-dot">3</span><span class="lf-lbl">Dates</span></label></li>
+        <li><label for="lf-s4"><span class="lf-dot">4</span><span class="lf-lbl">Sign &amp; submit</span></label></li>
+    </ol>
+
+    <section class="lf-step" data-step="1">
     <div class="card">
         <div class="card-header">
             <span class="d-flex align-items-center gap-2">
@@ -128,17 +206,27 @@
             </div>
         </div>
     </div>
+        <div class="lf-nav no-print">
+            <span class="note">
+        <span class="note">
+            Employee information and Section 7 are filled in for you. Your credits:
+            Vacation <strong>{{ number_format($vlBalance, 2) }}</strong>,
+            Sick <strong>{{ number_format($slBalance, 2) }}</strong>.
+        </span>
+            </span>
+            <label class="lf-next" for="lf-s2">Continue<i class="bi bi-arrow-right"></i></label>
+        </div>
+    </section>
 
-    {{-- ================= DETAILS OF APPLICATION (section 6) ================= --}}
+    <section class="lf-step" data-step="2">
     <div class="card">
         <div class="card-header">
             <span class="d-flex align-items-center gap-2">
-                <i class="bi bi-file-earmark-text"></i>Details of application
+                <i class="bi bi-file-earmark-text"></i>Type of leave
             </span>
-            <span class="lf-ref">Section 6</span>
+            <span class="lf-ref">Section 6.A &ndash; 6.B</span>
         </div>
         <div class="card-body">
-
             {{-- ---------- 6.A TYPE OF LEAVE ---------- --}}
             <div class="lf-sub"><b>Type of leave</b><span class="code">6.A</span></div>
             @error('leave_type_id')
@@ -369,7 +457,23 @@
                     Attach any supporting document it requires below.
                 </div>
             </div>
+        </div>
+    </div>
+        <div class="lf-nav no-print">
+            <label class="lf-back" for="lf-s1"><i class="bi bi-arrow-left"></i>Back</label>
+            <label class="lf-next" for="lf-s3">Continue<i class="bi bi-arrow-right"></i></label>
+        </div>
+    </section>
 
+    <section class="lf-step" data-step="3">
+    <div class="card">
+        <div class="card-header">
+            <span class="d-flex align-items-center gap-2">
+                <i class="bi bi-calendar-range"></i>When you will be away
+            </span>
+            <span class="lf-ref">Section 6.C</span>
+        </div>
+        <div class="card-body">
             {{-- ---------- 6.C WORKING DAYS ---------- --}}
             <div class="lf-sub"><b>Number of working days applied for</b><span class="code">6.C</span></div>
             <div class="lf-g lf-g3">
@@ -390,26 +494,37 @@
                 </div>
             </div>
 
-            {{-- ---------- 6.D COMMUTATION ---------- --}}
-            <div class="lf-sub"><b>Commutation</b><span class="code">6.D</span></div>
-            <div class="lf-g lf-g2">
-                <div class="lf-f">
-                    <label>Commutation</label>
-                    <div class="lf-seg">
-                        <label><input type="radio" name="commutation" value="0"
-                            @checked(old('commutation', '0') !== '1')>Not requested</label>
-                        <label><input type="radio" name="commutation" value="1"
-                            @checked(old('commutation') === '1')>Requested</label>
-                    </div>
-                </div>
-                <div class="lf-f">
-                    <label for="applicant_signature">Signature of applicant <span class="req">*</span></label>
-                    <input id="applicant_signature" type="text" name="applicant_signature"
-                           class="form-control" value="{{ old('applicant_signature', $user->name) }}" required>
-                    <span class="hint">Your typed name stands as your signature.</span>
-                </div>
-            </div>
+            {{-- 6.D COMMUTATION is not asked here.
 
+                 The box exists on the printed sheet and still prints, ticked
+                 "Not Requested" from the column's default. It was dropped from
+                 the entry form because it asks an employee to elect something
+                 they are almost never in a position to elect: commutation of
+                 leave credits to cash is decided by the LGU, not requested on
+                 the application, and the control only added a decision to a
+                 form the applicant had no basis to make.
+
+                 Nothing was removed from the database. `commutation` keeps its
+                 column, its `false` default, its cast and its validation rule,
+                 so if the LGU later wants to collect it the control comes back
+                 and nothing else has to change. --}}
+        </div>
+    </div>
+        <div class="lf-nav no-print">
+            <label class="lf-back" for="lf-s2"><i class="bi bi-arrow-left"></i>Back</label>
+            <label class="lf-next" for="lf-s4">Continue<i class="bi bi-arrow-right"></i></label>
+        </div>
+    </section>
+
+    <section class="lf-step" data-step="4">
+    <div class="card">
+        <div class="card-header">
+            <span class="d-flex align-items-center gap-2">
+                <i class="bi bi-pen"></i>Documents and signature
+            </span>
+            <span class="lf-ref">Section 6.D &ndash; 7</span>
+        </div>
+        <div class="card-body">
             {{-- ---------- SUPPORTING DOCUMENTS ---------- --}}
             <div class="lf-sub no-print"><b>Supporting documents</b></div>
             <div class="lf-g lf-g2 no-print">
@@ -429,13 +544,24 @@
                     <span class="hint">Required for sick leave of more than five days.</span>
                 </div>
             </div>
+
+            {{-- Its own heading: without one the signature sat directly under
+                 the document hints and read as a caption to them. --}}
+            <div class="lf-sub"><b>Signature of applicant</b><span class="code">6.D</span></div>
+            <div class="lf-g lf-g2">
+                <div class="lf-f">
+                    <label for="applicant_signature">Signature of applicant <span class="req">*</span></label>
+                    <input id="applicant_signature" type="text" name="applicant_signature"
+                           class="form-control" value="{{ old('applicant_signature', $user->name) }}" required>
+                    <span class="hint">Your typed name stands as your signature.</span>
+                </div>
+            </div>
         </div>
     </div>
 
-    {{-- ================= ACTION ON APPLICATION (section 7) ================= --}}
-    {{-- Drawn in full to follow the official sheet, but READ-ONLY: there is not
-         a single input in this card, so an applicant cannot fill it. --}}
-    <div class="card">
+    <details class="card lf-after">
+        <summary>What happens after you submit &mdash; Section 7, completed by HR and your department head</summary>
+        <div>
         <div class="card-header">
             <span class="d-flex align-items-center gap-2">
                 <i class="bi bi-patch-check"></i>Action on application
@@ -523,15 +649,13 @@
             </div>
         </div>
     </div>
-
-    <div class="lf-foot no-print">
-        <span class="note">
-            Employee information and Section 7 are filled in for you. Your credits:
-            Vacation <strong>{{ number_format($vlBalance, 2) }}</strong>,
-            Sick <strong>{{ number_format($slBalance, 2) }}</strong>.
-        </span>
-        <button class="btn btn-lgu" type="submit"><i class="bi bi-send me-1"></i>Submit application</button>
-    </div>
+    </details>
+        <div class="lf-nav no-print">
+            <label class="lf-back" for="lf-s3"><i class="bi bi-arrow-left"></i>Back</label>
+            <button class="btn btn-lgu" type="submit"><i class="bi bi-send me-1"></i>Submit application</button>
+        </div>
+    </section>
+</div>
 </form>
 
 @endsection

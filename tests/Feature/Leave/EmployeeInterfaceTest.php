@@ -281,7 +281,10 @@ class EmployeeInterfaceTest extends TestCase
 
         foreach ([
             'leave_type_id[]', 'purpose', 'date_filed', 'start_date', 'end_date',
-            'commutation', 'applicant_signature', 'late_filing_reason',
+            // `commutation` is deliberately absent: box 6.D was dropped from
+            // the entry form, though the column, its default and its
+            // validation rule all remain -- see create.blade.php.
+            'applicant_signature', 'late_filing_reason',
             'details[location]', 'details[location_specify]', 'details[travel_details]',
             'details[confinement]', 'details[illness]', 'details[surgery_details]',
             'details[purpose]', 'details[purpose_other]', 'details[expected_delivery]',
@@ -347,11 +350,14 @@ class EmployeeInterfaceTest extends TestCase
     {
         $html = $this->asEmployee()->get('/leave/apply')->assertOk()->getContent();
 
-        // Section 7 is the last card on the page, so it runs from its header to
-        // the submit footer.
+        // Section 7 is folded into a <details> at the end of the last step, so
+        // it runs from its header to the close of that fold. It used to run to
+        // `lf-foot`, which the stepped form replaced with a per-step nav.
         $start = strpos($html, 'Action on application');
         $this->assertNotFalse($start, 'section 7 is missing from the entry form');
-        $section = substr($html, $start, strpos($html, 'lf-foot') - $start);
+        $end = strpos($html, '</details>', $start);
+        $this->assertNotFalse($end, 'section 7 is no longer inside the fold');
+        $section = substr($html, $start, $end - $start);
 
         $this->assertStringContainsString('7.A', $section);
         $this->assertStringContainsString('7.D', $section);
