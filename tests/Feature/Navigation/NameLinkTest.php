@@ -170,8 +170,10 @@ class NameLinkTest extends TestCase
     {
         $this->as('system-admin');
 
+        // The user list draws the shared person row now, so the link carries
+        // the component's class alongside name-link.
         $this->assertStringContainsString(
-            '<a href="'.route('users.edit', $this->employee).'" class="name-link">Juan Dela Cruz</a>',
+            '<a href="'.route('users.edit', $this->employee).'" class="person-name name-link">Juan Dela Cruz</a>',
             $this->get('/users')->assertOk()->getContent()
         );
     }

@@ -87,6 +87,65 @@ class PersonRowTest extends TestCase
     }
 
     /**
+     * Every list ABOUT PEOPLE draws the same row.
+     *
+     * Four of them: employees, rankings, user accounts and leave balances. The
+     * leave lists are deliberately absent -- those rows are about an
+     * application, the name there points at the request rather than the
+     * person, and a disc would compete with the reference number for the eye.
+     */
+    public function test_all_four_people_lists_draw_the_shared_row(): void
+    {
+        foreach (['/employees' => 'hr', '/rankings' => 'hr',
+            '/balances' => 'hr', '/users' => 'system-admin'] as $url => $role) {
+            $this->as($role);
+
+            $this->assertMatchesRegularExpression(
+                '/<span class="person-av" data-n="\d"[^>]*>DM<\/span>/',
+                $this->get($url)->assertOk()->getContent(),
+                $url.' does not draw the shared person row');
+        }
+    }
+
+    /**
+     * Balances shows no second line.
+     *
+     * Its subject is numbers, and a column of email addresses on a page you
+     * scan for VL and SL figures works against the thing it is for. The
+     * component takes a missing `sub` and draws none -- no special case.
+     */
+    public function test_the_balances_list_carries_no_second_line(): void
+    {
+        $this->as('hr');
+
+        $html = $this->get('/balances')->assertOk()->getContent();
+
+        $this->assertStringContainsString('class="person-av"', $html);
+        $this->assertStringNotContainsString('person-sub', $html);
+    }
+
+    /**
+     * An archived account keeps the disc and loses the link.
+     *
+     * It has no edit page to open, so a blue name would refuse -- but the
+     * person is still a person, and dropping the disc would make the archived
+     * list the one place that looks different.
+     */
+    public function test_an_archived_account_keeps_the_disc_without_a_link(): void
+    {
+        $this->as('system-admin');
+        $this->employee->delete();
+
+        $html = $this->get('/users?show=archived')->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('/<span class="person-av" data-n="\d"[^>]*>DM<\/span>/', $html);
+        $this->assertStringContainsString('<span class="person-name">Dj Robin Mendoza</span>', $html);
+        $this->assertStringNotContainsString(
+            '<a href="'.route('users.edit', $this->employee).'"', $html,
+            'an archived account offers an edit link it cannot honour');
+    }
+
+    /**
      * One person, one colour, on both pages.
      *
      * This is the assertion that would fail if either page went back to

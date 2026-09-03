@@ -14,12 +14,13 @@
     <tbody>
     @forelse ($users as $u)
         <tr>
+            {{-- No second line: the employee number is not loaded here and the
+                 address adds a column of text to a page whose subject is
+                 numbers. The component takes a missing `sub` and draws none. --}}
             <td>
-                @can('employees.view')
-                    <a href="{{ route('employees.show', $u) }}" class="name-link fw-semibold">{{ $u->name }}</a>
-                @else
-                    <span class="fw-semibold">{{ $u->name }}</span>
-                @endcan
+                <x-person :name="$u->name"
+                    :url="auth()->user()->hasPermission('employees.view')
+                        ? route('employees.show', $u) : null" />
             </td>
             <td>{{ $u->employeeProfile?->department?->name }}</td>
             <td class="small">@foreach ($u->leaveBalances as $b)<span class="badge bg-light text-dark">{{ $b->leaveType->code }}: {{ number_format($b->balance,2) }}</span> @endforeach</td>
