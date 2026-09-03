@@ -133,6 +133,52 @@ class FieldStatesTest extends TestCase
         $this->assertMatchesRegularExpression('/\.is-invalid-group::before\{[^}]*var\(--icon-error\)/s', $this->css);
     }
 
+    // ------------------------------------------------- WHEN a state may appear
+
+    /**
+     * Errors land on blur -- not on submit, and not on every keystroke.
+     *
+     * On submit is too late: somebody fills ten fields, commits, and is handed
+     * a wall of red. On every keystroke is too early: "j" is flagged as a bad
+     * email before the word is finished. On blur is the moment they have
+     * moved on but not yet committed.
+     *
+     * CSS already has that timing built in. :user-invalid matches only after
+     * a person has interacted with a field AND left it -- never on page load,
+     * never mid-word -- and it stops matching the instant the value becomes
+     * valid, so the message clears while they are fixing it. No listener, no
+     * debounce, no script.
+     */
+    public function test_errors_appear_on_blur_and_clear_while_being_fixed(): void
+    {
+        $this->assertStringContainsString('.form-control:user-invalid', $this->css);
+
+        // :invalid on its own would paint every empty required field red on
+        // page load -- a form that tells you off before you have typed.
+        $this->assertDoesNotMatchRegularExpression(
+            '/\.form-control:invalid|\.form-select:invalid/', $this->css,
+            'a rule fires on :invalid, which is true from the moment the page loads');
+    }
+
+    /**
+     * Success is feedback too, and it is scoped to fields that can fail.
+     *
+     * A form that only ever speaks up to complain leaves somebody re-reading
+     * the fields it said nothing about. But a green tick on an optional
+     * free-text box says nothing while adding a mark to every row, so the
+     * confirmation is limited to fields with something to satisfy.
+     */
+    public function test_a_correct_field_is_confirmed_but_only_where_it_can_be_wrong(): void
+    {
+        $this->assertStringContainsString('.form-control:user-valid:required', $this->css);
+        $this->assertStringContainsString('.form-control[pattern]:user-valid', $this->css);
+
+        // An unqualified :user-valid would tick every field on the form.
+        $this->assertDoesNotMatchRegularExpression(
+            '/\.form-control:user-valid[,{]/', $this->css,
+            'every touched field gets a green tick, including the optional ones');
+    }
+
     // ------------------------------------------------------------ 4. success
 
     public function test_success_is_confirmed_inside_the_field(): void

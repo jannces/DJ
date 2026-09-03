@@ -113,8 +113,52 @@ a:hover { color:var(--primary-hover); }
 .small,small { font-size:var(--fs-sm); }
 ::selection { background:var(--brand-400); color:#fff; }
 
-/* Accessible focus ring (HCI: visibility of status) */
-:focus-visible { outline:3px solid color-mix(in srgb,var(--gold-500) 70%,transparent); outline-offset:2px; border-radius:var(--r-sm); }
+/* ---- The focus ring -----------------------------------------------------
+   Three things make a focus ring work: THICKNESS, OFFSET and CONTRAST.
+
+   This one had the first two and not the third. It was gold at 70% opacity,
+   which composites to #e6c26a on a white card -- 1.7:1. A keyboard user in
+   light mode had, in practice, no visible focus at all; it looked fine in
+   dark mode, which is where it was designed.
+
+   The fix is not a prettier colour but a colour that cannot fail: near-black
+   on light, near-white on dark, against the page rather than against whatever
+   the focused element happens to be painted. 15:1 and 16:1 respectively, and
+   the 2px offset keeps it clear of the element's own edge so it reads on a
+   filled button as well as on a link.
+
+   :focus-visible, never :focus -- a mouse click focuses too, and a ring on
+   every click is noise that teaches people to ignore the one that matters. */
+:root{ --focus-ring:#191626; }
+[data-bs-theme="dark"]{ --focus-ring:#f1eef9; }
+
+:focus-visible{
+  outline:2px solid var(--focus-ring);
+  outline-offset:2px;
+  border-radius:var(--r-sm);
+}
+
+
+/* ---- Skip link ----------------------------------------------------------
+   Twelve sidebar entries and a topbar stand between the top of every page and
+   its content. Without this, reaching the first field of the leave form by
+   keyboard is roughly twenty Tab presses, on every page, every time.
+
+   Hidden until focused rather than hidden outright: `display:none` and
+   `visibility:hidden` remove it from the tab order too, which would leave a
+   skip link nobody can reach. It is clipped to a single pixel instead. */
+.skip-link{
+  position:absolute; top:.5rem; left:.5rem; z-index:2000;
+  width:1px; height:1px; overflow:hidden; clip-path:inset(50%);
+  padding:0; white-space:nowrap;
+  background:var(--surface); color:var(--text);
+  border:1px solid var(--border-strong); border-radius:.5rem;
+  font-size:.85rem; font-weight:600; text-decoration:none;
+}
+.skip-link:focus-visible{
+  width:auto; height:auto; overflow:visible; clip-path:none;
+  padding:.55rem 1rem; box-shadow:var(--shadow);
+}
 
 /* Scrollbars */
 ::-webkit-scrollbar { width:10px; height:10px; }
@@ -1612,6 +1656,21 @@ span.dash-link:hover{ transform:none; box-shadow:none; color:var(--muted); }
   outline:2px solid transparent; outline-offset:0;
 }
 
+/* ---- WHEN a state is allowed to appear ----------------------------------
+   On submit is too late: somebody fills ten fields, commits, and is handed a
+   wall of errors. On every keystroke is too early: "j" is flagged as a bad
+   email before the word is finished.
+
+   On BLUR is the answer, and CSS already has the word for it. :user-invalid
+   matches only after a person has actually interacted with the field and left
+   it -- not on page load, not mid-word -- and it stops matching the instant
+   the value becomes valid again. So an error appears when they move on, and
+   clears while they fix it, with no script and no listener.
+
+   :invalid is deliberately NOT used anywhere here. An empty required field is
+   invalid the moment the page loads, and a form that greets you in red has
+   told you off for nothing. */
+
 /* ---- 3. ERROR ----------------------------------------------------------- */
 /* Colour AND icon AND message. The icon sits inside the field, where the eye
    already is, and is suppressed on the controls that draw their own furniture
@@ -1646,9 +1705,30 @@ span.dash-link:hover{ transform:none; box-shadow:none; color:var(--muted); }
 
 /* ---- 4. SUCCESS --------------------------------------------------------- */
 /* Confirmed inside the field, where the person is already looking. A toast
-   would appear somewhere else and be gone before it was read. */
-.form-control.is-valid,.form-select.is-valid{
+   would appear somewhere else and be gone before it was read.
+
+   Success is feedback too: a form that only ever speaks up to complain leaves
+   somebody re-reading the fields it said nothing about, wondering whether
+   silence meant "fine" or "not checked yet".
+
+   Scoped to fields that HAVE something to satisfy -- required, a pattern, or
+   an input type with rules of its own. An optional free-text box is valid the
+   moment it is touched, and a green tick there says nothing while adding a
+   mark to every row of the form. */
+.form-control.is-valid,.form-select.is-valid,
+.form-control:user-valid:required,.form-select:user-valid:required,
+.form-control[pattern]:user-valid,
+.form-control[type="email"]:user-valid{
   border-color:var(--success);
+}
+.form-control:user-valid:required:not([type="date"]):not([type="file"]):not([type="time"]),
+.form-control[pattern]:user-valid:not([type="date"]):not([type="file"]):not([type="time"]),
+.form-control[type="email"]:user-valid{
+  background-image:var(--icon-ok);
+  background-repeat:no-repeat;
+  background-position:right .7rem center;
+  background-size:1rem 1rem;
+  padding-right:2.3rem;
 }
 .form-control.is-valid:not([type="date"]):not([type="file"]):not([type="time"]){
   background-image:var(--icon-ok);
@@ -3350,7 +3430,10 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   gap:.65rem; padding:.28rem .3rem; border-radius:.45rem; position:relative;
   transition:background var(--dur) var(--ease);
 }
-.sk-r:hover, .sk-r:focus-visible{ background:var(--surface-hover); outline:none; }
+/* The hover fill is the mouse affordance; a keyboard user needs the ring as
+   well, and `outline:none` here removed it without replacing it. */
+.sk-r:hover{ background:var(--surface-hover); }
+.sk-r:focus-visible{ background:var(--surface-hover); }
 .sk-l{
   font-size:var(--fs-sm); color:var(--text-2); text-align:right;
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
@@ -3953,10 +4036,42 @@ span.dash-link{ justify-content:flex-start; }
 }
 .lms-toast .swal2-title{ color:var(--text); font-size:.85rem; font-weight:500; }
 .lms-toast .swal2-timer-progress-bar{ background:var(--ch-mute); }
-/* The ambience of the event: it worked, it worked with a caveat, it is a note. */
+
+/* Type is carried by THREE things at once: the icon SweetAlert2 draws, this
+   left accent border, and the colour of the progress bar. Never by colour
+   alone -- around one man in twelve cannot separate the green from the amber,
+   and a receipt that reads as a warning sends somebody looking for a problem
+   that is not there. */
+.lms-toast.swal2-toast{ border-left-width:3px; }
+.lms-toast-success.swal2-toast{ border-left-color:var(--k-good-f); }
+.lms-toast-warning.swal2-toast{ border-left-color:var(--k-warn-f); }
+.lms-toast-info.swal2-toast{ border-left-color:var(--primary); }
 .lms-toast-success .swal2-timer-progress-bar{ background:var(--k-good-f); }
 .lms-toast-warning .swal2-timer-progress-bar{ background:var(--k-warn-f); }
 .lms-toast-info .swal2-timer-progress-bar{ background:var(--primary); }
+
+/* The close button is small and easy to miss against a light toast. */
+.lms-toast .swal2-close{
+  color:var(--muted); font-size:1.4rem; width:1.6rem; height:1.6rem;
+  align-self:center; margin:0 0 0 .4rem;
+}
+.lms-toast .swal2-close:hover{ color:var(--text); }
+.lms-toast .swal2-close:focus-visible{
+  outline:2px solid var(--focus-ring); outline-offset:2px; box-shadow:none;
+}
+
+/* On a phone the bottom edge belongs to the browser's own chrome and, when a
+   field is focused, to the keyboard -- a toast there is under both. It moves
+   to the top, where nothing else on a narrow screen is competing for the
+   space. */
+@media (max-width:640px){
+  .swal2-container.swal2-bottom-end{
+    align-items:flex-start !important;
+    justify-content:center !important;
+    padding-top:calc(var(--topbar-h) + .5rem);
+  }
+  .lms-toast.swal2-toast{ width:calc(100vw - 1.5rem); max-width:none; }
+}
 
 /* ---- Alarms -------------------------------------------------------------- */
 #lms-alerts{
@@ -4070,3 +4185,51 @@ span.dash-link{ justify-content:flex-start; }
    somebody is trying to copy it. Blur where you must not look past it; dim
    where you might still need to. */
 .modal-backdrop.show{ background:rgb(12 8 24); opacity:.55; }
+
+/* ---- On a phone, a record panel is a bottom sheet -----------------------
+   The overlay hierarchy is: does this block the user? A record panel does not
+   -- it is two or three fields you opened on purpose and can walk away from --
+   so on a narrow screen it takes the shape that says so. It slides up from the
+   bottom edge, sizes itself to its content, and leaves the list visible above
+   it, which is often what somebody is copying a department code from.
+
+   A centred dialog on a phone is the wrong shape for the same reason it is the
+   wrong shape on paper: it lands in the middle of the thumb's reach for the
+   controls and covers the context at the same time. This keeps the Save button
+   near the thumb and the list on screen.
+
+   The blocking confirmation (.lms-ask) is untouched. It stays centred and
+   blurred, because it IS a stop, and looking like the routine panel would
+   spend the one signal this system reserves for that. */
+@media (max-width:640px){
+  .modal.fade .modal-dialog{ transform:translateY(100%); }
+  .modal.show .modal-dialog{ transform:none; }
+
+  .modal-dialog,
+  .modal-dialog.modal-dialog-centered{
+    position:fixed; left:0; right:0; bottom:0;
+    margin:0; max-width:none; width:100%;
+    align-items:flex-end; min-height:0;
+  }
+  .modal-content{
+    border-radius:1rem 1rem 0 0;
+    border-bottom:0;
+    max-height:88vh;
+  }
+  /* The grab handle. It is not draggable -- nothing here is -- but it is the
+     shape people read as "this came up from the bottom and goes back down",
+     and it marks the top edge as the thing to press away from. */
+  .modal-header{
+    position:relative; padding-top:1.35rem;
+    border-top-left-radius:1rem; border-top-right-radius:1rem;
+  }
+  .modal-header::before{
+    content:""; position:absolute; top:.5rem; left:50%; transform:translateX(-50%);
+    width:2.25rem; height:.25rem; border-radius:var(--r-full);
+    background:var(--border-strong);
+  }
+  .modal-body{ overflow-y:auto; }
+  /* Full-width actions, in thumb reach, in the order they are used. */
+  .modal-footer{ padding-bottom:calc(.85rem + env(safe-area-inset-bottom)); }
+  .modal-footer > .btn{ flex:1 1 auto; }
+}

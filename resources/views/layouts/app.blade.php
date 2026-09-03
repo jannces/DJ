@@ -17,13 +17,19 @@
     </script>
 </head>
 <body>
+{{-- The first focusable element on every page, and invisible until it is
+     focused. Twelve sidebar entries and a topbar sit between the top of the
+     document and the content; without this, a keyboard user tabs through all
+     of them again on every single page. --}}
+<a class="skip-link no-print" href="#lms-content">Skip to main content</a>
+
 <div id="page-loader" aria-hidden="true"><div class="spinner-ring" role="status" aria-label="Loading"></div></div>
 
 <div class="lms-wrapper">
     @include('partials.sidebar')
     <div class="lms-main">
         @include('partials.topbar')
-        <main class="lms-content">
+        <main class="lms-content" id="lms-content" tabindex="-1">
             @if (session('warning'))
                 <div class="alert alert-warning alert-dismissible fade show" role="alert">
                     <i class="bi bi-exclamation-triangle me-1"></i>{{ session('warning') }}

@@ -68,11 +68,34 @@
   // sit below-right and row actions are right-aligned in the last column -- and
   // clear of the topbar's controls, which the old top-right corner sat on top
   // of. Gone in four seconds; the page behind it already shows the result.
+  //
+  // HOW LONG IT STAYS IS A FUNCTION OF WHAT IT SAYS. Every receipt used to
+  // last 3.8 seconds, whatever it said. "User updated." needs about four --
+  // the list behind it already shows the change. A warning is a caveat
+  // somebody has to read and understand, and four seconds is not enough to
+  // read a sentence and decide whether it matters.
+  //
+  // Anything a person must acknowledge does not belong here at all; it goes
+  // to lmsAlert below, which has no timer.
+  var TOAST_MS = { success: 4000, info: 4000, warning: 7000 };
+
   window.lmsToast = function (icon, title) {
     Swal.fire({
       toast: true, position: 'bottom-end', showConfirmButton: false,
-      timer: 3800, timerProgressBar: true, icon: icon, title: title,
-      customClass: { popup: 'lms-toast lms-toast-' + icon }
+      // A way out, always: a timer is a guess about reading speed, and the
+      // guess is wrong for anybody who looked away.
+      showCloseButton: true,
+      timer: TOAST_MS[icon] || 4000,
+      timerProgressBar: true, icon: icon, title: title,
+      customClass: { popup: 'lms-toast lms-toast-' + icon },
+      didOpen: function (el) {
+        // The countdown pauses while the pointer is on the toast. Without it,
+        // moving the mouse over to click Close is a race against the timer.
+        el.addEventListener('mouseenter', Swal.stopTimer);
+        el.addEventListener('mouseleave', Swal.resumeTimer);
+        el.addEventListener('focusin', Swal.stopTimer);
+        el.addEventListener('focusout', Swal.resumeTimer);
+      }
     });
   };
 

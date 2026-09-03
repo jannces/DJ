@@ -44,9 +44,41 @@ class NotificationChannelsTest extends TestCase
             'the receipt is back on top of the topbar controls');
     }
 
-    public function test_a_receipt_goes_away_on_its_own(): void
+    /**
+     * A receipt goes away on its own, and how long it stays depends on what it
+     * says.
+     *
+     * One fixed 3.8 seconds for everything was wrong at both ends: "User
+     * updated." does not need it, because the list behind the toast already
+     * shows the change, and a warning is a caveat somebody has to read and
+     * weigh, which four seconds does not allow. Anything that must be
+     * acknowledged has no timer at all -- that is lmsAlert, below.
+     */
+    public function test_how_long_a_receipt_stays_follows_what_it_says(): void
     {
-        $this->assertMatchesRegularExpression('/timer: 3800/', $this->script());
+        $js = $this->script();
+
+        $this->assertMatchesRegularExpression(
+            '/TOAST_MS = \{ success: 4000, info: 4000, warning: 7000 \}/', $js);
+        $this->assertMatchesRegularExpression('/timer: TOAST_MS\[icon\]/', $js);
+    }
+
+    /**
+     * And there is always a way out that does not depend on the timer.
+     *
+     * A timer is a guess about reading speed, and it is wrong for anybody who
+     * looked away. The countdown also stops while the pointer is on the toast,
+     * so reaching for the close button is not a race against it.
+     */
+    public function test_a_receipt_can_be_closed_and_pauses_while_read(): void
+    {
+        $js = $this->script();
+
+        $this->assertStringContainsString('showCloseButton: true', $js);
+        $this->assertStringContainsString("addEventListener('mouseenter', Swal.stopTimer)", $js);
+        $this->assertStringContainsString("addEventListener('mouseleave', Swal.resumeTimer)", $js);
+        $this->assertStringContainsString("addEventListener('focusin', Swal.stopTimer)", $js,
+            'a keyboard user cannot pause the countdown');
     }
 
     /** The tone matches the event rather than being one colour for everything. */
