@@ -518,7 +518,11 @@
                           enctype="multipart/form-data" class="row g-2" data-no-loader>
                         @csrf
                         <div class="col-12">
-                            <input name="type" class="form-control form-control-sm" placeholder="Document type" required>
+                            {{-- A real label, outside the field: as a placeholder it
+                                 vanished the moment somebody typed. --}}
+                            <label class="form-label" for="pv-doc-type">Document type</label>
+                            <input id="pv-doc-type" name="type" class="form-control form-control-sm"
+                                   placeholder="e.g. Medical certificate" required>
                         </div>
                         <div class="col-12">
                             <input type="file" name="document" class="form-control form-control-sm"

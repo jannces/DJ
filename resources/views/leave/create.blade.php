@@ -215,7 +215,8 @@
             <div class="lf-g lf-g2">
                 <div class="lf-f">
                     <label for="lf-type">Leave type <span class="req">*</span></label>
-                    <select id="lf-type" name="leave_type_id[]" class="form-select" required>
+                    <select id="lf-type" name="leave_type_id[]"
+                            class="form-select @error('leave_type_id') is-invalid @enderror" required>
                         <option value="">Select a leave type…</option>
                         @foreach ($types as $t)
                             <option value="{{ $t->id }}"

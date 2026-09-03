@@ -75,7 +75,15 @@
                 <div class="card-body">
                     <form method="POST" action="{{ route('leave.documents.store', $leaveRequest) }}" enctype="multipart/form-data" class="row g-2" data-no-loader>
                         @csrf
-                        <div class="col-md-5"><input name="type" class="form-control form-control-sm" placeholder="Document type" required></div>
+                        <div class="col-md-5">
+                            {{-- A real label, outside the field. As a placeholder it
+                                 vanished the moment somebody typed, leaving a filled
+                                 box with nothing saying what was in it. --}}
+                            <label class="form-label" for="doc-type-{{ $leaveRequest->id }}">Document type</label>
+                            <input id="doc-type-{{ $leaveRequest->id }}" name="type"
+                                   class="form-control form-control-sm"
+                                   placeholder="e.g. Medical certificate" required>
+                        </div>
                         <div class="col-md-5"><input type="file" name="document" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png" required></div>
                         <div class="col-md-2"><button class="btn btn-sm btn-lgu w-100">Upload</button></div>
                     </form>

@@ -209,11 +209,39 @@
         return;
       }
 
+      // Another listener already handled it -- the list filters submit over
+      // fetch and call preventDefault on the form itself, which runs before
+      // this delegated one. Locking those would freeze a page that is not
+      // going anywhere.
+      if (e.defaultPrevented) return;
+
+      // THE LOADING STATE. Marks the form busy, which greys its fields, blocks
+      // pointer input and puts a spinner in the submit button (see the field
+      // states in app.css). It is here for one reason: a second click on
+      // Submit files a duplicate leave application, with its own reference
+      // number, which somebody then cancels by hand.
+      //
+      // Native validation runs BEFORE this event, so a form the browser
+      // refuses never reaches here and never locks.
+      form.setAttribute('aria-busy', 'true');
+
       // A genuine navigation, not an AJAX form or one that stops to ask.
       if (!form.hasAttribute('data-no-loader')) {
         var loader = document.getElementById('page-loader');
         if (loader) loader.classList.add('active');
       }
+    });
+
+    // Coming back with the Back button restores the page from the bfcache
+    // exactly as it was left -- mid-submit, with every field grey and the
+    // button spinning for a request that finished long ago. Unlock it.
+    window.addEventListener('pageshow', function (e) {
+      if (!e.persisted) return;
+      document.querySelectorAll('form[aria-busy="true"]').forEach(function (f) {
+        f.removeAttribute('aria-busy');
+      });
+      var loader = document.getElementById('page-loader');
+      if (loader) loader.classList.remove('active');
     });
 
     function ask(form) {

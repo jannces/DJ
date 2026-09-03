@@ -275,14 +275,10 @@ a:hover { color:var(--primary-hover); }
 
 /* ---- 9. Forms ------------------------------------------------------------ */
 .form-label { font-weight:600; font-size:.82rem; color:var(--text-2); margin-bottom:.35rem; }
-.form-control,.form-select { border:1px solid var(--border-strong); border-radius:var(--r);
-  padding:.55rem .8rem; font-size:.875rem; color:var(--text); background:var(--surface);
-  transition:border-color var(--dur) var(--ease),box-shadow var(--dur) var(--ease); }
-.form-control:focus,.form-select:focus { border-color:var(--primary);
-  box-shadow:0 0 0 4px color-mix(in srgb,var(--primary) 14%,transparent); background:var(--surface); }
-.form-control::placeholder { color:var(--muted-2); }
-.form-control.is-invalid,.form-select.is-invalid { border-color:var(--danger); }
-.invalid-feedback { font-size:.78rem; color:var(--danger); }
+/* Field states live in one place -- see "Field states" further down. Three
+   competing .form-control blocks used to be spread through this file, and the
+   last one won: it set box-shadow:none on :focus, which silently deleted the
+   focus ring everywhere. */
 .form-text { color:var(--muted); font-size:.78rem; }
 .input-group-text { background:var(--surface-2); border-color:var(--border-strong); color:var(--muted); }
 .form-check-input:checked { background-color:var(--primary); border-color:var(--primary); }
@@ -1006,14 +1002,6 @@ body{ background:var(--bg); color:var(--text); }
 .btn-outline-secondary{ border-color:var(--border); color:var(--text-2); background:var(--surface); }
 .btn-outline-secondary:hover{ background:var(--surface-hover); border-color:var(--border-strong); color:var(--text); }
 
-.form-control,.form-select{
-  border:1px solid var(--border); border-radius:.5rem; font-size:.85rem;
-  background:var(--surface); color:var(--text);
-}
-.form-control:focus,.form-select:focus{
-  border-color:var(--primary); box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 18%,transparent);
-}
-.form-label{ font-size:.8rem; font-weight:500; color:var(--text-2); }
 
 /* Badges become quiet status pills everywhere. */
 .badge{ border-radius:var(--r-full); font-size:.74rem; font-weight:500; padding:.2rem .55rem; }
@@ -1556,17 +1544,207 @@ span.dash-link:hover{ transform:none; box-shadow:none; color:var(--muted); }
 }
 .page-item.disabled .page-link{ color:var(--muted-2); background:var(--surface); }
 
-/* ---- Inputs ------------------------------------------------------------- */
+
+
+/* ==========================================================================
+   FIELD STATES
+   Six states, one system: default, focus, error, success, disabled, loading.
+   Every one of them is designed here, because a state nobody designed is a
+   state the browser invents -- and the browser's version of "invalid" is a
+   red border, which roughly one in twelve men cannot see.
+
+   The rules this section keeps:
+
+     · The LABEL IS OUTSIDE the field and the helper text is under it, so
+       nothing disappears the moment somebody starts typing. A placeholder is
+       an example of the answer, never the question.
+     · FOCUS is a ring, not a tint. --primary measures 10.8:1 on the light
+       surface and 3.9:1 on the dark one, both clear of the 3:1 floor.
+     · An ERROR is COLOUR + ICON + WORDS, all three. Colour alone fails
+       colour-vision deficiency; an icon alone does not say what is wrong.
+     · DISABLED is a grey fill and a not-allowed cursor -- never opacity.
+       Half-faded controls read as "still loading", and this system has a real
+       loading state that has to look different from them.
+   ========================================================================== */
+
+:root{
+  /* The resting border. --border-strong is 1.4:1 on white, which is a hairline
+     rather than a boundary; WCAG 1.4.11 asks for 3:1 on the edge that tells you
+     where a control is. These clear it against the field AND the page behind. */
+  --field-border:#8f86ab;
+  --field-fill:var(--surface);
+
+  --icon-error:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23be123c' stroke-width='1.6' stroke-linecap='round'%3E%3Ccircle cx='8' cy='8' r='6.6'/%3E%3Cpath d='M8 4.7v4'/%3E%3Cpath d='M8 11.2h.01'/%3E%3C/svg%3E");
+  --icon-ok:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2315803d' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8.5l3.2 3.2L13 5'/%3E%3C/svg%3E");
+}
+[data-bs-theme="dark"]{
+  --field-border:#6d6094;
+  --icon-error:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23fb7185' stroke-width='1.6' stroke-linecap='round'%3E%3Ccircle cx='8' cy='8' r='6.6'/%3E%3Cpath d='M8 4.7v4'/%3E%3Cpath d='M8 11.2h.01'/%3E%3C/svg%3E");
+  --icon-ok:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%234ade80' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8.5l3.2 3.2L13 5'/%3E%3C/svg%3E");
+}
+
+/* ---- 1. DEFAULT --------------------------------------------------------- */
+.form-label{
+  display:block; font-size:.8rem; font-weight:600; color:var(--text-2);
+  margin-bottom:.3rem;
+}
 .form-control,.form-select{
-  background:var(--surface); border:1px solid var(--border-strong);
-  color:var(--text); border-radius:.5rem; font-size:.85rem;
+  width:100%;
+  background:var(--field-fill); color:var(--text);
+  border:1px solid var(--field-border); border-radius:.5rem;
+  padding:.55rem .8rem; font-size:.875rem;
+  transition:border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease),
+             background-color var(--dur) var(--ease);
 }
+/* An example of the answer, clearly quieter than a real value so the field
+   never looks filled in when it is empty. */
+.form-control::placeholder{ color:var(--muted-2); opacity:1; }
+.form-text{ display:block; color:var(--muted); font-size:.78rem; margin-top:.3rem; }
+
+/* ---- 2. FOCUS ----------------------------------------------------------- */
 .form-control:focus,.form-select:focus{
-  background:var(--surface); color:var(--text);
-  border-color:var(--primary); box-shadow:none;
+  background:var(--field-fill); color:var(--text);
+  border-color:var(--primary);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 30%,transparent);
+  /* The global :focus-visible rule paints a gold outline on everything. On a
+     field it lands on top of this ring and the two fight; the ring is the
+     designed one, so it wins here. */
+  outline:2px solid transparent; outline-offset:0;
 }
-.form-control::placeholder{ color:var(--muted-2); }
-.form-label{ font-size:.78rem; font-weight:500; color:var(--muted); margin-bottom:.25rem; }
+
+/* ---- 3. ERROR ----------------------------------------------------------- */
+/* Colour AND icon AND message. The icon sits inside the field, where the eye
+   already is, and is suppressed on the controls that draw their own furniture
+   there -- a date picker button and a file chooser have no room for it. */
+.form-control.is-invalid,.form-select.is-invalid,
+.form-control:user-invalid,.form-select:user-invalid{
+  border-color:var(--danger);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--danger) 18%,transparent);
+}
+.form-control.is-invalid:not([type="date"]):not([type="file"]):not([type="time"]),
+.form-control:user-invalid:not([type="date"]):not([type="file"]):not([type="time"]){
+  background-image:var(--icon-error);
+  background-repeat:no-repeat;
+  background-position:right .7rem center;
+  background-size:1rem 1rem;
+  padding-right:2.3rem;
+}
+.invalid-feedback,.is-invalid-note{
+  display:flex; align-items:flex-start; gap:.35rem;
+  font-size:.78rem; color:var(--danger); margin-top:.3rem;
+}
+.invalid-feedback::before,.is-invalid-note::before{
+  content:""; flex:none; width:.95rem; height:.95rem; margin-top:.05rem;
+  background:var(--icon-error) no-repeat center/contain;
+}
+/* Bootstrap hides .invalid-feedback unless it sits next to an .is-invalid
+   control, and several forms here print the message without putting that class
+   on the input -- so the message existed and was invisible. Every one of them
+   is emitted inside @error, so a feedback div that renders at all is a real
+   error and should be shown. */
+.invalid-feedback{ display:flex !important; }
+
+/* ---- 4. SUCCESS --------------------------------------------------------- */
+/* Confirmed inside the field, where the person is already looking. A toast
+   would appear somewhere else and be gone before it was read. */
+.form-control.is-valid,.form-select.is-valid{
+  border-color:var(--success);
+}
+.form-control.is-valid:not([type="date"]):not([type="file"]):not([type="time"]){
+  background-image:var(--icon-ok);
+  background-repeat:no-repeat;
+  background-position:right .7rem center;
+  background-size:1rem 1rem;
+  padding-right:2.3rem;
+}
+.valid-feedback{
+  display:flex; align-items:flex-start; gap:.35rem;
+  font-size:.78rem; color:var(--success); margin-top:.3rem;
+}
+.valid-feedback::before{
+  content:""; flex:none; width:.95rem; height:.95rem; margin-top:.05rem;
+  background:var(--icon-ok) no-repeat center/contain;
+}
+
+/* ---- 5. DISABLED -------------------------------------------------------- */
+/* A grey fill and a cursor that says no. NOT opacity: a half-faded control is
+   how every other interface on the machine says "working on it", and this one
+   has a real loading state two rules below that has to be distinguishable. */
+.form-control:disabled,.form-select:disabled,.form-control[readonly],
+.form-check-input:disabled{
+  background-color:var(--surface-2);
+  border-color:var(--border);
+  color:var(--muted);
+  -webkit-text-fill-color:var(--muted);   /* Safari ignores color on :disabled */
+  cursor:not-allowed;
+  opacity:1;
+}
+.form-check-input:disabled ~ .form-check-label,
+label:has(:disabled){ color:var(--muted); cursor:not-allowed; }
+.btn:disabled,.btn.disabled,.form-actions .btn:disabled{
+  background:var(--surface-2); border-color:var(--border); color:var(--muted);
+  cursor:not-allowed; opacity:1; box-shadow:none;
+}
+
+/* ---- 6. LOADING --------------------------------------------------------- */
+/* Set on the <form> while it is being submitted -- see app.js. It exists for
+   one reason the reference states plainly: to stop a second submit. On this
+   system a double-submitted application is a duplicate leave request with its
+   own reference number, which somebody then has to cancel by hand. */
+/* Loading must not look like disabled. Both take the field out of play, but
+   one is permanent and one is "wait" -- and a person who reads "wait" as
+   "never" gives up on a form that was about to work. Disabled is a flat grey
+   fill; loading is that fill with a band moving across it, which is the one
+   thing a static state cannot imitate. */
+form[aria-busy="true"] .form-control,
+form[aria-busy="true"] .form-select,
+form[aria-busy="true"] .form-check-input{
+  color:var(--muted);
+  cursor:progress;
+  pointer-events:none;
+  background-color:var(--surface-2);
+  background-image:linear-gradient(100deg,
+      transparent 20%,
+      color-mix(in srgb,var(--primary) 16%,transparent) 45%,
+      transparent 70%);
+  background-size:220% 100%;
+  background-repeat:no-repeat;
+  animation:field-sweep 1.1s linear infinite;
+}
+@keyframes field-sweep{ from{ background-position:120% 0; } to{ background-position:-120% 0; } }
+@media (prefers-reduced-motion:reduce){
+  form[aria-busy="true"] .form-control,
+  form[aria-busy="true"] .form-select,
+  form[aria-busy="true"] .form-check-input{
+    animation:none;
+    background-image:linear-gradient(0deg,
+        color-mix(in srgb,var(--primary) 10%,transparent),
+        color-mix(in srgb,var(--primary) 10%,transparent));
+  }
+}
+form[aria-busy="true"] button,
+form[aria-busy="true"] .lf-next,
+form[aria-busy="true"] .lf-back{ pointer-events:none; }
+form[aria-busy="true"] button[type="submit"]{
+  position:relative; color:transparent !important;
+}
+form[aria-busy="true"] button[type="submit"] > *{ visibility:hidden; }
+form[aria-busy="true"] button[type="submit"]::after{
+  content:""; position:absolute; inset:0; margin:auto;
+  width:1rem; height:1rem; border-radius:50%;
+  border:2px solid color-mix(in srgb,#fff 45%,transparent);
+  border-top-color:#fff;
+  animation:field-spin .6s linear infinite;
+}
+@keyframes field-spin{ to{ transform:rotate(360deg); } }
+@media (prefers-reduced-motion:reduce){
+  form[aria-busy="true"] button[type="submit"]::after{ animation-duration:2.4s; }
+}
+
+/* The leave form's own controls inherit all six states -- they are
+   .form-control / .form-select like everything else. This only re-states the
+   in-field error icon for the CSC sheet's narrower inputs. */
+.lf .form-control.is-invalid,.lf .form-control:user-invalid{ background-position:right .6rem center; }
 
 /* ---- Headings, alerts, modals ------------------------------------------ */
 h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
@@ -1862,14 +2040,6 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .lf-step:has(:invalid) .lf-nav::after{
   content:"Fill the starred fields to continue";
   position:absolute; right:0; bottom:0; font-size:.75rem; color:var(--muted);
-}
-
-/* Red only once the applicant has actually left the field: :user-invalid, not
-   :invalid. An empty required field is invalid the moment the page loads, and
-   a form that greets you in red has told you off for nothing. */
-.lf input:user-invalid, .lf select:user-invalid{
-  border-color:var(--danger);
-  box-shadow:0 0 0 3px color-mix(in srgb,var(--danger) 12%,transparent);
 }
 
 /* ---- Section 7, folded --------------------------------------------------
@@ -2350,8 +2520,16 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .role-option input{ margin-top:.2rem; flex:none; }
 .role-name{ display:block; font-size:.85rem; font-weight:600; }
 .role-desc{ display:block; font-size:.72rem; color:var(--muted); line-height:1.35; }
+/* Same rule as a single field: colour, icon, message. The message is the
+   @error text printed under the group; this adds the other two. */
 .is-invalid-group{
   border:1px solid var(--danger); border-radius:.55rem; padding:.35rem;
+  position:relative;
+}
+.is-invalid-group::before{
+  content:""; position:absolute; top:.45rem; right:.5rem;
+  width:1rem; height:1rem;
+  background:var(--icon-error) no-repeat center/contain;
 }
 
 /* ---- Actions -------------------------------------------------------------- */
@@ -2524,7 +2702,15 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   padding:0 .8em; font-size:.83em;
 }
 .auth-input:focus-within{ border-color:#7C3AED; box-shadow:0 0 0 3px rgb(124 58 237 / .16); }
+/* Colour AND an icon. A red border on its own is invisible to roughly one in
+   twelve men, and this is the sign-in page -- the one screen where a person
+   who cannot tell what went wrong has no way past it. The message itself is
+   the alert above the field. */
 .auth-input.is-bad{ border-color:#D26A63; }
+.auth-input.is-bad::after{
+  content:""; flex:none; width:1rem; height:1rem; margin-left:.4rem;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23D26A63' stroke-width='1.6' stroke-linecap='round'%3E%3Ccircle cx='8' cy='8' r='6.6'/%3E%3Cpath d='M8 4.7v4'/%3E%3Cpath d='M8 11.2h.01'/%3E%3C/svg%3E") no-repeat center/contain;
+}
 .auth-input > i{ color:#A8A3B2; flex:none; }
 .auth-input input{
   flex:1 1 auto; min-width:0; border:0; background:transparent; outline:0;
