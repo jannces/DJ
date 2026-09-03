@@ -52,12 +52,6 @@
                 'rows' => $attackers, 'mono' => true,
                 'empty' => 'No intrusion events in the last 30 days.',
             ])
-            <p class="dash-note">
-                An address is a weak identity on a municipal LAN &mdash; DHCP reuses them and
-                a whole office can sit behind one &mdash; so this card is titled by what it
-                counts, not by who it blames. The tag answers the only question that
-                follows: is it already dealt with.
-            </p>
         </div>
     </div>
 
@@ -86,10 +80,6 @@
             </div>
             <div class="dash-body">
                 @include('dashboard._hbars', ['rows' => $attacks, 'series' => true])
-                <p class="dash-note">
-                    All three raise an alert: the topbar bell for an administrator who is
-                    signed in, an email for one who is not.
-                </p>
             </div>
         </div>
 
@@ -104,7 +94,6 @@
                     'rows' => $routes, 'mono' => true,
                     'empty' => 'No intrusion events in the last 30 days.',
                 ])
-                <p class="dash-note">What an attacker aims at says what they think is worth having.</p>
             </div>
         </div>
     </div>
@@ -210,10 +199,6 @@
                 'rows' => $failures,
                 'empty' => 'No failed sign-ins in the last 7 days.',
             ])
-            <p class="dash-note">
-                The attempt-level detail behind the &ldquo;Brute force&rdquo; row above, which
-                counts lockouts rather than attempts.
-            </p>
         </div>
     </div>
 </div>
