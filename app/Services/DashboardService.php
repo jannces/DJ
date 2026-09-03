@@ -51,18 +51,19 @@ class DashboardService
     /**
      * Two panes, gated separately, and somebody may hold both.
      *
-     *   · leave.view-own          — their own credits and applications. An HR
-     *                               officer files leave like anybody else, so
-     *                               this is theirs too.
-     *   · leave.requests.view-all — everyone's, for whoever has authority over
-     *                               it: HR, the Mayor, the Vice Mayor.
+     *   · leave.view-own       — their own credits and applications. An HR
+     *                            officer files leave like anybody else, so
+     *                            this is theirs too.
+     *   · leave.approve.final  — the management pane: the whole LGU's leave,
+     *                            for whoever decides it. Which is HR.
      *
-     * The second gate is the correction. These aggregates used to hang off
-     * `users.manage` / `security.dashboard`, which is held only by the System
-     * Administrator — who holds no leave permission at all. So the one role
-     * with no business reading leave figures was the only role that could, and
-     * the three roles with authority over leave saw nothing. Moving the gate
-     * fixes both halves without adding a permission.
+     * THE SECOND GATE IS `approve.final`, NOT `requests.view-all`, and the
+     * difference is the Mayor. The Mayor reads every application — that is
+     * what All Leave Requests is — but does not run the leave operation, and
+     * opening their dashboard onto somebody else's caseload buried their own
+     * leave under a page of other people's. Seeing everything and being
+     * answerable for everything are different jobs; this gate follows the
+     * second one.
      *
      * The System Administrator is sent to the Security Dashboard instead; see
      * DashboardController. The sidebar is untouched either way.
@@ -75,7 +76,7 @@ class DashboardService
             $data['mine'] = $this->ownPane($user);
         }
 
-        if ($user->hasPermission('leave.requests.view-all')) {
+        if ($user->hasPermission('leave.approve.final')) {
             $data['management'] = $this->managementPane();
         } elseif ($user->hasPermission('leave.review.department')) {
             // A department head gets the same pane scoped to the one office
@@ -233,12 +234,17 @@ class DashboardService
             'office' => $office->name,
             'headcount' => $staff->count(),
             'kpis' => [
+                // Not "waiting on me": nothing waits on a head any more. What
+                // this office needs to know is how many of its people are
+                // still waiting to hear, because those are the days nobody
+                // can yet plan around.
                 [
-                    'label' => 'Waiting on me',
-                    'value' => $queue['mine'],
-                    'sub' => $queue['mine'] > 0 ? 'awaiting your recommendation' : 'nothing to recommend',
+                    'label' => 'Awaiting HR',
+                    'value' => $queue['awaiting_hr'],
+                    'sub' => $queue['awaiting_hr'] > 0
+                        ? 'not yet decided' : 'nothing outstanding',
                     'icon' => 'inbox',
-                    'tone' => $queue['mine'] > 0 ? 'warn' : 'good',
+                    'tone' => $queue['awaiting_hr'] > 0 ? 'warn' : 'good',
                 ],
                 [
                     'label' => 'Away today',
@@ -505,9 +511,12 @@ class DashboardService
             'stale' => $open->filter(
                 fn ($r) => $r->date_filed->startOfDay()->diffInDays(now()->startOfDay()) > self::STALE_AFTER_DAYS
             )->count(),
-            // Waiting specifically on the department step — what a head can act
-            // on, as opposed to everything of theirs still in flight.
-            'mine' => $open->where('status', LeaveRequest::STATUS_DEPT_REVIEW)->count(),
+            // Waiting on a decision from HR. It used to count the department
+            // step — "what a head can act on" — and a head can now act on
+            // nothing, so counting it would have been a number for a job that
+            // no longer exists. What a head still needs is how many of their
+            // people are waiting to hear.
+            'awaiting_hr' => $open->where('status', LeaveRequest::STATUS_PENDING)->count(),
             'rows' => $rows,
         ];
     }

@@ -445,9 +445,11 @@
         <div class="card-body">
             <div class="lf-official">
                 <i class="bi bi-info-circle"></i>
-                <span>All four subsections are completed by the Municipal Mayor, the Vice Mayor
-                    or the HR Office &mdash; whichever acts first. They are shown here so the
-                    form matches the official sheet, and carry no field you can edit.</span>
+                <span>These four subsections are completed after you submit &mdash; 7.A, 7.C
+                    and 7.D by the HR Office, which validates and decides, and 7.B signed by
+                    your department head, who is notified but approves nothing. They are shown
+                    here so the form matches the official sheet, and carry no field you can
+                    edit.</span>
             </div>
 
             <div class="lf-sub"><b>Certification of leave credits</b><span class="code">7.A</span></div>
@@ -484,8 +486,15 @@
                 </div>
                 <div class="lf-f">
                     <label>Authorized officer</label>
-                    <div class="lf-fixed">&mdash;</div>
-                    <span class="hint">Mayor, Vice Mayor or HR &mdash; whoever decides.</span>
+                    {{-- The head of this employee's own office. Shown here
+                         because it answers the question the box raises -- who
+                         signs this -- and because it tells the applicant, on
+                         the form itself, who is going to be informed. --}}
+                    <div class="lf-fixed">{{ $departmentHead?->name ?? '&mdash;' }}</div>
+                    <span class="hint">
+                        Your department head. They are notified when you submit and
+                        sign this box by hand; the decision itself is HR&rsquo;s.
+                    </span>
                 </div>
             </div>
 

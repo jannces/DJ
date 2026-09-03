@@ -16,40 +16,33 @@ class ApprovalController extends Controller
     }
 
     /**
-     * One page, showing what the signed-in officer may actually act on.
+     * Everything awaiting HR's decision.
      *
-     * Mayor and HR see every application awaiting a decision — including ones
-     * still at department review, which they may decide past so that an absent
-     * head never strands somebody's leave.
+     * One audience now. The department head step became a notification, so
+     * there is no second, narrower queue and no branch here deciding which of
+     * the two a visitor gets — the route admits only holders of
+     * `leave.approve.final`, and every one of them sees the same list.
      *
-     * A department head sees only their own office's applications, only while
-     * those are at department review. Scoped by the head named on the office
-     * rather than by "works in that department", so two people in one office
-     * cannot both act.
+     * STATUS_DEPT_REVIEW is still in the filter for installations that carry
+     * requests filed under the old two-step flow: the migration moves them to
+     * pending, but a request created by a queued job mid-deploy should not
+     * become invisible because of when it happened to be written.
      */
     public function queue(Request $request): View
     {
-        $user = $request->user();
-        $decides = $user->hasPermission(ApprovalWorkflowService::STEP_PERMISSION);
-
-        $query = LeaveRequest::with('leaveType', 'user.employeeProfile.department');
-
-        if ($decides) {
-            $query->whereIn('status', [
+        $requests = LeaveRequest::with('leaveType', 'user.employeeProfile.department')
+            ->whereIn('status', [
                 LeaveRequest::STATUS_PENDING,
                 LeaveRequest::STATUS_DEPT_REVIEW,
                 LeaveRequest::STATUS_RETURNED,
-            ]);
-        } else {
-            $query->where('status', LeaveRequest::STATUS_DEPT_REVIEW)
-                ->whereHas('user.employeeProfile.department',
-                    fn ($q) => $q->where('head_user_id', $user->id));
-        }
+            ])
+            ->latest()
+            ->paginate(config('lists.per_page'));
 
         return view('leave.review', [
-            'requests' => $query->latest()->paginate(config('lists.per_page')),
-            'title' => $decides ? 'Leave Approvals' : 'Department Review',
-            'decides' => $decides,
+            'requests' => $requests,
+            'title' => 'Leave Approvals',
+            'decides' => true,
         ]);
     }
 
@@ -70,12 +63,11 @@ class ApprovalController extends Controller
             'signature' => $data['signature'] ?? $request->user()->name,
         ];
 
-        // Only a deciding officer certifies credits. A department head
-        // recommends on the strength of the request and the office's coverage;
-        // the credit ledger is HR's competence and is not their business.
-        if ($request->user()->hasPermission(ApprovalWorkflowService::STEP_PERMISSION)) {
-            $extra['certified_balances'] = $this->certification($leaveRequest);
-        }
+        // The officer deciding is the officer certifying — one step, one
+        // person, and the credit balances are snapshotted onto the decision so
+        // the printed form states what was certified rather than what the
+        // ledger happens to say when somebody reprints it.
+        $extra['certified_balances'] = $this->certification($leaveRequest);
 
         $this->workflow->act($leaveRequest, $request->user(), $data['action'], $extra);
 

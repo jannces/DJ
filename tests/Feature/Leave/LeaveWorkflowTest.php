@@ -21,7 +21,7 @@ class LeaveWorkflowTest extends TestCase
 
     private User $employee;
     private User $hr;
-    private User $mayor;
+    private User $approver;
     private User $viceMayor;
     private LeaveType $vl;
 
@@ -40,8 +40,10 @@ class LeaveWorkflowTest extends TestCase
         $this->hr = $this->makeUser('hr');
         EmployeeProfile::factory()->create(['user_id' => $this->hr->id, 'department_id' => $dept->id]);
 
-        $this->mayor = $this->makeUser('mayor');
-        EmployeeProfile::factory()->create(['user_id' => $this->mayor->id, 'department_id' => $dept->id]);
+        // HR is the deciding officer: the Mayor oversees leave and does not
+        // approve it, so a Mayor here would be refused by canDecide().
+        $this->approver = $this->makeUser('hr');
+        EmployeeProfile::factory()->create(['user_id' => $this->approver->id, 'department_id' => $dept->id]);
 
         // Vice Mayor was retired; HR is the second authorized approver.
         $this->viceMayor = $this->makeUser('hr');
@@ -69,7 +71,7 @@ class LeaveWorkflowTest extends TestCase
         $this->assertDatabaseCount('approvals', 1);
 
         $workflow = app(ApprovalWorkflowService::class);
-        $workflow->act($request->fresh(), $this->mayor, 'approved', ['days_with_pay' => 3, 'days_without_pay' => 0]);
+        $workflow->act($request->fresh(), $this->approver, 'approved', ['days_with_pay' => 3, 'days_without_pay' => 0]);
         $approved = $request->fresh();
         $this->assertSame(LeaveRequest::STATUS_APPROVED, $approved->status);
 
@@ -122,12 +124,12 @@ class LeaveWorkflowTest extends TestCase
         $wf = app(ApprovalWorkflowService::class);
 
         // First approval succeeds.
-        $wf->act($r1->fresh(), $this->mayor, 'approved', ['days_with_pay' => 6]);
+        $wf->act($r1->fresh(), $this->approver, 'approved', ['days_with_pay' => 6]);
         $this->assertSame(LeaveRequest::STATUS_APPROVED, $r1->fresh()->status);
 
         // Second must fail (only 4 credits left, needs 6).
         $this->expectException(\RuntimeException::class);
-        $wf->act($r2->fresh(), $this->mayor, 'approved', ['days_with_pay' => 6]);
+        $wf->act($r2->fresh(), $this->approver, 'approved', ['days_with_pay' => 6]);
     }
 
     public function test_sick_leave_over_five_days_requires_a_medical_certificate(): void

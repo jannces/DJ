@@ -80,8 +80,8 @@ class ReportService
             'permission' => 'reports.department', 'group' => 'department', 'scope' => self::SCOPE_RANGE,
         ],
         'my-office-pending' => [
-            'title' => 'Waiting on me',
-            'about' => 'Applications not yet recommended',
+            'title' => 'Waiting on HR',
+            'about' => 'Applications from this office not yet decided',
             'permission' => 'reports.department', 'group' => 'department', 'scope' => self::SCOPE_NONE,
         ],
         'my-office-balances' => [

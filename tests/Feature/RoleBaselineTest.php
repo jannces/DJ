@@ -87,25 +87,42 @@ class RoleBaselineTest extends TestCase
      * A head recommends for their own office and decides nothing. The scope is
      * enforced by the department they head, not by the permission alone.
      */
-    public function test_a_department_head_recommends_and_does_not_decide(): void
+    public function test_a_department_head_sees_their_office_and_does_not_decide(): void
     {
         $head = $this->makeUser('department-head');
 
         $this->assertTrue($head->hasPermission('leave.review.department'));
         $this->assertFalse($head->hasPermission('leave.approve.final'),
-            'a head can decide any office\'s leave, not just recommend their own');
+            'a head with this could decide any office\'s leave');
         $this->assertFalse($head->hasPermission('leave.certify.hr'));
     }
 
-    /** The two authorised approvers, and only those two. */
-    public function test_only_hr_and_the_mayor_can_decide(): void
+    /**
+     * HR decides leave, and nobody else does.
+     *
+     * The Mayor is in the second list on purpose. They read every application
+     * and sign the printed form at its foot as head of agency; deciding it is
+     * HR's job, and the permission is what draws that line everywhere — the
+     * service, the route guard and the sidebar all read this one slug.
+     */
+    public function test_only_hr_can_decide(): void
     {
-        foreach (['hr', 'mayor'] as $slug) {
-            $this->assertTrue($this->makeUser($slug)->hasPermission('leave.approve.final'), $slug);
-        }
-        foreach (['employee', 'department-head', 'system-admin'] as $slug) {
+        $this->assertTrue($this->makeUser('hr')->hasPermission('leave.approve.final'));
+
+        foreach (['employee', 'department-head', 'mayor', 'system-admin'] as $slug) {
             $this->assertFalse($this->makeUser($slug)->hasPermission('leave.approve.final'), $slug);
         }
+    }
+
+    /** What the Mayor keeps: sight of everything, and the reports behind it. */
+    public function test_the_mayor_oversees_without_deciding(): void
+    {
+        $mayor = $this->makeUser('mayor');
+
+        $this->assertTrue($mayor->hasPermission('leave.requests.view-all'));
+        $this->assertTrue($mayor->hasPermission('reports.generate'));
+        $this->assertTrue($mayor->hasPermission('leave.apply'), 'the Mayor files leave like anybody else');
+        $this->assertFalse($mayor->hasPermission('leave.approve.final'));
     }
 
     /** Operating the system is not the same as working in it. */

@@ -28,6 +28,11 @@
     // exactly as they were.
     $decision = $r->approvals->first(fn ($a) => $a->step_no === 1
         && $a->action !== \App\Models\Approval::ACTION_PENDING);
+
+    // Box 7.B names the head of the applicant's office, read from the record
+    // written when the application was filed rather than from the department
+    // as it stands today. See form6.blade.php.
+    $deptHead = app(\App\Services\Leave\ApprovalWorkflowService::class)->notifiedHeadName($r);
     $isApproved = $r->status === \App\Models\LeaveRequest::STATUS_APPROVED;
     $isRejected = $r->status === \App\Models\LeaveRequest::STATUS_REJECTED;
     $days = rtrim(rtrim(number_format((float) $r->working_days, 1), '0'), '.');
@@ -359,9 +364,13 @@
                             <td>{{ number_format($r->leaveType->credit_source === 'sick' ? max(0, $sl - (float) $r->working_days) : $sl, 3) }}</td>
                         </tr>
                     </table>
+                    {{-- HR certifies the credits and decides the application --
+                         one officer, one step -- so the officer who acted signs
+                         here. The configured HR officer stands in until then. --}}
                     <div class="csc-signatory">
                         <div class="csc-signatory-name">
-                            {{ \App\Models\SystemSetting::get('general.hr_officer_name', 'ATTY. MARIAH LEAH D. VALEROZO-GARCIA') }}
+                            {{ $decision?->signature ?? $decision?->approver?->name
+                                ?? \App\Models\SystemSetting::get('general.hr_officer_name', 'ATTY. MARIAH LEAH D. VALEROZO-GARCIA') }}
                         </div>
                         <div class="csc-sublabel">
                             {{ \App\Models\SystemSetting::get('general.hr_officer_title', 'Municipal General Services Officer / OIC-HRM OFFICE') }}
@@ -369,18 +378,22 @@
                     </div>
                 </td>
                 <td style="width:50%">
+                    {{-- The head of the applicant's own office. They take no
+                         action in the system, so both boxes print empty for
+                         their pen -- see form6.blade.php, which carries the
+                         full reasoning; these two files render one document. --}}
                     <div class="csc-sub">7.B RECOMMENDATION</div>
                     <div class="csc-check csc-rowline">
-                        <span class="{{ $tick($isApproved) }}" aria-hidden="true"></span>
+                        <span class="{{ $tick(false) }}" aria-hidden="true"></span>
                         <span class="csc-check-text">For approval</span>
                     </div>
                     <div class="csc-check csc-rowline">
-                        <span class="{{ $tick($isRejected) }}" aria-hidden="true"></span>
+                        <span class="{{ $tick(false) }}" aria-hidden="true"></span>
                         <span class="csc-check-text">For disapproval due to</span>
-                        <span class="csc-fill-value">{{ $r->disapproval_reason ?? ($decision?->comments ?? '') }}</span>
+                        <span class="csc-fill-value"></span>
                     </div>
                     <div class="csc-signatory">
-                        <div class="csc-signatory-name">{{ $decision?->signature ?? $decision?->approver?->name ?? '' }}</div>
+                        <div class="csc-signatory-name">{{ $deptHead ?? '' }}</div>
                         <div class="csc-rule"></div>
                         <div class="csc-sublabel">Authorized Officer</div>
                     </div>

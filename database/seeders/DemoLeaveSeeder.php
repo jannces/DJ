@@ -227,7 +227,7 @@ class DemoLeaveSeeder extends Seeder
                 [$status, $decidedAt] = $age > 21
                     ? [mt_rand(1, 10) <= 7 ? 'approved' : 'rejected',
                         $dateFiled->copy()->addDays(mt_rand(1, 9))]
-                    : [['pending', 'dept_review', 'hr_review', 'final_review'][mt_rand(0, 3)], null];
+                    : ['pending', null];
 
                 $filed += $this->file($profile, $types[$pool[mt_rand(0, count($pool) - 1)]],
                     $dateFiled, $dateFiled->copy()->addDays(mt_rand(5, 25)),
@@ -243,14 +243,15 @@ class DemoLeaveSeeder extends Seeder
      *
      * Left to chance, whether anything is still open depends on how the random
      * dates fell, and a demo where "Waiting on a decision" reads 1 cannot show
-     * the queue, the older-than-five-days counter or the four approval steps.
-     * These are filed deliberately, one at each step, at ages that put some of
-     * them past the stale line.
+     * the queue or the older-than-five-days counter. These are filed
+     * deliberately, at ages that put some of them past the stale line.
+     *
+     * All of them sit at `pending`: there is one open status now, because the
+     * department step is a notification rather than a stage to wait at.
      */
     private function backlog($staff, $types): int
     {
         $today = Carbon::today();
-        $steps = ['pending', 'dept_review', 'hr_review', 'final_review'];
         $ages = [2, 4, 8, 13, 21, 34];
         $filed = 0;
 
@@ -260,7 +261,7 @@ class DemoLeaveSeeder extends Seeder
 
             $filed += $this->file($profile, $types[['VL', 'SL', 'SPL'][$i % 3]] ?? $types->first(),
                 $dateFiled, $dateFiled->copy()->addDays(mt_rand(10, 30)),
-                mt_rand(0, 3), $steps[$i % 4], null) ? 1 : 0;
+                mt_rand(0, 3), 'pending', null) ? 1 : 0;
         }
 
         return $filed;

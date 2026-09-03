@@ -7,7 +7,10 @@
 <div class="card">
     <x-list-toolbar :action="route('leave.index')">
         <x-list-filter name="status" label="Status" :options="[
-            'pending' => 'Pending', 'dept_review' => 'Department review',
+            'pending' => 'Pending',
+            // Kept so applications filed under the old two-step flow are still
+            // findable by their recorded status. Nothing lands here now.
+            'dept_review' => 'Department review (archived flow)',
             'hr_review' => 'HR review', 'final_review' => 'Final review',
             'approved' => 'Approved', 'rejected' => 'Rejected',
             'returned' => 'Returned', 'cancelled' => 'Cancelled',

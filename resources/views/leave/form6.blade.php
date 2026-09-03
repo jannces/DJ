@@ -25,6 +25,13 @@
     // exactly as they were.
     $decision = $r->approvals->first(fn ($a) => $a->step_no === 1
         && $a->action !== \App\Models\Approval::ACTION_PENDING);
+
+    // Box 7.B names the head of the applicant's own office. Read from the
+    // notification row written when the application was filed, NOT from the
+    // department record as it stands today: a form reprinted after a change of
+    // head must still name whoever held the office on the day it was filed,
+    // because that is who the document says was informed.
+    $deptHead = app(\App\Services\Leave\ApprovalWorkflowService::class)->notifiedHeadName($r);
     $isApproved = $r->status === \App\Models\LeaveRequest::STATUS_APPROVED;
     $isRejected = $r->status === \App\Models\LeaveRequest::STATUS_REJECTED;
     $days = rtrim(rtrim(number_format((float) $r->working_days, 1), '0'), '.');
@@ -247,21 +254,34 @@
             <td>{{ number_format($r->leaveType->credit_source === 'sick' ? max(0, $sl - (float) $r->working_days) : $sl, 3) }}</td>
           </tr>
         </table>
+        {{-- HR certifies the credits AND decides the application — one officer,
+             one step — so the officer who acted signs here, over the office
+             held. Falls back to the configured HR officer while undecided, so
+             a form printed before the decision still carries the office. --}}
         <div class="sign">
-          <div class="signname">{{ \App\Models\SystemSetting::get('general.hr_officer_name', 'ATTY. MARIAH LEAH D. VALEROZO-GARCIA') }}</div>
+          <div class="signname">{{ $decision?->signature ?? $decision?->approver?->name
+              ?? \App\Models\SystemSetting::get('general.hr_officer_name', 'ATTY. MARIAH LEAH D. VALEROZO-GARCIA') }}</div>
           <div class="lbl">{{ \App\Models\SystemSetting::get('general.hr_officer_title', 'Municipal General Services Officer / OIC-HRM OFFICE') }}</div>
         </div>
       </td>
       <td style="width:50%">
-        {{-- One authorized officer decides — Mayor, Vice Mayor or HR. There is
-             no Department Head step, so none is printed. --}}
+        {{-- 7.B carries the head of the applicant's OWN office.
+
+             The head takes no action in the system: they are notified when the
+             application is filed and it goes straight to HR. So the two boxes
+             print EMPTY — they are for the head to tick and sign by hand on the
+             copy that goes on file, and a system that ticked them would be
+             recording a recommendation nobody made.
+
+             The name is printed because the form has to say which head was
+             informed; the signature line beneath it is left for their pen. --}}
         <div class="sub">7.B RECOMMENDATION</div>
         <table class="rows">
-          <tr><td class="b">{!! $box($isApproved) !!}</td><td>For approval</td></tr>
-          <tr><td class="b">{!! $box($isRejected) !!}</td><td>For disapproval due to {!! $rule($r->disapproval_reason ?? $decision?->comments) !!}</td></tr>
+          <tr><td class="b">{!! $box(false) !!}</td><td>For approval</td></tr>
+          <tr><td class="b">{!! $box(false) !!}</td><td>For disapproval due to {!! $rule(null) !!}</td></tr>
         </table>
         <div class="sign">
-          <div class="signname">{{ $decision?->signature ?? $decision?->approver?->name ?? '' }}</div>
+          <div class="signname">{{ $deptHead ?? '' }}</div>
           <div class="signline"></div>
           <div class="lbl">Authorized Officer</div>
         </div>

@@ -6,48 +6,56 @@ use App\Models\Approval;
 use App\Models\LeaveRequest;
 use App\Models\LeaveType;
 use App\Models\User;
+use App\Notifications\DepartmentLeaveFiledNotification;
 use App\Notifications\LeaveStatusNotification;
 use App\Services\Security\AuditLogger;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Two-step leave approval, as the LGU runs it.
+ * Single-step leave approval, as the LGU runs it.
  *
  *     Employee files
- *        → DEPARTMENT REVIEW   the head of the applicant's own office
- *        → DECISION            ANY ONE of Mayor / HR
- *        → Approved | Rejected
+ *        → the head of their office is NOTIFIED   (nothing to act on)
+ *        → HR validates and decides
+ *        → Approved | Disapproved
  *
- * THE DEPARTMENT STEP IS FOR AWARENESS, NOT CONTROL. Its purpose is that the
- * head knows one of their people is going to be away and puts that on the
- * record. Three things follow from that, and they are the whole design:
+ * THE DEPARTMENT HEAD IS TOLD, NOT ASKED. The head needs to know that one of
+ * their people is going to be away — that is a staffing fact they have to plan
+ * around — but the decision is HR's, and putting a head between the employee
+ * and HR only bought a place for an application to sit while somebody was on
+ * field work. So the head gets a notification and a read-only view of their
+ * own office, and the application goes straight to the queue.
  *
- *   · A head who does not endorse does not kill the application. The
- *     recommendation — either way — travels on to the Mayor or HR with its
- *     comment attached, and they decide. The role says "reviews and
- *     recommends", and CSC Form No. 6 keeps the recommendation and the
- *     approval as two separate signature blocks for exactly this reason.
+ * The notification is also WRITTEN DOWN, as an Approval row carrying
+ * ACTION_NOTIFIED. Two things need that record and neither is served by an
+ * unread-count in a bell:
  *
- *   · The step can never strand a request. An authorized officer may decide an
- *     application still sitting at department review; the department row is
- *     then closed as `skipped` so the timeline says plainly that no
- *     recommendation was recorded, rather than leaving a silent gap.
+ *   · CSC Form No. 6 box 7.B names the head of the applicant's office, and a
+ *     form reprinted later must name who held that office on the day of
+ *     filing. The row snapshots the name.
  *
- *   · A step with nobody to act it does not exist. See needsDepartmentReview().
+ *   · The employee's own timeline can then state that the head was informed,
+ *     with the timestamp, instead of asking them to take it on faith.
  *
- * WHO REVIEWS. The head named on the applicant's office —
+ * WHICH HEAD. The one named on the applicant's office —
  * `departments.head_user_id`, maintained on the Departments page — not
- * "whoever holds the Department Head role and happens to be in that office".
- * One named person, and no ambiguity when an office has two.
+ * "whoever holds the Department Head role and happens to work there". One
+ * named person, and no ambiguity when an office has two.
  *
- * Every action is recorded as an immutable Approval row carrying the approver,
- * the timestamp and a signature snapshot, which is what the employee-facing
- * approval timeline reads.
+ * THE MAYOR NO LONGER DECIDES. Nothing here names a role: the decision is
+ * gated on `leave.approve.final`, which now only HR holds. The Mayor keeps
+ * sight of every application and the reports behind them, and signs the
+ * printed form at its foot as head of agency — which is where a mayor's
+ * signature belongs on CSC Form No. 6 anyway.
+ *
+ * Every decision is recorded as an immutable Approval row carrying the
+ * approver, the timestamp and a signature snapshot, which is what the
+ * employee-facing approval timeline reads.
  */
 class ApprovalWorkflowService
 {
-    /** Step 0 — the applicant's own department head recommends. */
+    /** Step 0 — a record that the applicant's department head was informed. */
     public const STEP_DEPARTMENT = 'department';
 
     /** Step 1 — the decision. Kept as "authorized": any holder may act. */
@@ -56,7 +64,14 @@ class ApprovalWorkflowService
     /** Permission that authorizes deciding an application. */
     public const STEP_PERMISSION = 'leave.approve.final';
 
-    /** Permission that authorizes recommending at department level. */
+    /**
+     * Permission that lets a head see their own office's leave.
+     *
+     * The slug still says "review" because it is written into route guards,
+     * menu entries and existing installations' permission tables; what it
+     * grants is now visibility, not authority. Nothing in this service asks
+     * for it — a head cannot act on an application at all.
+     */
     public const DEPARTMENT_PERMISSION = 'leave.review.department';
 
     public function __construct(
@@ -66,11 +81,12 @@ class ApprovalWorkflowService
     }
 
     /**
-     * Open the steps this application actually has and put it in the queue.
+     * Put the application in HR's queue and tell the applicant's head.
      *
-     * The department row is only created when there is somebody to act it, so
-     * "is there a department step" is a question about the rows rather than a
-     * flag that can drift out of step with them.
+     * One pending step, always — there is nothing between the employee and the
+     * decision. The department row, when there is a head to record, is written
+     * already closed as ACTION_NOTIFIED so that no query looking for open work
+     * can ever find it.
      */
     public function initialize(LeaveRequest $request, LeaveType $type): void
     {
@@ -81,7 +97,12 @@ class ApprovalWorkflowService
                 'leave_request_id' => $request->id,
                 'step_no' => 0,
                 'role_slug' => self::STEP_DEPARTMENT,
-                'action' => Approval::ACTION_PENDING,
+                'approver_id' => $head->id,
+                'action' => Approval::ACTION_NOTIFIED,
+                // The name as it stood on the day of filing — box 7.B of the
+                // printed form reads this, not today's head of the office.
+                'signature' => $head->name,
+                'acted_at' => now(),
             ]);
         }
 
@@ -93,26 +114,27 @@ class ApprovalWorkflowService
         ]);
 
         $request->update([
-            'current_step' => $head !== null ? 0 : 1,
-            'status' => $head !== null
-                ? LeaveRequest::STATUS_DEPT_REVIEW
-                : LeaveRequest::STATUS_PENDING,
+            'current_step' => 1,
+            'status' => LeaveRequest::STATUS_PENDING,
         ]);
 
         $request->user->notify(new LeaveStatusNotification($request, 'submitted'));
+
+        // Sent after the request is in the queue, not before: a head told about
+        // an application that then failed to save would be told about nothing.
+        $head?->notify(new DepartmentLeaveFiledNotification($request));
     }
 
     /**
-     * The head who should recommend this application, or null if none should.
+     * The head to inform about this application, or null if there is nobody.
      *
-     * Null in three cases, all of them the same rule wearing different clothes
-     * — a step with nobody to act it is not a step:
+     * Null in three cases:
      *
      *   · the applicant has no department on record;
      *   · the office has no head assigned;
-     *   · the applicant IS their office's head. Nobody reviews their own
-     *     application, which is why a head's own leave goes straight to the
-     *     Mayor or HR.
+     *   · the applicant IS their office's head. Telling somebody what they
+     *     have just done themselves is noise, and box 7.B would carry the
+     *     applicant's own name twice.
      */
     public function departmentHeadFor(LeaveRequest $request): ?User
     {
@@ -129,29 +151,21 @@ class ApprovalWorkflowService
         return $department->head;
     }
 
-    /** Whether this application is waiting on its department head right now. */
-    public function awaitingDepartmentReview(LeaveRequest $request): bool
-    {
-        return $request->status === LeaveRequest::STATUS_DEPT_REVIEW
-            && ! $request->isFinal();
-    }
-
     /**
-     * Whether this user is the head who should act on this application.
+     * The head recorded as notified when this application was filed.
      *
-     * Deliberately identity-based rather than department-based: holding the
-     * permission and working in the office is not the same as being the head
-     * the office names, and two people in one office could otherwise both act.
+     * Reads the snapshot, so a printed form names who headed the office then.
+     * Falls back to the live head only for applications filed before the
+     * notification row existed.
      */
-    public function canRecommend(User $user, LeaveRequest $request): bool
+    public function notifiedHeadName(LeaveRequest $request): ?string
     {
-        if (! $user->hasPermission(self::DEPARTMENT_PERMISSION)) {
-            return false;
-        }
+        $row = $request->approvals
+            ->firstWhere('role_slug', self::STEP_DEPARTMENT);
 
-        $head = $this->departmentHeadFor($request);
-
-        return $head !== null && (int) $head->id === (int) $user->id;
+        return $row?->signature
+            ?? $row?->approver?->name
+            ?? $this->departmentHeadFor($request)?->name;
     }
 
     public function permissionForStep(string $roleSlug): ?string
@@ -164,15 +178,23 @@ class ApprovalWorkflowService
         return $request->approvals()->where('step_no', $request->current_step)->first();
     }
 
-    /** Any of Mayor, Vice Mayor or HR may decide — whoever holds the permission. */
+    /**
+     * Whoever holds the permission decides — which is HR, and only HR.
+     *
+     * Gated on the permission rather than on a role slug, so an administrator
+     * who grants it to somebody else does not have to change any code, and so
+     * withdrawing it from the Mayor took one seeder line rather than a rewrite.
+     */
     public function canDecide(User $user): bool
     {
         return $user->hasPermission(self::STEP_PERMISSION);
     }
 
     /**
-     * Record a decision. The first authorized officer to act settles the
-     * application; later attempts are refused so two approvers cannot disagree.
+     * Record HR's decision.
+     *
+     * The first authorized officer to act settles the application; later
+     * attempts are refused so two approvers cannot disagree.
      *
      * @param  string  $action  approved|rejected|returned
      * @param  array   $extra   comments, days_with_pay/without_pay, certified_balances, signature
@@ -193,22 +215,9 @@ class ApprovalWorkflowService
             throw ValidationException::withMessages(['status' => 'You cannot decide your own leave application.']);
         }
 
-        // Which step is this actor acting at? A head recommends at department
-        // level; an authorized officer decides — and may do so even while the
-        // application is still sitting at department review, so that one absent
-        // head can never strand somebody's leave.
-        $atDepartment = $this->awaitingDepartmentReview($request) && ! $this->canDecide($actor);
-
-        if ($atDepartment) {
-            if (! $this->canRecommend($actor, $request)) {
-                throw ValidationException::withMessages([
-                    'status' => 'Only the head of this employee\'s office may recommend this application.',
-                ]);
-            }
-
-            return $this->recommend($request, $actor, $action, $extra);
-        }
-
+        // There is one step and one authority. A department head reaching this
+        // — from a stale queue page, or by posting the route directly — is
+        // refused here rather than merely being absent from a list.
         if (! $this->canDecide($actor)) {
             throw ValidationException::withMessages(['status' => 'You are not authorized to decide leave applications.']);
         }
@@ -227,19 +236,6 @@ class ApprovalWorkflowService
                     'status' => 'Another authorized officer has just decided this application.',
                 ]);
             }
-
-            // Decided before the head got to it. The department row is closed
-            // as skipped rather than left pending, so the timeline says plainly
-            // that no recommendation was recorded instead of showing a gap the
-            // reader has to interpret.
-            $request->approvals()
-                ->where('step_no', 0)
-                ->where('action', Approval::ACTION_PENDING)
-                ->update([
-                    'action' => Approval::ACTION_SKIPPED,
-                    'comments' => 'Decided before a recommendation was recorded.',
-                    'acted_at' => now(),
-                ]);
 
             $locked->update([
                 'approver_id' => $actor->id,
@@ -287,65 +283,11 @@ class ApprovalWorkflowService
     }
 
     /**
-     * Record the department head's recommendation and pass the application on.
-     *
-     * BOTH OUTCOMES ADVANCE. The step exists so the head is aware and their
-     * view is on the record — not so they can end somebody's leave. A head who
-     * does not endorse sends it forward with that noted, and the Mayor or HR
-     * decides with the comment in front of them.
-     *
-     * The one action that does not advance is `returned`: that is the employee
-     * being asked to fix their own application, which is as true at department
-     * level as anywhere else.
-     */
-    private function recommend(LeaveRequest $request, User $actor, string $action, array $extra): LeaveRequest
-    {
-        return DB::transaction(function () use ($request, $actor, $action, $extra) {
-            $row = Approval::where('leave_request_id', $request->id)
-                ->where('step_no', 0)->lockForUpdate()->first();
-
-            if (! $row || $row->action !== Approval::ACTION_PENDING) {
-                throw ValidationException::withMessages([
-                    'status' => 'This application has already been through department review.',
-                ]);
-            }
-
-            $row->update([
-                'approver_id' => $actor->id,
-                'action' => $this->normalizeAction($action),
-                'comments' => $extra['comments'] ?? null,
-                'signature' => $extra['signature'] ?? $actor->name,
-                'acted_at' => now(),
-            ]);
-
-            if ($action === 'returned') {
-                $row->update(['action' => Approval::ACTION_PENDING, 'acted_at' => null, 'approver_id' => null]);
-                $request->update(['status' => LeaveRequest::STATUS_RETURNED]);
-                $this->finish($request, $actor, 'returned');
-
-                return $request;
-            }
-
-            // Endorsed or not, it goes to the deciding officers.
-            $request->update([
-                'current_step' => 1,
-                'status' => LeaveRequest::STATUS_PENDING,
-            ]);
-
-            $this->audit->log('leave_recommended', $request, [], [
-                'by' => $actor->name,
-                'endorsed' => $action === 'approved',
-            ], $actor);
-
-            return $request;
-        });
-    }
-
-    /**
      * Re-submit a returned request.
      *
-     * It goes back to whichever step was still open — a request returned by the
-     * head comes back to the head, not past them.
+     * There is one step to come back to, so it comes back to HR. The head is
+     * not told again: they were told when it was first filed, and the fact
+     * they need — that this person intends to be away — has not changed.
      */
     public function resubmit(LeaveRequest $request, User $actor): void
     {
@@ -353,16 +295,9 @@ class ApprovalWorkflowService
             throw ValidationException::withMessages(['status' => 'Only returned requests can be resubmitted.']);
         }
 
-        $departmentOpen = $request->approvals()
-            ->where('step_no', 0)
-            ->where('action', Approval::ACTION_PENDING)
-            ->exists();
-
         $request->update([
-            'current_step' => $departmentOpen ? 0 : 1,
-            'status' => $departmentOpen
-                ? LeaveRequest::STATUS_DEPT_REVIEW
-                : LeaveRequest::STATUS_PENDING,
+            'current_step' => 1,
+            'status' => LeaveRequest::STATUS_PENDING,
         ]);
         $this->audit->log('leave_resubmitted', $request, [], [], $actor);
     }

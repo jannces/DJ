@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Leave;
 
 use App\Http\Controllers\Controller;
+use App\Models\Approval;
 use App\Models\LeaveRequest;
 use App\Models\LeaveRequestDocument;
 use App\Models\LeaveType;
@@ -70,9 +71,18 @@ class LeaveRequestController extends Controller
 
     public function create(Request $request): View
     {
+        // Who will be informed when this is submitted, and whose name goes in
+        // box 7.B. Read off the applicant's own office; null when they head it
+        // themselves, or when the office has no head on record.
+        $office = $request->user()->employeeProfile?->department;
+        $head = $office && (int) $office->head_user_id !== (int) $request->user()->id
+            ? $office->head
+            : null;
+
         return view('leave.create', [
             'types' => $this->cscOrderedTypes(),
             'profile' => $request->user()->employeeProfile,
+            'departmentHead' => $head,
             'vlBalance' => $this->balanceValue($request, 'VL'),
             'slBalance' => $this->balanceValue($request, 'SL'),
         ]);
@@ -273,8 +283,31 @@ class LeaveRequestController extends Controller
         return $pdf->stream("CSC-Form6-{$leaveRequest->reference_no}.pdf");
     }
 
+    /**
+     * The "Total Earned" figure box 7.A of the CSC form certifies.
+     *
+     * Reads the SNAPSHOT taken when HR certified, not the live ledger. The
+     * live ledger is wrong here the moment an application is approved: the
+     * approval deducts the days, so a form reprinted afterwards showed the
+     * post-deduction balance as the total earned and then subtracted the same
+     * days again — 30 earned became "27 earned, less 3, balance 24".
+     *
+     * A certification is a statement about a moment. Falling back to the
+     * ledger for an undecided application is correct for the same reason:
+     * nothing has been certified yet, so today's figure is the honest one.
+     */
     private function balanceForUser(LeaveRequest $r, string $code): float
     {
+        $decision = $r->approvals->first(fn ($a) => $a->step_no === 1
+            && $a->action !== Approval::ACTION_PENDING);
+
+        $certified = $decision?->certified_balances;
+        $key = $code === 'VL' ? 'vacation_balance' : 'sick_balance';
+
+        if (is_array($certified) && array_key_exists($key, $certified)) {
+            return (float) $certified[$key];
+        }
+
         $type = LeaveType::where('code', $code)->first();
 
         return $type ? (float) $this->credits->balanceFor($r->user, $type)->balance : 0;

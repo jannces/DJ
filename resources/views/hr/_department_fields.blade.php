@@ -34,7 +34,11 @@
         @endforeach
     </select>
     @error('head_user_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
-    {{-- This is the field the leave workflow reads: the head named here is the
-         one who recommends their office's applications. --}}
-    <div class="form-text">Recommends leave for this office before it reaches the Mayor or HR.</div>
+    {{-- This is the field the leave workflow reads. The head named here is
+         notified whenever somebody in this office files, and their name is the
+         one printed in box 7.B of the CSC form. They approve nothing. --}}
+    <div class="form-text">
+        Notified when this office files leave, and named in part 7.B of the CSC form.
+        HR decides the application.
+    </div>
 </div>

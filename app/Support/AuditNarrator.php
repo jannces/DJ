@@ -158,6 +158,8 @@ final class AuditNarrator
         'intrusion_false_positives_purged' => 'False alarms cleared',
         'leave_submitted' => 'Leave application filed',
         'leave_resubmitted' => 'Leave application filed again',
+        // Kept for history: the department step became a notification, but
+        // rows recorded before that must still read as something.
         'leave_recommended' => 'Leave recommended by the head of office',
         'leave_approved' => 'Leave approved',
         'leave_disapproved' => 'Leave disapproved',
@@ -371,9 +373,9 @@ final class AuditNarrator
             'intrusion_false_positives_purged' => 'Entries recorded as attacks that were not were removed from the intrusion log, so the counts reflect real attempts.',
 
             // ApprovalWorkflowService -- CSC Form No. 6, parts 7.B and 7.C.
-            'leave_submitted' => 'A leave application was filed and is now waiting on the first person in its approval route.',
-            'leave_resubmitted' => 'A returned application was corrected and filed again. It starts its approval route from the beginning.',
-            'leave_recommended' => 'The head of office recommended the application — part 7.B of the CSC form. It now goes to the approving authority.',
+            'leave_submitted' => 'A leave application was filed. The employee\'s department head was notified, and it now waits on HR to validate and decide.',
+            'leave_resubmitted' => 'A returned application was corrected and filed again. It goes back to HR for a decision.',
+            'leave_recommended' => 'The head of office recommended the application — part 7.B of the CSC form. Recorded before the department step became a notification; heads no longer act on applications.',
             'leave_approved' => 'The application was approved. The days are deducted from the employee\'s credits and the CSC form is complete.',
             'leave_disapproved' => 'The application was disapproved. No credits are deducted, and the reason is recorded on the form.',
             'leave_cancelled' => 'The employee withdrew the application before it was decided. Nothing is deducted.',
@@ -422,9 +424,10 @@ final class AuditNarrator
             // OtpService mails the code to this address.
             'email' => 'Sign-in codes and notices go to this address from now on.',
 
-            // ApprovalWorkflowService routes on departments.head_user_id.
-            'department_id' => 'Their leave applications now go to the head of this office for recommendation.',
-            'head_user_id' => 'Leave from this office now goes to this person for recommendation.',
+            // ApprovalWorkflowService notifies departments.head_user_id, and
+            // box 7.B of the printed form carries that name.
+            'department_id' => 'When they file leave, the head of this office is the one notified, and the one named on their CSC form.',
+            'head_user_id' => 'This person is now notified whenever somebody in this office files leave, and is named in part 7.B of their form. They do not approve it — HR does.',
 
             // EmployeeProfile::nextEmployeeNo.
             'employee_no' => 'Issued once and never handed out again, even after the account is archived.',

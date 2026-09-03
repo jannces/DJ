@@ -45,9 +45,9 @@ class RolePermissionSeeder extends Seeder
         // Named a step that no longer exists. What it does — and all it has
         // done since the approval chain was collapsed to one step — is let its
         // holder read leave requests from their own department.
-        'leave.review.department' => ['Recommend leave for own department', 'leave'],
+        'leave.review.department' => ['View leave applications in own department', 'leave'],
         'leave.certify.hr' => ['Validate & certify leave credits (HR step)', 'leave'],
-        'leave.approve.final' => ['Final approval/disapproval (Mayor step)', 'leave'],
+        'leave.approve.final' => ['Approve or disapprove leave applications (HR)', 'leave'],
         'leave.requests.view-all' => ['View all leave requests', 'leave'],
         'leave.balances.manage' => ['Adjust leave balances', 'leave'],
         'leave-types.manage' => ['Configure leave types & policies', 'leave'],
@@ -86,7 +86,7 @@ class RolePermissionSeeder extends Seeder
         // Department Head inherits everything Employee can do (role inheritance).
         $deptHead = Role::updateOrCreate(['slug' => 'department-head'], [
             'name' => 'Department Head', 'is_system' => true, 'parent_id' => $employee->id,
-            'description' => 'Reviews and recommends leave for own department.',
+            'description' => 'Sees leave filed in own department; approves none of it.',
         ]);
 
         $hr = Role::updateOrCreate(['slug' => 'hr'], [
@@ -96,7 +96,7 @@ class RolePermissionSeeder extends Seeder
 
         $mayor = Role::updateOrCreate(['slug' => 'mayor'], [
             'name' => 'Municipal Mayor', 'is_system' => true, 'parent_id' => $employee->id,
-            'description' => 'Final approving authority for leave applications.',
+            'description' => 'Oversees leave across the LGU; signs the printed form as head of agency.',
         ]);
 
         $sysAdmin = Role::updateOrCreate(['slug' => 'system-admin'], [
@@ -119,17 +119,16 @@ class RolePermissionSeeder extends Seeder
         // It only worked at all because the demo accounts happened to hold
         // Employee as well.
         $grant($employee, self::EMPLOYEE_BASELINE);
-        // Department Head recommends leave for its own office, which is the
-        // first step of the workflow again.
+        // Department Head SEES its own office's leave and acts on none of it.
+        // A head is notified the moment somebody under them files, and the
+        // application goes straight to HR; the permission below is what turns
+        // that notification into a page they can open — their dashboard pane,
+        // their office's rankings, their department reports.
         //
-        // Deliberately NOT `leave.approve.final`: that would let a head decide
-        // any office's leave, not just their own, and would make the
-        // recommendation a decision. The permission below is scoped by the head
-        // named on the department — see ApprovalWorkflowService::canRecommend().
-        // The department reports cover the one office this head runs, and the
-        // office is read off the record rather than chosen -- so this is not
-        // `leave.requests.view-all` in a smaller coat: it cannot reach another
-        // office's applications at all.
+        // Deliberately NOT `leave.approve.final`, and no longer any authority
+        // at all. The office is read off the department record rather than
+        // chosen, so this is not `leave.requests.view-all` in a smaller coat:
+        // it cannot reach another office's applications.
         $grant($deptHead, [
             ...self::EMPLOYEE_BASELINE,
             'leave.review.department', 'reports.generate', 'reports.department',
@@ -141,17 +140,22 @@ class RolePermissionSeeder extends Seeder
             'leave.requests.view-all', 'leave.balances.manage', 'leave-types.manage',
             'leave.certify.hr', 'leave.approve.final', 'reports.generate',
         ]);
-        // Mayor and HR are the two authorized approvers. Any ONE of them can
-        // decide an application — see ApprovalWorkflowService, which gates on
-        // the permission rather than on a role slug.
-        // The Mayor decides applications and could not open Reports, so the
-        // person with final say had no way to look at the figures behind it.
-        // reports.generate is the right to run reports; each report names the
-        // permission its subject needs, so this opens the six leave ones and
-        // none of the four security ones.
+        // The Mayor OVERSEES leave; HR decides it. No `leave.approve.final`,
+        // so the Leave Approvals queue is not merely hidden from the Mayor —
+        // the route guard and ApprovalWorkflowService::canDecide() both refuse
+        // them, which is the only version of this that means anything.
+        //
+        // What stays is sight of it: every application, and the reports behind
+        // them. reports.generate is the right to run reports and each report
+        // names the permission its subject needs, so this opens the six leave
+        // ones and none of the four security ones.
+        //
+        // The Mayor's signature has not left the process. It is at the foot of
+        // the printed CSC Form No. 6, as head of agency — which is where it
+        // belongs on that form.
         $grant($mayor, [
             ...self::EMPLOYEE_BASELINE,
-            'leave.approve.final', 'leave.requests.view-all', 'reports.generate',
+            'leave.requests.view-all', 'reports.generate',
         ]);
         $grant($sysAdmin, [
             'dashboard.view', 'users.manage', 'users.block', 'users.reset-password',

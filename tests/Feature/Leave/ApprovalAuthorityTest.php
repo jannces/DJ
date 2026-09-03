@@ -9,16 +9,24 @@ use App\Models\LeaveBalance;
 use App\Models\LeaveRequest;
 use App\Models\LeaveType;
 use App\Models\User;
+use App\Notifications\DepartmentLeaveFiledNotification;
 use App\Services\Leave\ApprovalWorkflowService;
 use App\Services\Leave\LeaveApplicationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 /**
- * The approval workflow is a single step decided by ANY ONE of Mayor, Vice Mayor
- * or HR. Department Head has no authority over leave, and once a decision is
- * recorded nobody can overturn it.
+ * The approval workflow is a single step decided by HR, and only HR.
+ *
+ * The applicant's department head is NOTIFIED when an application is filed and
+ * can act on none of it. The Mayor reads every application and signs the
+ * printed form as head of agency, but does not decide either. Once a decision
+ * is recorded nobody can overturn it.
+ *
+ * Most of this file is about who CANNOT act, which is the half that matters:
+ * an approval system is defined by its refusals.
  */
 class ApprovalAuthorityTest extends TestCase
 {
@@ -46,9 +54,9 @@ class ApprovalAuthorityTest extends TestCase
     /**
      * Make somebody the head of this employee's office.
      *
-     * The reviewer is the head NAMED on the department, not whoever holds the
-     * role and happens to work there — so the test sets the same field the
-     * Departments page does.
+     * The head who is notified is the one NAMED on the department, not whoever
+     * holds the role and happens to work there — so the test sets the same
+     * field the Departments page does.
      */
     private function headOf(User $employee): User
     {
@@ -94,26 +102,24 @@ class ApprovalAuthorityTest extends TestCase
         $this->assertSame('authorized', $request->approvals->first()->role_slug);
     }
 
-    /** @dataProvider approverRoles */
-    public function test_each_authorized_role_can_approve_alone(string $roleSlug): void
+    public function test_hr_approves_alone(): void
     {
         $request = $this->fileRequest();
 
         app(ApprovalWorkflowService::class)
-            ->act($request, $this->approver($roleSlug), 'approved', ['days_with_pay' => 3]);
+            ->act($request, $this->approver('hr'), 'approved', ['days_with_pay' => 3]);
 
         $this->assertSame(LeaveRequest::STATUS_APPROVED, $request->fresh()->status);
         // Credits deducted on that single approval — no further step required.
         $this->assertEquals(27, (float) LeaveBalance::where('user_id', $this->employee->id)->first()->balance);
     }
 
-    /** @dataProvider approverRoles */
-    public function test_each_authorized_role_can_reject_alone(string $roleSlug): void
+    public function test_hr_rejects_alone(): void
     {
         $request = $this->fileRequest();
 
         app(ApprovalWorkflowService::class)
-            ->act($request, $this->approver($roleSlug), 'rejected', ['comments' => 'Not this week']);
+            ->act($request, $this->approver('hr'), 'rejected', ['comments' => 'Not this week']);
 
         $rejected = $request->fresh();
         $this->assertSame(LeaveRequest::STATUS_REJECTED, $rejected->status);
@@ -122,59 +128,155 @@ class ApprovalAuthorityTest extends TestCase
         $this->assertEquals(30, (float) LeaveBalance::where('user_id', $this->employee->id)->first()->balance);
     }
 
-    public static function approverRoles(): array
+    // ------------------------------------------------------------- the mayor
+
+    /**
+     * The Mayor oversees leave and no longer decides it.
+     *
+     * Asserted at the service, not at the menu: hiding the Leave Approvals
+     * entry would leave the route and this method both willing.
+     */
+    public function test_the_mayor_cannot_decide_an_application(): void
     {
-        // Vice Mayor was retired: it held exactly what the Mayor holds, and the
-        // LGU has five roles. Authority is still a permission rather than a
-        // role, so this list is "who holds leave.approve.final", not "who is
-        // senior enough".
-        return ['mayor' => ['mayor'], 'hr' => ['hr']];
+        $mayor = $this->approver('mayor');
+        $request = $this->fileRequest();
+
+        $this->assertFalse($mayor->hasPermission('leave.approve.final'));
+        $this->assertTrue($mayor->hasPermission('leave.requests.view-all'),
+            'the Mayor must still be able to read every application');
+
+        try {
+            app(ApprovalWorkflowService::class)->act($request, $mayor, 'approved');
+            $this->fail('the Mayor decided an application');
+        } catch (ValidationException $e) {
+            $this->assertSame(LeaveRequest::STATUS_PENDING, $request->fresh()->status);
+        }
+    }
+
+    /** And the endpoint refuses them outright, before the service is reached. */
+    public function test_the_mayor_is_refused_by_the_approval_route(): void
+    {
+        $mayor = $this->approver('mayor');
+        $request = $this->fileRequest();
+
+        $this->actingAs($mayor);
+        session(['otp_verified' => true]);
+
+        $this->get('/review')->assertForbidden();
+        $this->post("/review/{$request->id}/act", ['action' => 'approved'])->assertForbidden();
+        $this->assertSame(LeaveRequest::STATUS_PENDING, $request->fresh()->status);
     }
 
     // ------------------------------------------------------ department head
 
     /**
-     * A head recommends; they do not decide. The distinction is the whole
-     * design: their step exists so they are aware and their view is recorded,
-     * not so they can end somebody's leave.
+     * A head is told and can see; they hold no authority over leave at all.
      */
-    public function test_a_department_head_recommends_and_never_decides(): void
+    public function test_a_department_head_sees_and_never_decides(): void
     {
         $head = $this->headOf($this->employee);
 
-        $this->assertTrue($head->hasPermission('leave.review.department'));
-        $this->assertFalse($head->hasPermission('leave.approve.final'),
-            'a head who could decide could decide any office, not just their own');
+        $this->assertTrue($head->hasPermission('leave.review.department'),
+            'a head who cannot see their office cannot follow up a notification');
+        $this->assertFalse($head->hasPermission('leave.approve.final'));
     }
 
     /**
-     * The recommendation travels either way — this is the case that would be
-     * wrong if the step were a veto.
+     * The application does not stop at the head. This is the case that would
+     * be wrong if the notification were still a step.
      */
-    public function test_a_head_who_does_not_endorse_still_sends_it_on(): void
+    public function test_an_application_goes_straight_past_the_head_to_hr(): void
     {
         $head = $this->headOf($this->employee);
         $request = $this->fileRequest();
 
-        $this->assertSame(LeaveRequest::STATUS_DEPT_REVIEW, $request->fresh()->status);
+        $this->assertSame(LeaveRequest::STATUS_PENDING, $request->fresh()->status);
+        $this->assertSame(1, $request->fresh()->current_step);
 
-        app(ApprovalWorkflowService::class)
-            ->act($request, $head, 'rejected', ['comments' => 'Office is short that week']);
-
-        $request->refresh();
-        $this->assertSame(LeaveRequest::STATUS_PENDING, $request->status,
-            'a head must not be able to end an application');
-        $this->assertSame(1, $request->current_step);
-
-        // ...and the Mayor can still approve it, with the objection on record.
-        app(ApprovalWorkflowService::class)->act($request, $this->approver('mayor'), 'approved');
-        $this->assertSame(LeaveRequest::STATUS_APPROVED, $request->fresh()->status);
-
-        $this->assertSame('Office is short that week',
-            $request->approvals()->where('step_no', 0)->first()->comments);
+        // The department row exists, already closed, and holds nobody up.
+        $row = $request->approvals()->where('step_no', 0)->first();
+        $this->assertNotNull($row, 'the notification is not recorded');
+        $this->assertSame(Approval::ACTION_NOTIFIED, $row->action);
+        $this->assertSame($head->id, $row->approver_id);
+        $this->assertNotNull($row->acted_at);
+        $this->assertSame(0, $request->approvals()->where('action', Approval::ACTION_PENDING)
+            ->where('step_no', 0)->count());
     }
 
-    public function test_a_head_cannot_recommend_on_another_office(): void
+    /** The head actually receives it — in the system only, never by mail. */
+    public function test_the_head_is_notified_in_the_system_and_not_by_email(): void
+    {
+        Notification::fake();
+        $head = $this->headOf($this->employee);
+
+        $this->fileRequest();
+
+        Notification::assertSentTo($head, DepartmentLeaveFiledNotification::class,
+            function ($notification, array $channels) {
+                $this->assertSame(['database'], $channels,
+                    'the head was mailed; this notification is in-system only');
+
+                return true;
+            });
+    }
+
+    /** Nobody else's head hears about it. */
+    public function test_only_the_applicants_own_head_is_notified(): void
+    {
+        Notification::fake();
+        $this->headOf($this->employee);
+        $stranger = $this->approver('department-head');
+
+        $this->fileRequest();
+
+        Notification::assertNotSentTo($stranger, DepartmentLeaveFiledNotification::class);
+    }
+
+    /**
+     * The name is SNAPSHOTTED, not looked up.
+     *
+     * Box 7.B of a form reprinted after the office changes hands must still
+     * name whoever headed it on the day of filing — that is who the document
+     * says was informed.
+     */
+    public function test_the_head_recorded_is_the_head_at_the_time_of_filing(): void
+    {
+        $head = $this->headOf($this->employee);
+        $request = $this->fileRequest();
+
+        $successor = $this->makeUser('department-head');
+        EmployeeProfile::factory()->create([
+            'user_id' => $successor->id,
+            'department_id' => $this->employee->employeeProfile->department_id,
+        ]);
+        $this->employee->employeeProfile->department->update(['head_user_id' => $successor->id]);
+
+        $this->assertSame($head->name,
+            app(ApprovalWorkflowService::class)->notifiedHeadName($request->fresh()),
+            'the form would name the wrong head after a change of office');
+    }
+
+    /** A head cannot act on their own office, by any route. */
+    public function test_a_head_cannot_act_on_an_application_at_all(): void
+    {
+        $head = $this->headOf($this->employee);
+        $request = $this->fileRequest();
+
+        $this->actingAs($head);
+        session(['otp_verified' => true]);
+
+        // The queue is presentation; the endpoint takes an id, so it is the
+        // endpoint that has to refuse.
+        $this->get('/review')->assertForbidden();
+        $this->post("/review/{$request->id}/act", ['action' => 'approved'])->assertForbidden();
+
+        $this->assertSame(LeaveRequest::STATUS_PENDING, $request->fresh()->status);
+        $this->assertSame(Approval::ACTION_PENDING,
+            $request->approvals()->where('step_no', 1)->first()->action);
+    }
+
+    /** Nor on somebody else's office, which was never theirs to touch. */
+    public function test_a_head_cannot_act_on_another_office(): void
     {
         $this->headOf($this->employee);
         $stranger = $this->approver('department-head');
@@ -184,25 +286,8 @@ class ApprovalAuthorityTest extends TestCase
         app(ApprovalWorkflowService::class)->act($request, $stranger, 'approved');
     }
 
-    public function test_a_head_cannot_post_a_final_decision_directly(): void
-    {
-        $head = $this->headOf($this->employee);
-        $request = $this->fileRequest();
-
-        $this->actingAs($head);
-        session(['otp_verified' => true]);
-
-        // The queue is presentation; the endpoint takes an id, so it is the
-        // endpoint that has to refuse. A head acting here recommends — the
-        // application moves to the deciding step, it is not approved.
-        $this->post("/review/{$request->id}/act", ['action' => 'approved']);
-
-        $this->assertSame(LeaveRequest::STATUS_PENDING, $request->fresh()->status,
-            'a head posting "approved" must recommend, not approve');
-    }
-
-    /** A head's own leave skips the step — nobody reviews their own. */
-    public function test_a_heads_own_leave_goes_straight_to_the_mayor_and_hr(): void
+    /** A head's own leave notifies nobody: they would be telling themselves. */
+    public function test_a_head_filing_their_own_leave_notifies_nobody(): void
     {
         $head = $this->headOf($this->employee);
         LeaveBalance::create([
@@ -219,49 +304,17 @@ class ApprovalAuthorityTest extends TestCase
 
         $this->assertSame(LeaveRequest::STATUS_PENDING, $own->fresh()->status);
         $this->assertSame(1, $own->fresh()->current_step);
-        $this->assertSame(0, $own->approvals()->where('step_no', 0)->count(),
-            'a step nobody can act is not created');
+        $this->assertSame(0, $own->approvals()->where('step_no', 0)->count());
     }
 
-    /** An office with no head assigned must not strand its people. */
-    public function test_an_office_with_no_head_skips_the_step(): void
+    /** An office with no head on record simply records no notification. */
+    public function test_an_office_with_no_head_records_no_notification(): void
     {
         $request = $this->fileRequest();
 
         $this->assertSame(LeaveRequest::STATUS_PENDING, $request->fresh()->status);
         $this->assertSame(0, $request->approvals()->where('step_no', 0)->count());
-    }
-
-    /**
-     * One absent head must never strand somebody's leave, so the deciding
-     * officers can act past a pending recommendation — and the timeline says
-     * so rather than showing a silent gap.
-     */
-    public function test_the_mayor_can_decide_past_a_head_who_has_not_acted(): void
-    {
-        $this->headOf($this->employee);
-        $request = $this->fileRequest();
-        $this->assertSame(LeaveRequest::STATUS_DEPT_REVIEW, $request->fresh()->status);
-
-        app(ApprovalWorkflowService::class)->act($request, $this->approver('mayor'), 'approved');
-
-        $this->assertSame(LeaveRequest::STATUS_APPROVED, $request->fresh()->status);
-        $this->assertSame(\App\Models\Approval::ACTION_SKIPPED,
-            $request->approvals()->where('step_no', 0)->first()->action);
-    }
-
-    /** The head sees the request. Certifying credits is HR's step. */
-    public function test_a_recommendation_does_not_certify_credits(): void
-    {
-        $head = $this->headOf($this->employee);
-        $request = $this->fileRequest();
-
-        $this->actingAs($head);
-        session(['otp_verified' => true]);
-        $this->post("/review/{$request->id}/act", ['action' => 'approved']);
-
-        $this->assertNull($request->approvals()->where('step_no', 0)->first()->certified_balances,
-            'a recommendation is not a certification');
+        $this->assertNull(app(ApprovalWorkflowService::class)->notifiedHeadName($request));
     }
 
     // ---------------------------------------------------- no double decision
@@ -271,7 +324,7 @@ class ApprovalAuthorityTest extends TestCase
         $request = $this->fileRequest();
         $workflow = app(ApprovalWorkflowService::class);
 
-        $workflow->act($request, $this->approver('mayor'), 'approved', ['days_with_pay' => 3]);
+        $workflow->act($request, $this->approver('hr'), 'approved', ['days_with_pay' => 3]);
         $this->assertSame(LeaveRequest::STATUS_APPROVED, $request->fresh()->status);
 
         $this->expectException(ValidationException::class);
@@ -293,12 +346,12 @@ class ApprovalAuthorityTest extends TestCase
     public function test_the_decision_records_who_acted(): void
     {
         $request = $this->fileRequest();
-        $mayor = $this->approver('mayor');
+        $officer = $this->approver('hr');
 
-        app(ApprovalWorkflowService::class)->act($request, $mayor, 'approved', ['days_with_pay' => 3]);
+        app(ApprovalWorkflowService::class)->act($request, $officer, 'approved', ['days_with_pay' => 3]);
 
         $approval = $request->fresh()->approvals->first();
-        $this->assertSame($mayor->id, $approval->approver_id);
+        $this->assertSame($officer->id, $approval->approver_id);
         $this->assertSame(Approval::ACTION_APPROVED, $approval->action);
         $this->assertNotNull($approval->acted_at);
         $this->assertNotNull($request->fresh()->decided_at);

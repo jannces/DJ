@@ -40,13 +40,14 @@ return [
     ['label' => 'My Leave Requests', 'icon' => 'bi-card-checklist', 'route' => 'leave.index', 'permission' => 'leave.view-own'],
     // "My Balances" was removed: leave credits and credit history now live on the
     // employee dashboard (single location, one query path — see DashboardService).
-    // One approval queue shared by Mayor, Vice Mayor and HR. Department Head is
-    // no longer an approver, so it has no review entry.
-    // Two permissions, either of which is enough: the Mayor and HR decide,
-    // the Department Head recommends for their own office. One page, one entry
-    // — the entry is not new and nothing else moved.
+    // HR decides leave, and nobody else does. The Mayor oversees applications
+    // through All Leave Requests below and signs the printed form; a
+    // Department Head is notified when their staff file and reads the result
+    // on their dashboard. Neither has anything to act on, so neither gets this
+    // entry — and the route behind it refuses them, so this is a tidy menu
+    // rather than the security.
     ['label' => 'Leave Approvals', 'icon' => 'bi-clipboard-check', 'route' => 'review.index',
-        'permission' => ['leave.approve.final', 'leave.review.department']],
+        'permission' => 'leave.approve.final'],
     ['label' => 'All Leave Requests', 'icon' => 'bi-collection', 'route' => 'leave.all', 'permission' => 'leave.requests.view-all'],
 
     ['heading' => 'HR Management'],

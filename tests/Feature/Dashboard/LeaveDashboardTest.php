@@ -64,16 +64,35 @@ class LeaveDashboardTest extends TestCase
         ]);
     }
 
-    public function test_the_roles_with_authority_over_leave_get_the_analytics(): void
+    /**
+     * The management pane follows who DECIDES leave, not who can read it.
+     *
+     * HR gets it. The Mayor does not, and that is the point: they read every
+     * application through All Leave Requests, but the dashboard is where a
+     * person's own work lives, and opening the Mayor's onto HR's caseload
+     * buried their own leave under a page of other people's.
+     */
+    public function test_hr_gets_the_analytics(): void
     {
-        foreach (['hr', 'mayor'] as $role) {
-            $this->visit($role)
-                ->assertOk()
-                ->assertSee('Waiting on a decision')
-                ->assertSee('Applications filed')
-                ->assertSee('Most applied leave type')
-                ->assertSee('Applications by office', false);
-        }
+        $this->visit('hr')
+            ->assertOk()
+            ->assertSee('Waiting on a decision')
+            ->assertSee('Applications filed')
+            ->assertSee('Most applied leave type')
+            ->assertSee('Applications by office', false);
+    }
+
+    public function test_the_mayor_gets_their_own_leave_not_the_operation(): void
+    {
+        // "Waiting on a decision" is deliberately NOT asserted absent: the
+        // employee's own pane carries a KPI by that name for their own
+        // applications. The management pane is identified by its charts.
+        $this->visit('mayor')
+            ->assertOk()
+            ->assertDontSee('Most applied leave type')
+            ->assertDontSee('Applications by office', false)
+            // Their own leave, which is what the Mayor's dashboard now is.
+            ->assertSee('Credits remaining, by type');
     }
 
     /**

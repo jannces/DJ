@@ -8,8 +8,11 @@
     · My leave        — leave.view-own. Their own credits and applications. An
                         HR officer files leave like anybody else, so this is
                         theirs too.
-    · Leave management — leave.requests.view-all. Everyone's, for HR, the Mayor
-                        and the Vice Mayor.
+    · Leave management — leave.approve.final. Everyone's leave, for whoever
+                        decides it, which is HR. NOT view-all: the Mayor reads
+                        every application through All Leave Requests without
+                        running the operation, and their dashboard is their own
+                        leave.
 
   Holding both gives one Dashboard link with two tabs rather than two menu
   items. config/menu.php is not edited: no item is added, removed, renamed,
@@ -436,8 +439,10 @@
         {{-- ---------- Waiting on the head ---------- --}}
         <div class="dash-frame">
             <div class="dash-head">
-                <p class="dash-title">Waiting on your recommendation</p>
-                <a href="{{ route('review.index') }}" class="dash-link">Department Review &rarr;</a>
+                {{-- A head acts on none of this. What the panel is for is
+                     knowing who in the office is still waiting to hear, so
+                     there is no link to an approval queue they cannot open. --}}
+                <p class="dash-title">Waiting on HR</p>
             </div>
             <div class="dash-body">
                 @forelse ($department['worklist'] as $row)
@@ -460,8 +465,8 @@
                     <p class="dash-empty">Nothing from your office is waiting.</p>
                 @endforelse
                 <p class="dash-note">
-                    Endorsed or not, an application goes on to the Mayor or HR &mdash; your
-                    comment goes with it.
+                    You are notified when somebody in your office files. HR validates
+                    and decides &mdash; no approval is needed from you.
                 </p>
             </div>
         </div>

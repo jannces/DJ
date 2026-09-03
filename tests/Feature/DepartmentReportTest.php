@@ -94,7 +94,7 @@ class DepartmentReportTest extends TestCase
         $this->get('/reports')->assertOk()
             ->assertSee('My office')
             ->assertSee('Leave in my office')
-            ->assertSee('Waiting on me')
+            ->assertSee('Waiting on HR')
             ->assertSee('Leave balances in my office')
             ->assertDontSee('Employee Leave Report');
     }
