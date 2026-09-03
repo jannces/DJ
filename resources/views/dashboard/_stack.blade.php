@@ -72,15 +72,6 @@
         </div>
     </div>
 
-    @if (! empty($stack['silent']))
-        {{-- Named rather than dropped: a missing office would read as "no
-             data". Named in one line rather than twelve empty tracks, which
-             is the same statement taking up the whole panel. --}}
-        <p class="sk-silent">
-            <b>{{ count($stack['silent']) }} {{ Str::plural('office', count($stack['silent'])) }}</b>
-            filed nothing: {{ implode(', ', $stack['silent']) }}.
-        </p>
-    @endif
 @else
     <p class="dash-empty">{{ $empty ?? 'No offices on record.' }}</p>
 @endif

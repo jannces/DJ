@@ -247,7 +247,6 @@
                     @include('dashboard._donut', ['ring' => $management['ring_year'],
                         'empty' => 'Nothing filed this year.'])
                 </div>
-                <p class="dash-note">The five most filed keep a colour; the rest are Other.</p>
             </div>
         </div>
 
@@ -298,120 +297,14 @@
         </div>
     </div>
 
-    <div class="dash-split">
-        {{-- ---------- Offices ---------- --}}
-        <div class="dash-frame">
-            <div class="dash-head">
-                <p class="dash-title">Applications by office</p>
-                <span class="dash-link">{{ now()->year }} to date</span>
-            </div>
-            <div class="dash-body">
-                @include('dashboard._stack', ['stack' => $management['office_stack']])
-                <p class="dash-note">
-                    Hover a row for the figures.
-                </p>
-            </div>
+    <div class="dash-frame">
+        <div class="dash-head">
+            <p class="dash-title">Applications by office</p>
+            <span class="dash-link">{{ now()->year }} to date</span>
         </div>
-        {{-- ---------- Coverage risk ---------- --}}
-        {{-- The only forward-looking figure here. Everything else reports what
-             already happened, which cannot be acted on; four of six Treasury
-             staff away in the same week can be, but only before the week
-             arrives. --}}
-        <div class="dash-frame">
-            <div class="dash-head">
-                <p class="dash-title">Coverage risk</p>
-                <span class="dash-link">peak absence &middot; next 14 days</span>
-            </div>
-            <div class="dash-body">
-                @forelse ($management['coverage'] as $row)
-                    <div class="cv-r" @if ($row['at_risk']) data-risk @endif>
-                        <span class="hb-l" title="{{ $row['office'] }}">{{ $row['office'] }}</span>
-                        <span class="cv-t"><span class="cv-f" style="width:{{ $row['pct'] }}%"></span></span>
-                        <span class="cv-v">{{ $row['out'] }}/{{ $row['staff'] }}</span>
-                    </div>
-                    @if ($row['when'])
-                        <p class="cv-when">{{ $row['when'] }}</p>
-                    @endif
-                @empty
-                    <p class="dash-empty">No offices on record.</p>
-                @endforelse
-                <p class="dash-note">
-                    Red is {{ (int) (\App\Services\DashboardService::COVERAGE_RISK * 100) }}% or more of an office away at once.
-                </p>
-            </div>
+        <div class="dash-body">
+            @include('dashboard._stack', ['stack' => $management['office_stack']])
         </div>
-    </div>
-
-    {{-- ================================================================ --}}
-    {{-- The three additions                                              --}}
-    {{-- ================================================================ --}}
-
-    <div class="dash-split">
-        {{-- ---------- The waiting queue ---------- --}}
-        {{-- The counter above says how many are waiting; this says which, and
-             lets an officer start. A number sends them off to run the same
-             query by hand. --}}
-        <div class="dash-frame">
-            <div class="dash-head">
-                <p class="dash-title">Waiting longest</p>
-                {{-- All Leave Requests, not Leave Approvals: this pane is gated
-                     on leave.requests.view-all and so is that page, so the link
-                     cannot land somebody on a 403. --}}
-                <a href="{{ route('leave.all') }}" class="dash-link">All requests &rarr;</a>
-            </div>
-            <div class="dash-body">
-                @forelse ($management['worklist'] as $row)
-                    <div class="wl-r">
-                        <span class="wl-ref">{{ $row['reference'] }}</span>
-                        <span class="wl-m">
-                            {{-- The row had no destination at all; now the
-                                 name is one, and it is the application this
-                                 row is about. The row cannot be wrapped in a
-                                 link: the department pane carries a form
-                                 inside it, and a form inside an anchor is not
-                                 valid HTML. --}}
-                            <b><a href="{{ route('leave.show', $row['id']) }}"
-                                  class="name-link">{{ $row['who'] }}</a></b>
-                            <small>{{ $row['what'] }}</small>
-                        </span>
-                        <span class="wl-age {{ $row['stale'] ? 'hot' : '' }}">
-                            {{ $row['age'] }}d waiting
-                        </span>
-                    </div>
-                @empty
-                    <p class="dash-empty">Nothing is waiting on a decision.</p>
-                @endforelse
-            </div>
-        </div>
-
-        {{-- ---------- Mandatory Leave ---------- --}}
-        @if ($management['mandatory']['tracked'])
-        <div class="dash-frame">
-            <div class="dash-head">
-                <p class="dash-title">Mandatory Leave not yet filed</p>
-                <span class="dash-link">{{ now()->year }}</span>
-            </div>
-            <div class="dash-body">
-                <div class="dash-figures">
-                    <div>
-                        <p class="hero-n {{ $management['mandatory']['outstanding'] > 0 ? 'is-bad' : '' }}">
-                            {{ $management['mandatory']['outstanding'] }}
-                        </p>
-                        <p class="hero-s">have used none of their 5 days</p>
-                    </div>
-                    <div>
-                        <p class="hero-n">{{ $management['mandatory']['months_left'] }}</p>
-                        <p class="hero-s">months remaining to file</p>
-                    </div>
-                </div>
-                @include('dashboard._hbars', [
-                    'rows' => $management['mandatory']['by_office'],
-                    'empty' => 'Nobody has Mandatory Leave credits on record.',
-                ])
-                <p class="dash-note">Five days a year, and they do not carry over.</p>
-            </div>
-        </div>
-        @endif
     </div>
 
 </div>

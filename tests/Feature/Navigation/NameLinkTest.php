@@ -84,7 +84,11 @@ class NameLinkTest extends TestCase
      */
     public static function leaveLists(): array
     {
-        return ['all requests' => ['/all-leave'], 'the dashboard queue' => ['/dashboard']];
+        // The HR dashboard's own worklist was removed with the Waiting longest
+        // card. The department head's pane still carries one, and
+        // test_a_department_head_can_open_the_name_in_their_own_queue below
+        // covers the dashboard case.
+        return ['all requests' => ['/all-leave']];
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('leaveLists')]

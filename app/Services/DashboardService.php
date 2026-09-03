@@ -374,10 +374,13 @@ class DashboardService
             // methods stay: the department head's pane still ranks types, and
             // three reports are built on them.
 
-            // The three additions. All read columns that already existed.
-            'worklist' => $queue['rows'],
-            'coverage' => $this->coverageRisk(),
-            'mandatory' => $this->mandatoryLeaveCompliance(),
+            // `worklist`, `coverage` and `mandatory` used to be here, feeding
+            // the Waiting longest, Coverage risk and Mandatory Leave cards.
+            // Those cards were removed from the pane, and computing their data
+            // anyway meant three queries per dashboard load that nothing read
+            // -- the coverage one walks every office over a fourteen-day
+            // window. $queue itself stays: the "Waiting on a decision" counter
+            // above is built from it.
         ];
     }
 

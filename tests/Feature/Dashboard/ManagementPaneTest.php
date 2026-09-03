@@ -243,14 +243,22 @@ class ManagementPaneTest extends TestCase
 
     // ------------------------------------------------------------ on screen
 
-    public function test_all_three_cards_render_for_the_roles_that_hold_the_permission(): void
+    /**
+     * The three cards are OFF the dashboard.
+     *
+     * Waiting longest, Coverage risk and Mandatory Leave not yet filed were
+     * removed from HR's pane. The service methods behind them are still tested
+     * above, and still called by the reports -- what changed is that the
+     * dashboard no longer carries them.
+     */
+    public function test_the_three_cards_are_no_longer_on_the_dashboard(): void
     {
         $this->actingAs($this->makeUser('hr'));
         session(['otp_verified' => true]);
 
         $this->get('/dashboard')->assertOk()
-            ->assertSee('Waiting longest')
-            ->assertSee('Coverage risk')
-            ->assertSee('Mandatory Leave not yet filed');
+            ->assertDontSee('Waiting longest')
+            ->assertDontSee('Coverage risk')
+            ->assertDontSee('Mandatory Leave not yet filed');
     }
 }
