@@ -61,12 +61,18 @@
                     <div class="thread-body">
                         {{-- The whole row is one destination, so the link wraps
                              the part you read rather than sitting beside it as
-                             a separate "View" button in its own column. --}}
+                             a separate "View" button in its own column.
+
+                             One line, with the reference pushed to the far end.
+                             Stacked, the panel was mostly empty air on the
+                             right and the reference hung underneath it as an
+                             orphan; anchoring something to each end gives the
+                             panel a reason to be as wide as it is. --}}
                         <a href="{{ route('leave.show', $r) }}" class="thread-link">
                             <span class="thread-subject">{{ $r->leaveType->name }}</span>
                             <span class="thread-dates">{{ $r->start_date->format('M d') }} – {{ $r->end_date->format('M d, Y') }}</span>
+                            <span class="thread-ref">{{ $r->reference_no }}</span>
                         </a>
-                        <span class="thread-ref">{{ $r->reference_no }}</span>
                     </div>
 
                     <div class="thread-meta">
