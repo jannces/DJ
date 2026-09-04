@@ -167,13 +167,74 @@ class NarrowScreenTest extends TestCase
      */
     public function test_the_filters_line_up_when_they_stack(): void
     {
-        $narrow = $this->narrowBlock();
+        // The 899 block, not the 640 one: the toolbar goes linear before the
+        // tables do, because it runs out of room first.
+        $narrow = $this->blockBody('@media (max-width:899px){');
 
         $this->assertMatchesRegularExpression(
             '/\.list-toolbar \.toolbar-filters\{[^}]*grid-template-columns:1fr 1fr/s', $narrow);
         $this->assertMatchesRegularExpression(
             '/\.toolbar-select\{[^}]*width:100%/s', $narrow,
             'the dropdowns still size themselves by their own text');
+    }
+
+    /**
+     * The search bar goes linear before the toolbar can get ragged.
+     *
+     * Measured, not guessed: the one-line layout needs about 900px and the
+     * stacked layout used to switch on at 640, so everything between fell back
+     * to desktop widths in a space that could not hold them. At 768px that put
+     * the toolbar on THREE rows with the search at 57% of the bar.
+     */
+    public function test_the_search_is_full_width_through_the_middle_widths(): void
+    {
+        $block = $this->blockBody('@media (max-width:899px){');
+
+        $this->assertMatchesRegularExpression(
+            '/\.toolbar-search\{[^}]*width:100%/s', $block,
+            'the search does not take the full bar below 900px');
+        $this->assertMatchesRegularExpression(
+            '/\.thread-head \.toolbar-search\{[^}]*max-width:none/s', $block,
+            "the header's own search width still out-specifies the stacked rule");
+    }
+
+    /**
+     * ...and it is late enough in the file to survive.
+     *
+     * The first attempt at this landed beside an unrelated media query near the
+     * top of the sheet, hundreds of rules before .thread-head was even defined,
+     * so every one of them outranked it and the measurements got worse rather
+     * than better. In a stylesheet with this much duplication, WHERE a rule
+     * sits is part of whether it works.
+     */
+    public function test_the_middle_width_rules_are_not_outranked(): void
+    {
+        $rule = strpos($this->css, '@media (max-width:899px){');
+        $threadHead = strrpos($this->css, '.thread-head .toolbar-search{');
+
+        $this->assertNotFalse($rule);
+        $this->assertNotFalse($threadHead);
+        $this->assertGreaterThan(
+            strpos($this->css, '.thread-head{'), $rule,
+            'the medium-width block sits above the rules it has to override');
+    }
+
+    /** The body of a media query, counted by brace. */
+    private function blockBody(string $needle): string
+    {
+        $open = strpos($this->css, $needle);
+        $this->assertNotFalse($open, "there is no $needle block");
+
+        $i = $open + strlen($needle) - 1;
+        $depth = 0;
+        for ($j = $i; $j < strlen($this->css); $j++) {
+            $depth += ($this->css[$j] === '{') - ($this->css[$j] === '}');
+            if ($depth === 0) {
+                return substr($this->css, $i + 1, $j - $i - 1);
+            }
+        }
+
+        $this->fail("$needle is never closed");
     }
 
     /**

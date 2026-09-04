@@ -4334,9 +4334,6 @@ span.dash-link{ justify-content:flex-start; }
 
 @media (max-width:640px){
   .thread-head{ padding:.9rem .9rem .8rem; }
-  /* The header's own search width is written for a header, and beats the
-     stacked rule on specificity once the toolbar drops to one column. */
-  .thread-head .toolbar-search{ flex:1 1 100%; min-width:0; max-width:none; }
   .thread{ flex-wrap:wrap; gap:.65rem .8rem; padding:.8rem .9rem; }
   /* The time and the mark keep their row; the body takes the next line whole
      and the name sits under it, so nothing has to wrap inside a narrow column. */
@@ -4363,15 +4360,6 @@ span.dash-link{ justify-content:flex-start; }
    ========================================================================== */
 @media (max-width:640px){
 
-  /* ---- The toolbar stops being ragged ---- */
-  /* Three controls at three different widths, each sized by its own content,
-     read as a mistake once they stack. On one column they should agree. */
-  .list-toolbar{ padding:.8rem .9rem; gap:.55rem; }
-  .list-toolbar .toolbar-filters{ display:grid; grid-template-columns:1fr 1fr; gap:.5rem; width:100%; }
-  .toolbar-search{ flex:1 1 100%; min-width:0; max-width:none; width:100%; }
-  .toolbar-select{ width:100%; min-width:0; }
-  .toolbar-submit{ grid-column:1 / -1; }
-  .toolbar-clear{ grid-column:1 / -1; text-align:center; }
 
   /* ---- Lists that become cards ---- */
   /* The wrapper exists to scroll a wide table. There is no wide table left
@@ -4722,4 +4710,30 @@ span.dash-link{ justify-content:flex-start; }
   /* Full-width actions, in thumb reach, in the order they are used. */
   .modal-footer{ padding-bottom:calc(.85rem + env(safe-area-inset-bottom)); }
   .modal-footer > .btn{ flex:1 1 auto; }
+}
+
+/* ---- The toolbar goes linear before it gets ragged -----------------------
+   Measured rather than guessed: at 768px the toolbar broke into THREE rows
+   with the search at 57% of the bar and the two dropdowns sized by their own
+   text, which is what "it looks bad" was pointing at. The one-line layout
+   needs about 900px and the stacked layout was only switching on at 640, so
+   everything between them fell back to the desktop widths in a space that
+   could not hold them.
+
+   Below 900 the search is its own full-width line -- a search bar you can
+   actually type a name into -- and the dropdowns share a row underneath. */
+@media (max-width:899px){
+  .list-toolbar{ padding:.8rem .9rem; gap:.55rem; }
+  .list-toolbar .toolbar-filters{ display:grid; grid-template-columns:1fr 1fr; gap:.5rem; width:100%; }
+  .toolbar-search{ flex:1 1 100%; min-width:0; max-width:none; width:100%; }
+  .toolbar-select{ width:100%; min-width:0; }
+  .toolbar-submit{ grid-column:1 / -1; }
+  .toolbar-clear{ grid-column:1 / -1; text-align:center; }
+
+  /* The header's own widths are written for a header and out-specify the
+     rules above, so they have to stand down at the same point. */
+  .thread-head{ display:block; }
+  .thread-head .list-toolbar{ flex:1 1 auto; justify-content:flex-start; margin-top:.7rem; }
+  .thread-head .toolbar-search{ flex:1 1 100%; min-width:0; max-width:none; }
+  .thread-head .toolbar-filters{ flex:1 1 100%; }
 }
