@@ -68,6 +68,15 @@
   --fs-lg:1.125rem; --fs-xl:1.375rem; --fs-2xl:1.75rem; --fs-3xl:2.25rem;
   --lh:1.55;
 
+  /* How much air a table row gets, vertically.
+     It is a token because FOUR rules used to set this independently --
+     `.table > :not(caption) > * > *`, `.table > tbody > tr > td`,
+     `.panel .table ...` and `.card .table ...` -- with four different values,
+     and the most specific one silently won. Editing the one that reads like
+     the general rule changed nothing at all. They now all defer to this. */
+  --row-pad-y:.5rem;
+  --row-pad-x:1rem;
+
   /* Radius, shadow, spacing, motion */
   --r-sm:.375rem; --r:.625rem; --r-lg:.875rem; --r-xl:1.25rem; --r-full:999px;
   --shadow-xs:0 1px 2px rgba(16,24,40,.06);
@@ -101,6 +110,15 @@
 /* ---- 2. Base ------------------------------------------------------------- */
 * { box-sizing:border-box; }
 html,body { height:100%; }
+
+/* The topbar is sticky and 62px tall, so anything the browser scrolls to --
+   a summary link's target field, or the next control under Tab -- lands
+   underneath it and is invisible until you scroll back up by hand. Reserving
+   the bar's height plus a margin is the whole fix, and it is what WCAG 2.2
+   asks for under 2.4.11 Focus Not Obscured.
+   Sticky table headers add their own height on the pages that have them. */
+html{ scroll-padding-top:calc(62px + 1rem); }
+.table-responsive{ scroll-padding-top:2.75rem; }
 body {
   font-family:var(--font-sans); font-size:var(--fs-base); line-height:var(--lh);
   color:var(--text); background:var(--bg);
@@ -324,7 +342,13 @@ a:hover { color:var(--primary-hover); }
 
 /* ---- 10. Tables ---------------------------------------------------------- */
 .table { color:var(--text); margin:0; }
-.table > :not(caption) > * > * { padding:.8rem 1rem; border-bottom-color:var(--border); }
+/* Dense, because these tables are worked in rather than read.
+   HR scans All Leave Requests looking for one reference among ninety; every
+   row that does not fit on the screen is a scroll, and a scroll is where you
+   lose your place. Trimming the vertical padding puts about a third more rows
+   in view without touching type size or the 24px minimum for the controls in
+   the last column. */
+.table > :not(caption) > * > * { padding:var(--row-pad-y) var(--row-pad-x); border-bottom-color:var(--border); }
 .table thead th { background:var(--surface-2); color:var(--muted); font-size:.72rem;
   text-transform:uppercase; letter-spacing:.05em; font-weight:700; border-bottom:1px solid var(--border); }
 .table-hover tbody tr { transition:background var(--dur) var(--ease); }
@@ -852,10 +876,10 @@ footer.app-foot{ text-align:center; color:var(--muted-2); font-size:.76rem; padd
   padding:.15rem .5rem; font-size:.74rem; font-weight:500; white-space:nowrap;
 }
 .st i{ font-size:.72rem; }
-.st-ok{ color:#16a34a; background:color-mix(in srgb,#16a34a 12%,transparent); }
-.st-wait{ color:#d97706; background:color-mix(in srgb,#d97706 14%,transparent); }
-.st-bad{ color:#dc2626; background:color-mix(in srgb,#dc2626 12%,transparent); }
-.st-off{ color:var(--muted); background:color-mix(in srgb,var(--muted) 14%,transparent); }
+/* The four status colours are defined once, further down, against the theme
+   tokens. A second set of them lived here in raw hex and lost every time --
+   same selectors, earlier in the file -- so it was four lines of colour that
+   never reached a screen and two places to edit when a status changed. */
 
 .dash-empty{ text-align:center; color:var(--muted); padding:2.5rem 1rem; font-size:.85rem; }
 
@@ -988,10 +1012,10 @@ body{ background:var(--bg); color:var(--text); }
 .table > thead > tr > th{
   background:transparent; border-bottom:1px solid var(--border);
   font-size:.75rem; font-weight:500; color:var(--muted); text-transform:none; letter-spacing:0;
-  padding:.7rem 1rem;
+  padding:var(--row-pad-y) 1rem;
 }
 .table > tbody > tr > td{
-  border-bottom:1px solid var(--border); padding:.75rem 1rem; font-size:.85rem;
+  border-bottom:1px solid var(--border); padding:var(--row-pad-y) var(--row-pad-x); font-size:.85rem;
 }
 .table > tbody > tr:last-child > td{ border-bottom:0; }
 .table-hover > tbody > tr:hover > *{ background:color-mix(in srgb,var(--text) 3%,transparent); }
@@ -1526,7 +1550,7 @@ span.dash-link:hover{ transform:none; box-shadow:none; color:var(--muted); }
   padding:.7rem 1.15rem; border-bottom:1px solid var(--hair);
 }
 .card .table > tbody > tr > td{
-  padding:.8rem 1.15rem; font-size:.85rem; vertical-align:middle;
+  padding:var(--row-pad-y) 1.15rem; font-size:.85rem; vertical-align:middle;
   border-bottom:1px solid var(--hair);
 }
 .card .table > tbody > tr:last-child > td{ border-bottom:0; }
@@ -2071,6 +2095,41 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .lf-steps:has(#lf-s2:checked) [data-step="2"],
 .lf-steps:has(#lf-s3:checked) [data-step="3"],
 .lf-steps:has(#lf-s4:checked) [data-step="4"]{ display:block; }
+
+/* ---- Unfolded, after the server said no ----------------------------------
+   Stepping is for filling the form in. Once it comes back rejected the job is
+   different -- read the three things that were wrong and fix them -- and that
+   job wants every field on one page. It is also what lets the error summary
+   use plain #field anchors: you cannot scroll to a target inside display:none.
+   The rail and the Back/Continue pair go away with it; they would be steering
+   a form that is no longer in steps. */
+.lf-flat .lf-step{ display:block; }
+.lf-flat .lf-track,
+.lf-flat .lf-nav .lf-back,
+.lf-flat .lf-nav .lf-next,
+.lf-flat .lf-nav .note{ display:none; }
+/* The submit button is NOT in that list. It lives in the last step's nav, and
+   hiding the row it sits in would leave the form with no way to send it. */
+.lf-flat .lf-step + .lf-step{ margin-top:1.15rem; }
+
+/* ---- The error summary --------------------------------------------------- */
+.lf-summary{ margin-bottom:1.25rem; }
+.lf-summary-t{
+  display:flex; align-items:center; gap:.5rem;
+  margin:0 0 .5rem; font-weight:650;
+}
+.lf-summary-l{ margin:0; padding-left:1.15rem; display:grid; gap:.3rem; }
+.lf-summary-l a{ color:inherit; text-underline-offset:.2em; }
+.lf-summary-l a:hover{ text-decoration-thickness:2px; }
+/* The summary is focused by the browser when it is linked to, and a focus ring
+   on a whole alert box reads as noise -- but removing it outright would leave
+   a keyboard user with no idea they had landed. Outline offset instead. */
+.lf-summary:focus-visible{ outline:var(--focus-ring); outline-offset:3px; }
+
+/* A field the server rejected. The border does the work; the message under it
+   says what to do. Both, never one -- colour alone is not a message. */
+.form-control.is-invalid,
+.form-select.is-invalid{ border-color:var(--danger); }
 
 /* ---- Moving between them ---- */
 .lf-nav{

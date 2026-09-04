@@ -52,7 +52,8 @@
                                 @csrf<button class="btn btn-sm btn-outline-success"><i class="bi bi-arrow-counterclockwise"></i> Restore</button>
                             </form>
                         @else
-                            <a href="{{ route('users.edit', $user) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                            <a href="{{ route('users.edit', $user) }}" class="btn btn-sm btn-outline-secondary"
+                               aria-label="Edit {{ $user->name }}" title="Edit {{ $user->name }}"><i class="bi bi-pencil" aria-hidden="true"></i></a>
                             {{-- Edit them, what they can do, what they did. --}}
                             <a href="{{ route('users.access', $user) }}" class="btn btn-sm btn-outline-secondary"
                                aria-label="Access for {{ $user->name }}"><i class="bi bi-key"></i></a>

@@ -142,6 +142,16 @@ class LeaveRequestController extends Controller
             'leave_type_id.size' => 'Choose exactly one type of leave in section 6.A.',
             'leave_type_id.*.required' => 'Choose the type of leave you are applying for in section 6.A.',
             'leave_type_id.*.exists' => 'That leave type is not available. Choose one from the list.',
+            'end_date.after_or_equal' => 'The last day of leave cannot fall before the first day.',
+        ], [
+            // These names are read aloud in the error summary at the top of the
+            // form, so they are the words on the printed CSC sheet rather than
+            // the column names: "The start date field is required" tells an
+            // employee looking at a box labelled "From" very little.
+            'date_filed' => 'date of filing',
+            'start_date' => 'first day of leave',
+            'end_date' => 'last day of leave',
+            'applicant_signature' => 'signature of applicant',
         ]);
 
         $data['leave_type_id'] = (int) $data['leave_type_id'][0];

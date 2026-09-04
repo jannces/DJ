@@ -83,6 +83,39 @@
     $openStep = $errors->any()
         ? min(array_map($stepOf, array_keys($errors->messages())))
         : 1;
+
+    /*
+     * A validation key to the id of the control that caused it, so the summary
+     * above can link straight at it.
+     *
+     * Most of them already agree -- the inputs were given ids matching their
+     * names -- so this only has to carry the handful that do not: the 6.B
+     * details are posted as `details[x]` but carry the id `x`, the two file
+     * inputs are named for the document and idded `doc_*`, and 6.A posts an
+     * array. Anything unrecognised falls back to the summary's own id, which
+     * scrolls to the top of the list rather than to nothing at all.
+     */
+    $anchorOf = function (string $field): string {
+        static $named = [
+            'leave_type_id' => 'lf-type',
+            'documents.supporting_document' => 'doc_primary',
+            'documents.medical_certificate' => 'doc_medical',
+        ];
+
+        $field = preg_replace('/\.\d+$/', '', $field);
+
+        if (isset($named[$field])) {
+            return $named[$field];
+        }
+        if (str_starts_with($field, 'details.')) {
+            return substr($field, 8);
+        }
+        if (str_starts_with($field, 'documents.')) {
+            return 'doc_primary';
+        }
+
+        return $field;
+    };
 @endphp
 
 {{--
@@ -124,14 +157,46 @@
     </div>
 
     @if ($errors->any())
-        <div class="alert alert-danger no-print mb-0">
-            <i class="bi bi-exclamation-triangle me-1"></i>
-            Your application was not submitted. Check the highlighted fields below.
+        {{--
+          The error summary, and the one thing it must never do is what the old
+          banner did: say "check the highlighted fields below" over a step that
+          holds no highlighted field. Three steps out of four are hidden, so a
+          message about a date could be two clicks away with nothing on screen
+          to suggest it.
+
+          Every problem is now named here and linked to the control that caused
+          it. `role="alert"` announces it, `tabindex="-1"` gives the browser
+          something to land on, and the anchors work because the form unfolds
+          on failure -- see `lf-flat` on the steps wrapper below.
+        --}}
+        <div class="alert alert-danger no-print lf-summary" role="alert" tabindex="-1"
+             id="form-errors" aria-labelledby="form-errors-title">
+            <p class="lf-summary-t" id="form-errors-title">
+                <i class="bi bi-exclamation-triangle"></i>
+                Your application was not submitted.
+            </p>
+            <ul class="lf-summary-l">
+                @foreach ($errors->messages() as $field => $messages)
+                    <li><a href="#{{ $anchorOf($field) }}">{{ $messages[0] }}</a></li>
+                @endforeach
+            </ul>
         </div>
     @endif
 
     {{-- ================= EMPLOYEE INFORMATION (items 1–5) ================= --}}
-<div class="lf-steps">
+{{--
+  `lf-flat` unfolds the form when the server has rejected it.
+
+  Four steps are a good way to FILL a form and a bad way to FIX one: the
+  employee has already answered everything, and what they need now is to see
+  the three or four things that were wrong, together, without hunting through
+  panels for a red outline. So on failure the stepped view stands down and the
+  whole application renders as one page -- which is also what makes the plain
+  `#field` anchors in the summary work, since the target is now on screen.
+
+  Print already does exactly this, for the same reason.
+--}}
+<div class="lf-steps{{ $errors->any() ? ' lf-flat' : '' }}">
     <input class="lf-radio" type="radio" name="lf-step" id="lf-s1" aria-label="Step 1 of 4: Employee" @checked($openStep === 1)>
     <input class="lf-radio" type="radio" name="lf-step" id="lf-s2" aria-label="Step 2 of 4: Leave type" @checked($openStep === 2)>
     <input class="lf-radio" type="radio" name="lf-step" id="lf-s3" aria-label="Step 3 of 4: Dates" @checked($openStep === 3)>
@@ -185,8 +250,9 @@
             <div class="lf-g lf-g3 mt-3">
                 <div class="lf-f">
                     <label for="date_filed">Date of filing <span class="req">*</span></label>
-                    <input id="date_filed" type="date" name="date_filed" class="form-control"
+                    <input id="date_filed" type="date" name="date_filed" class="form-control @error('date_filed') is-invalid @enderror"
                            value="{{ old('date_filed', now()->toDateString()) }}" required>
+                    @error('date_filed')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                 </div>
             </div>
         </div>
@@ -228,8 +294,9 @@
                 </div>
                 <div class="lf-f">
                     <label for="purpose">Others, if not listed</label>
-                    <input id="purpose" type="text" name="purpose" class="form-control"
+                    <input id="purpose" type="text" name="purpose" class="form-control @error('purpose') is-invalid @enderror"
                            value="{{ old('purpose') }}" placeholder="Describe the leave">
+                    @error('purpose')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                 </div>
             </div>
 
@@ -444,13 +511,15 @@
             <div class="lf-g lf-g3">
                 <div class="lf-f">
                     <label for="start_date">From <span class="req">*</span></label>
-                    <input id="start_date" type="date" name="start_date" class="form-control"
+                    <input id="start_date" type="date" name="start_date" class="form-control @error('start_date') is-invalid @enderror"
                            value="{{ old('start_date') }}" required>
+                    @error('start_date')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                 </div>
                 <div class="lf-f">
                     <label for="end_date">To <span class="req">*</span></label>
-                    <input id="end_date" type="date" name="end_date" class="form-control"
+                    <input id="end_date" type="date" name="end_date" class="form-control @error('end_date') is-invalid @enderror"
                            value="{{ old('end_date') }}" required>
+                    @error('end_date')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                 </div>
                 <div class="lf-f">
                     <label>Working days</label>
@@ -513,7 +582,8 @@
                 <div class="lf-f">
                     <label for="applicant_signature">Signature of applicant <span class="req">*</span></label>
                     <input id="applicant_signature" type="text" name="applicant_signature"
-                           class="form-control" value="{{ old('applicant_signature', $user->name) }}" required>
+                           class="form-control @error('applicant_signature') is-invalid @enderror" value="{{ old('applicant_signature', $user->name) }}" required>
+                    @error('applicant_signature')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                 </div>
             </div>
         </div>
