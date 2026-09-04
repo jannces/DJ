@@ -4131,6 +4131,78 @@ span.dash-link{ justify-content:flex-start; }
 .toolbar-select{ width:auto; min-width:9rem; }
 .toolbar-clear{ padding-inline:.4rem; font-size:.8rem; }
 /* ==========================================================================
+   SETTINGS ROWS
+   Name and explanation on the left, the control that changes it on the right,
+   one panel per row. The old layout was a 4/8 grid, which left a switch
+   stranded in the middle of a wide empty cell and gave the eye no line to run
+   down.
+   ========================================================================== */
+.set-card{ margin-bottom:1rem; }
+.set-head{
+  display:flex; align-items:baseline; justify-content:space-between;
+  gap:1rem; padding:1rem 1.15rem .75rem;
+}
+.set-group{
+  margin:0; font-size:.72rem; font-weight:600; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--muted);
+}
+.set-count{ margin:0; font-size:.75rem; color:var(--muted-2); }
+
+.set-rows{ display:flex; flex-direction:column; gap:.5rem; padding:0 1.15rem 1.15rem; }
+.set-row{
+  display:flex; align-items:center; justify-content:space-between; gap:1.25rem;
+  background:var(--surface-2); border:1px solid var(--border);
+  border-radius:.75rem; padding:.75rem .9rem;
+}
+/* The whole copy block is the control's label, so the pointer target is the
+   sentence rather than a 16px box at the far end of the row. */
+.set-copy{ display:flex; flex-direction:column; gap:.15rem; min-width:0; margin:0; cursor:pointer; }
+.set-name{ font-size:.875rem; font-weight:550; color:var(--text); }
+.set-key{
+  font-family:var(--mono, ui-monospace, monospace); font-size:.72rem;
+  color:var(--muted-2); background:transparent; padding:0;
+}
+.set-control{ flex:none; display:flex; align-items:center; }
+/* A number needs room for three digits; an organisation's name needs room for
+   an organisation's name. One width for both clipped "Local Government Unit of
+   Alicia" down to "Local Government Uni". */
+.set-input{ width:16rem; max-width:42vw; }
+.set-input[type="number"]{ width:7rem; }
+
+/* A switch, drawn from the checkbox that is already there. Bootstrap's own
+   .form-switch needs a wrapper class on the parent; this styles the input
+   directly so the row markup stays flat. */
+.set-switch .form-check-input[type="checkbox"]{
+  appearance:none; -webkit-appearance:none;
+  width:2.6rem; height:1.5rem; margin:0; border-radius:1rem;
+  background:var(--border-strong); border:0; cursor:pointer;
+  position:relative; transition:background var(--dur) var(--ease);
+}
+.set-switch .form-check-input[type="checkbox"]::after{
+  content:""; position:absolute; top:.15rem; left:.15rem;
+  width:1.2rem; height:1.2rem; border-radius:50%; background:#fff;
+  box-shadow:0 1px 3px rgb(15 23 42 / .3);
+  transition:transform var(--dur) var(--ease);
+}
+.set-switch .form-check-input[type="checkbox"]:checked{ background:var(--primary); }
+.set-switch .form-check-input[type="checkbox"]:checked::after{ transform:translateX(1.1rem); }
+.set-switch .form-check-input[type="checkbox"]:focus-visible{
+  outline:var(--focus-ring); outline-offset:2px;
+}
+/* The knob moving is the whole point of a switch, so it is the one thing here
+   that must stop when the viewer has asked for less motion. */
+@media (prefers-reduced-motion: reduce){
+  .set-switch .form-check-input[type="checkbox"],
+  .set-switch .form-check-input[type="checkbox"]::after{ transition:none; }
+}
+
+@media (max-width:640px){
+  .set-row{ align-items:flex-start; flex-direction:column; gap:.6rem; }
+  .set-control{ width:100%; }
+  .set-input{ width:100%; max-width:none; }
+}
+
+/* ==========================================================================
    THREAD LIST
    A list of applications read as an inbox: when it arrived down the left, who
    it is from on the right, the thing itself in the middle. Replaces the table
