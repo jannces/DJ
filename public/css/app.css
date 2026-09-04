@@ -934,6 +934,14 @@ body{ background:var(--bg); color:var(--text); }
 }
 .lms-sidebar::before{ display:none; }
 .lms-brand{ border-bottom:1px solid var(--side-hair); padding:.9rem 1rem; }
+/* The fist sits where the glyph square used to, at the same size, so the
+   brand row keeps its height and the navigation below it does not move.
+   width/height are on the <img> too, so nothing reflows on load.
+   No background and no tint: a municipal mark is not a theme token. */
+.lms-brand .brand-mark{
+  width:34px; height:34px; flex-shrink:0; display:block;
+  object-fit:contain;
+}
 .lms-brand .seal{
   width:30px; height:30px; border-radius:.5rem; font-size:.95rem;
   background:var(--primary); color:#fff; box-shadow:none;
@@ -1119,6 +1127,7 @@ body{ background:var(--bg); color:var(--text); }
 @media (max-height:520px){
   .lms-brand{ padding:.55rem .8rem; }
   .lms-brand .seal{ width:24px; height:24px; font-size:.8rem; }
+  .lms-brand .brand-mark{ width:24px; height:24px; }
   .lms-brand .brand-sub{ display:none; }
   .lms-nav .nav-heading{ padding:.55rem .6rem .2rem; }
   .lms-nav .nav-link{ padding:.38rem .6rem; }

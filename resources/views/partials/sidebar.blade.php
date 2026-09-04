@@ -27,8 +27,24 @@
 @endphp
 
 <nav class="lms-sidebar no-print" aria-label="Main navigation" id="lmsSidebar">
+    {{--
+      The municipality's own mark, not a stand-in. This was a generic
+      `bi-buildings` glyph in a coloured square, which is what every admin
+      template ships with.
+
+      It is the MARK, not the full logo. One Alicia's lockup puts the fist
+      beside its own wordmark, and at the 34px this slot allows that wordmark
+      is an unreadable smudge sitting next to a perfectly readable "LGU
+      Alicia" saying much the same thing. So the fist comes in on its own and
+      the name stays in type beside it, which is the usual way a wide logo is
+      fitted to a narrow rail.
+
+      The mark is decorative here: the words next to it already name the
+      organisation, so announcing it again would just repeat them.
+    --}}
     <div class="lms-brand">
-        <div class="seal"><i class="bi bi-buildings"></i></div>
+        <img class="brand-mark" src="{{ asset('img/one-alicia-mark.png') }}"
+             alt="" aria-hidden="true" width="256" height="256">
         <div>
             <div class="brand-name">LGU Alicia</div>
             <div class="brand-sub">Leave Management</div>
