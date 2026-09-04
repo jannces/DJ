@@ -19,7 +19,12 @@
   forever.
 --}}
 
-<div class="dash">
+{{-- `dash-plain` opts this page out of the filled KPI tiles and the panel
+     lift that the leave dashboards use. Colour on this screen has to be free
+     to mean something -- red is an intrusion, amber a failed sign-in, green
+     quiet -- and a tile that is already solid green cannot then turn green to
+     say so. See "The security dashboard opts out" in app.css. --}}
+<div class="dash dash-plain">
 
 <div class="kpi-grid">
     @foreach ($kpis as $kpi)

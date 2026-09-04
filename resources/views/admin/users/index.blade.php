@@ -1,14 +1,25 @@
 @extends('layouts.app')
 @section('title', 'Users')
 @section('content')
-<div class="list-head">
-    <h1 class="h4 mb-0">User Accounts</h1>
-</div>
+{{--
+  The plain heading the Employees list uses, not the shared
+  .list-head/.list-actions pair.
 
-{{-- New user stays a page rather than a panel: twenty-one fields across four
-     sections is not something to read through a modal. The button sits where
-     every other list's add button sits. --}}
-<div class="list-actions">
+  Those two put the title on one row and the add button on another, which
+  left an empty band between the heading and the card. This page is the
+  administrator's view of the same people HR sees on Employees, and the two
+  were asked to read as one screen; Employees carries a bare `h1` and goes
+  straight into its card, so this does too.
+
+  New user still stays a page rather than a panel -- twenty-one fields across
+  four sections is not something to read through a modal -- and it keeps its
+  place at the right by riding on the heading row instead of a band of its
+  own. Departments, Positions, Holidays, Devices and Blocked IPs are NOT
+  changed with it: they keep the shared pattern, and this page is the
+  deliberate exception because of the list it is being matched to.
+--}}
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <h1 class="h4 mb-0">User Accounts</h1>
     <a href="{{ route('users.create') }}" class="btn btn-lgu btn-sm">
         <i class="bi bi-person-plus"></i>New user
     </a>

@@ -3229,6 +3229,51 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .dash .kpi .kpi-d b,
 .dash .kpi .kpi-d .kpi-arrow{ color:currentColor; opacity:.9; font-size:.75rem; }
 .dash .kpi .kpi-s b{ color:currentColor; opacity:1; }
+
+/* ---- The security dashboard opts out ------------------------------------
+   The Security Dashboard is deliberately NOT part of the filled-tile
+   treatment above. It is the System Administrator's monitoring screen, and
+   four saturated blocks of colour there compete with the thing the colour is
+   supposed to mean on that page: red is an intrusion, amber is a failed
+   sign-in, green is quiet. A tile that is already solid green cannot then
+   turn green to tell you something.
+
+   So it keeps the plain card and lets --tone ink the icon and the number,
+   which is what the base .kpi-* rules further down already do -- the only
+   piece missing was the container, whose rule was deleted when the filled
+   tile replaced it.
+
+   Written as `.dash.dash-plain` rather than `.dash-plain` on purpose. The
+   filled rules above are `.dash .kpi` (0,2,0); a plain `.dash-plain .kpi`
+   would tie on specificity and be settled by which one sits lower in the
+   file, and this stylesheet has been bitten by that before. Doubling the
+   class wins on specificity instead, so these hold wherever they end up. */
+.dash.dash-plain .kpi{
+  background:var(--dash-surface); color:var(--text);
+  border:1px solid var(--hair); border-radius:.75rem;
+  padding:1.1rem 1.2rem; box-shadow:none;
+}
+.dash.dash-plain .kpi .kpi-ic{
+  box-sizing:content-box; width:1.15rem; height:1.15rem; padding:0;
+  background:none; border-radius:0;
+  stroke:var(--tone,var(--muted)); stroke-width:1.7;
+}
+.dash.dash-plain .kpi .kpi-lb{
+  color:var(--muted); opacity:1; text-transform:uppercase;
+  letter-spacing:.07em; font-size:.75rem; font-weight:600;
+}
+.dash.dash-plain .kpi .kpi-v{
+  color:var(--tone,var(--text)); font-weight:600; font-size:2.125rem;
+  letter-spacing:-.03em; margin-top:0;
+}
+.dash.dash-plain .kpi .kpi-s,
+.dash.dash-plain .kpi .kpi-d{ color:var(--muted); opacity:1; }
+.dash.dash-plain .kpi .kpi-s b,
+.dash.dash-plain .kpi .kpi-d b{ color:var(--text-2); opacity:1; }
+
+/* The panels lose the lift with them, so the page reads as one flat surface
+   of readings rather than a deck of cards. */
+.dash.dash-plain .dash-frame{ box-shadow:none; }
 .kpi-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:.5rem; }
 .kpi-lb{
   font-size:.75rem; font-weight:600; letter-spacing:.07em; text-transform:uppercase;
