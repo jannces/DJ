@@ -71,7 +71,24 @@
 <html><head><meta charset="utf-8">
 <style>
   @page { margin: 8mm 9mm; }
-  body { font-family: "DejaVu Sans", sans-serif; font-size: 6.4pt; color:#000; line-height:1.25; }
+  /* The sheet is set in a Times face, because the printed CSC form is.
+
+     NOT the core "Times New Roman" though, and that is not a preference. dompdf
+     maps it to the base-14 PDF font, which has no peso sign -- the salary field
+     came out as "?25,000.00". Liberation Serif is metrically identical to Times
+     New Roman, carries U+20B1, and is vendored here rather than taken from the
+     host, so the file renders the same on this machine and on the XAMPP box
+     that actually prints it. SIL OFL 1.1; the licence ships beside it. */
+  @font-face { font-family:'LibSerif'; font-style:normal; font-weight:400;
+    src:url("{{ public_path('fonts/liberation-serif/LiberationSerif-Regular.ttf') }}") format('truetype'); }
+  @font-face { font-family:'LibSerif'; font-style:normal; font-weight:700;
+    src:url("{{ public_path('fonts/liberation-serif/LiberationSerif-Bold.ttf') }}") format('truetype'); }
+  @font-face { font-family:'LibSerif'; font-style:italic; font-weight:400;
+    src:url("{{ public_path('fonts/liberation-serif/LiberationSerif-Italic.ttf') }}") format('truetype'); }
+  @font-face { font-family:'LibSerif'; font-style:italic; font-weight:700;
+    src:url("{{ public_path('fonts/liberation-serif/LiberationSerif-BoldItalic.ttf') }}") format('truetype'); }
+
+  body { font-family: 'LibSerif', "Times New Roman", Times, serif; font-size: 6.4pt; color:#000; line-height:1.25; }
 
   table { width:100%; border-collapse:collapse; }
   td, th { border:1px solid #000; padding:2px 3px; vertical-align:top; }
@@ -111,19 +128,25 @@
 </style></head>
 <body>
 
-  {{-- ===== HEADER (same three columns as the web sheet) ===== --}}
+  {{-- Header: the municipal seal, the form's own numbering, the agency block,
+       ANNEX A and One Alicia -- all on ONE row.
+
+       One row matters. The first attempt stacked two tables and pulled them
+       together with a negative margin; dompdf obeyed literally and printed
+       "Civil Service Form No. 6" straight across the seal. A second attempt
+       gave the form number and ANNEX their own row above the logos, which
+       looked right and pushed the sheet onto a second page at Letter. --}}
   <table class="plain"><tr>
-    <td style="width:20%">
-      <div class="formno">Civil Service Form No. 6</div>
-      <div class="formno">Revised 2020</div>
-    </td>
-    <td style="width:60%" class="head">
+    <td style="width:11%"><img src="{{ public_path('img/alicia-seal.png') }}" style="width:46pt;height:46pt"></td>
+    <td style="width:15%"><div class="formno">Civil Service Form No. 6</div><div class="formno">Revised 2020</div></td>
+    <td style="width:48%" class="head">
       <div>Republic of the Philippines</div>
       <div><em>Province of Isabela</em></div>
       <div class="lgu">{{ \App\Models\SystemSetting::get('general.lgu_name', 'MUNICIPALITY OF ALICIA') }}</div>
       <div><em>{{ \App\Models\SystemSetting::get('general.lgu_address', 'Magsaysay, Alicia') }}</em></div>
     </td>
-    <td style="width:20%" class="annex">ANNEX A</td>
+    <td style="width:15%" class="annex">ANNEX A</td>
+    <td style="width:11%" align="right"><img src="{{ public_path('img/one-alicia.png') }}" style="width:52pt"></td>
   </tr></table>
 
   <div class="title">APPLICATION FOR LEAVE</div>
