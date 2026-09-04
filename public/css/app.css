@@ -858,7 +858,12 @@ footer.app-foot{ text-align:center; color:var(--muted-2); font-size:.76rem; padd
 .dash-table tbody tr:last-child td{ border-bottom:0; }
 .dash-table tbody tr:hover{ background:color-mix(in srgb,var(--text) 3%,transparent); }
 .dash-table .num{ font-variant-numeric:tabular-nums; text-align:right; }
-.dash-table .ref{ font-weight:600; }
+/* A reference is one token and is read as one: LV-2026-76545 was breaking at
+   both hyphens into three stacked lines, which made the row three times as
+   tall and the number itself hard to read back over a phone. The table sits
+   in .table-responsive, so refusing to wrap scrolls the table rather than
+   widening the page. */
+.dash-table .ref{ font-weight:600; white-space:nowrap; font-variant-numeric:tabular-nums; }
 
 /* Status pills — the only place colour is used in the table. */
 .st{

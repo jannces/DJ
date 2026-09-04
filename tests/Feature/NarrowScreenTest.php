@@ -160,6 +160,27 @@ class NarrowScreenTest extends TestCase
     }
 
     /**
+     * A reference number never breaks, at any width.
+     *
+     * The rule above only applies below 640px, which was assumed to be the
+     * only place a table runs out of room. It is not: the dashboard's "Recent
+     * leave applications" card is about 545px wide inside a 1440px window, and
+     * six columns do not fit in it either -- so LV-2026-76545 broke at both
+     * hyphens into three stacked lines on a full-size desktop, the same defect
+     * this whole file was written about, in the one place nothing was looking.
+     *
+     * Hence a width-independent rule rather than another entry in a media
+     * query: the container is narrow, not the screen.
+     */
+    public function test_a_dashboard_reference_never_breaks_across_lines(): void
+    {
+        $this->assertMatchesRegularExpression(
+            '/\.dash-table \.ref\{[^}]*white-space:\s*nowrap/s', $this->css,
+            'the dashboard reference column can wrap again, which stacks '
+            .'LV-2026-76545 across three lines and triples the row height');
+    }
+
+    /**
      * The toolbar's controls agree on a width once they stack.
      *
      * Three controls sized by their own content read as a mistake in one

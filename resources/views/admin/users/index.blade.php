@@ -52,16 +52,32 @@
                                 @csrf<button class="btn btn-sm btn-outline-success"><i class="bi bi-arrow-counterclockwise"></i> Restore</button>
                             </form>
                         @else
-                            <a href="{{ route('users.edit', $user) }}" class="btn btn-sm btn-outline-secondary"
-                               aria-label="Edit {{ $user->name }}" title="Edit {{ $user->name }}"><i class="bi bi-pencil" aria-hidden="true"></i></a>
-                            {{-- Edit them, what they can do, what they did. --}}
-                            <a href="{{ route('users.access', $user) }}" class="btn btn-sm btn-outline-secondary"
-                               aria-label="Access for {{ $user->name }}"><i class="bi bi-key"></i></a>
-                            <a href="{{ route('users.history', $user) }}" class="btn btn-sm btn-outline-secondary"
-                               aria-label="History for {{ $user->name }}"><i class="bi bi-clock-history"></i></a>
+                            {{--
+                              One labelled button and one menu, which is the row
+                              the Employees list draws.
+
+                              It was four controls: a pencil, a key, a clock and
+                              a bare caret, none of them carrying a word. Beside
+                              the employee list -- same component for the person,
+                              same table, same card -- the two pages did not look
+                              like the same system, and the icon rank was the
+                              reason. It also meant three of a row's four actions
+                              were identifiable only by guessing at a glyph.
+
+                              Nothing is lost: Access and History are the same
+                              destinations, now named, in the menu that already
+                              held Reset password, Block and Archive.
+                            --}}
+                            <a href="{{ route('users.edit', $user) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
                             <div class="btn-group">
-                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown"></button>
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                                        data-bs-toggle="dropdown" aria-expanded="false">
+                                    <span class="visually-hidden">More actions for {{ $user->name }}</span>
+                                </button>
                                 <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="{{ route('users.access', $user) }}">Access &amp; permissions</a></li>
+                                    <li><a class="dropdown-item" href="{{ route('users.history', $user) }}">Account history</a></li>
+                                    <li><hr class="dropdown-divider"></li>
                                     <li>
                                         <form method="POST" action="{{ route('users.reset-password', $user) }}" data-confirm="Reset the password for {{ $user->name }}? They will have to set a new one at their next sign-in.">
                                             @csrf<button class="dropdown-item">Reset password</button>
