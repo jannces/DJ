@@ -63,7 +63,7 @@
   /* Typography */
   /* Inter first, then the stack that was here — so a browser that cannot
      load the bundled file still renders in something sane rather than Times. */
-  --font-sans:'Inter','Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;
+  --font-sans:-apple-system,BlinkMacSystemFont,'SF Pro Text','Inter','Segoe UI',system-ui,'Helvetica Neue',Arial,sans-serif;
   --fs-xs:.75rem; --fs-sm:.8125rem; --fs-base:.9375rem; --fs-md:1rem;
   --fs-lg:1.125rem; --fs-xl:1.375rem; --fs-2xl:1.75rem; --fs-3xl:2.25rem;
   --lh:1.55;
@@ -278,7 +278,7 @@ a:hover { color:var(--primary-hover); }
   color:var(--text); cursor:pointer; transition:all var(--dur) var(--ease); }
 .profile-btn:hover { background:var(--surface-hover); border-color:var(--border-strong); }
 .avatar { width:34px; height:34px; border-radius:var(--r-full); flex-shrink:0;
-  background:linear-gradient(135deg,var(--brand-500),var(--brand-700)); color:#fff;
+  background:linear-gradient(135deg,var(--primary),var(--primary-hover)); color:#fff;
   display:flex; align-items:center; justify-content:center; font-weight:700; font-size:.85rem; }
 
 /* ---- 6. Page header + breadcrumbs --------------------------------------- */
@@ -960,20 +960,30 @@ body{ background:var(--bg); color:var(--text); }
   text-transform:none; padding:.9rem .6rem .3rem;
 }
 .lms-nav .nav-link{
-  color:var(--side-text); border-radius:.5rem; padding:.5rem .6rem;
-  font-size:.845rem; font-weight:450; gap:.6rem; margin-bottom:1px;
+  color:var(--side-text); border-radius:.85rem; padding:.4rem .6rem;
+  font-size:.845rem; font-weight:500; gap:.7rem; margin-bottom:2px;
 }
 .lms-nav .nav-link:hover{ background:var(--side-hover); color:var(--side-text-hi); transform:none; }
+.lms-nav .nav-link:hover i{ background:#CFE0FB; }
 .lms-nav .nav-link.active{
   background:var(--side-active); color:var(--side-text-hi); font-weight:500;
 }
 .lms-nav .nav-link.active i{ color:var(--side-text-hi); }
 .lms-nav .nav-link.active::before{ display:none; }
-.lms-nav .nav-link i{ font-size:1rem; opacity:.9; }
+/* The disc is the app's most repeated shape. A fixed square plus grid
+   centring keeps it circular whatever glyph goes inside. */
+.lms-nav .nav-link i{
+  width:2rem; height:2rem; flex:none; display:grid; place-items:center;
+  background:var(--side-disc); color:var(--side-disc-ink);
+  border-radius:50%; font-size:.9rem; opacity:1;
+}
 
 /* ---- 3. Topbar ----------------------------------------------------------- */
 .lms-topbar{
-  background:var(--bg); border-bottom:1px solid var(--border);
+  background:color-mix(in srgb, var(--surface) 82%, transparent);
+  backdrop-filter:saturate(180%) blur(20px);
+  -webkit-backdrop-filter:saturate(180%) blur(20px);
+  border-bottom:1px solid var(--border);
   box-shadow:none; height:52px; padding:0 1rem; gap:.6rem;
 }
 .top-sep{ width:1px; height:18px; background:var(--border); flex:none; }
@@ -1305,12 +1315,25 @@ body{ background:var(--bg); color:var(--text); }
      rather than a set of cards. Taking it to #ebe9f5 doubles the separation
      to 22 points and lets the shadow do its job, while staying a pale tint
      that never competes with the content sitting on it. */
-  --bg:#ebe9f5; --bg-soft:#e2dfef;
-  --surface:#ffffff; --surface-2:#f8f7fc; --surface-hover:#f1eff9;
-  --text:#16121f; --text-2:#3d3552; --muted:#6b6480; --muted-2:#9b93ae;
-  --border:#e6e2f1; --border-strong:#d5cfe6;
+  --bg:#F5F7FB; --bg-soft:#EBEFF7;
+  --surface:#ffffff; --surface-2:#FAFBFD; --surface-hover:#F3F6FC;
+  --text:#0F172A; --text-2:#334155; --muted:#5B6779; --muted-2:#94A3B8;
+  --border:#E3E8F0; --border-strong:#CBD4E1;
 
-  --primary:#5b48d4; --primary-hover:#4a39bb; --primary-soft:#efecfd;
+  --primary:#2563EB; --primary-hover:#1D4ED8; --primary-soft:#DBEAFE;
+
+  /* The rail, read off the eGovPH app: a pale blue ground, every icon in a
+     soft disc, one solid pill for the page you are on. --side-active is a
+     FILL here rather than a tint, so it needs an ink of its own. */
+  --side-bg:#EDF3FE; --side-text:#3E4A5C; --side-text-hi:#0F172A;
+  --side-hover:#E0EBFC; --side-hair:#CBDCF6;
+  --side-active:#2563EB; --side-active-ink:#ffffff;
+  --side-disc:#DCE9FD; --side-disc-ink:#2563EB;
+
+  /* Four tile fills, each the brightest value of its hue at which white text
+     still clears 4.5:1. Amber and green are naturally light and had to come
+     down furthest -- at their brightest, white on them measures under 2:1. */
+  --tile-1:#146AFF; --tile-2:#C8850B; --tile-3:#1AA05F; --tile-4:#DE1B7D;
   --success:#0f9d58; --success-soft:#e3f6ec;
   --warning:#c77700; --warning-soft:#fdf1de;
   --danger:#d92d20;  --danger-soft:#fdecea;
@@ -1323,11 +1346,22 @@ body{ background:var(--bg); color:var(--text); }
 :root[data-bs-theme="dark"], [data-bs-theme="dark"]{
   /* Indigo-black rather than flat black — the tint keeps it from going dead. */
   --bg:#0b0a12; --bg-soft:#100e1a;
+  /* The rail inverts rather than staying pale: a light blue bar beside a dark
+     content column reads as a light leak. The pill keeps its fill, which is
+     the one thing that must not change meaning between themes. */
+  --side-bg:#12172a; --side-text:#9AA6BC; --side-text-hi:#F1F5FF;
+  --side-hover:#1A2137; --side-hair:#232B44;
+  --side-active:#2563EB; --side-active-ink:#ffffff;
+  --side-disc:#1E2740; --side-disc-ink:#7FB0FF;
+  --tile-1:#1D5FD6; --tile-2:#A36814; --tile-3:#12805B; --tile-4:#B8175F;
   --surface:#15121f; --surface-2:#1b1729; --surface-hover:#221d33;
   --text:#f0edf8; --text-2:#c9c2dc; --muted:#948caa; --muted-2:#655d7d;
   --border:#272134; --border-strong:#352d47;
 
-  --primary:#9d8bff; --primary-hover:#b3a4ff; --primary-soft:#241d3d;
+  /* Blue in dark too, or the accent contradicts the rail. Lightened until it
+     clears 4.5:1 as link text on the dark surface -- the light-mode #2563EB
+     would measure under 3:1 here. */
+  --primary:#7CB6FB; --primary-hover:#9AC8FC; --primary-soft:#16233B;
   --success:#34d399; --success-soft:#10281f;
   --warning:#fbbf24; --warning-soft:#2e2410;
   --danger:#fb7185;  --danger-soft:#2f1620;
@@ -1464,10 +1498,12 @@ span.dash-link:hover{ transform:none; box-shadow:none; color:var(--muted); }
 
 /* Sidebar active item carries the brand rather than a flat grey fill. */
 .lms-nav .nav-link.active{
-  background:var(--primary-soft); color:var(--primary);
-  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--primary) 22%,transparent);
+  background:var(--side-active); color:var(--side-active-ink); font-weight:600;
+  box-shadow:0 6px 14px -6px color-mix(in srgb,var(--side-active) 65%,transparent);
 }
-.lms-nav .nav-link.active i{ color:var(--primary); }
+.lms-nav .nav-link.active i{
+  background:color-mix(in srgb,#fff 22%,transparent); color:var(--side-active-ink);
+}
 .lms-brand .seal{
   background-image:linear-gradient(145deg, color-mix(in srgb,var(--primary) 82%,#fff), var(--primary));
   box-shadow:0 2px 6px color-mix(in srgb,var(--primary) 40%,transparent);
@@ -3136,35 +3172,56 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 
    AND NO HOVER LIFT. A lift says "click me"; these tiles are not links. See
    CardTest, which fails the day one of them becomes one. */
-/* THE TILE CARRIES ITS TONE.
+/* THE TILE IS FILLED, AND ONE INK CARRIES ALL OF IT.
    Four white boxes in a row are one grey texture: nothing tells you which
-   number to look at first, and the eye slides off the whole band. The tone was
-   already decided per tile -- it coloured the number and the icon -- and the
-   ground now carries it too, at a strength you read as "this one is about
-   credits" without it becoming decoration.
+   number to look at first and the eye slides off the whole band. Each tile
+   now takes a fill of its own, and every piece of type on it inherits
+   `currentColor`, so the ink is stated once on the tile instead of six times
+   on its children -- add a fifth tone later and it follows for free.
 
-   7% of the tone over the surface, not a saturated fill: the number and the
-   caption still have to clear 4.5:1 on top of it, which they do because the
-   ground barely moves off white. The border takes a heavier 28% so the tile
-   has an edge in the tint's own hue rather than a neutral grey line that
-   would read as a mistake. */
+   WHITE ON EVERY TILE, which is what makes the four read as one set. That
+   uniformity is paid for by amber and green: those hues are naturally light,
+   and at their brightest white on them measures under 2:1. To carry white
+   they have to come down to #C8850B and #1AA05F. Those are not arbitrary
+   darks -- they are the brightest value of each hue at which white still
+   clears the floor, found by walking lightness down until the ratio held.
+   There is no version of this row that is both uniformly white-inked and
+   brighter than this one. */
 .dash .kpi{
-  background:color-mix(in srgb, var(--tone, var(--primary)) 7%, var(--surface));
-  border:1px solid color-mix(in srgb, var(--tone, var(--primary)) 28%, var(--border));
-  border-radius:1rem; padding:1.75rem; min-width:0;
-  box-shadow:var(--card-shadow);
+  background:var(--tile, var(--tile-1));
+  border:0; border-radius:.875rem; padding:1.25rem 1.35rem; min-width:0;
+  color:#fff;
+  box-shadow:0 8px 18px -10px rgb(15 23 42 / .45);
 }
+.dash .kpi[data-tone="warn"]{ --tile:var(--tile-2); }
+.dash .kpi[data-tone="good"]{ --tile:var(--tile-3); }
+.dash .kpi[data-tone="bad"]{  --tile:var(--tile-4); }
+/* "info" carries no judgement, so its hue means nothing and is free to vary.
+   Cycling it stops four plain counts reading as one blue block. */
+.dash .kpi[data-tone="info"]:nth-of-type(2){ --tile:#7A3FE0; }
+.dash .kpi[data-tone="info"]:nth-of-type(3){ --tile:var(--tile-3); }
+.dash .kpi[data-tone="info"]:nth-of-type(4){ --tile:var(--tile-4); }
 
-/* The icon moves into a disc of its own tone. Stroked-on-nothing was correct
-   when the tile was white -- a filled glyph would have been the only saturated
-   thing on it -- but on a tinted ground the bare stroke disappears, and the
-   disc gives the tile a fixed point that is not the number. */
+/* A wash of the tile's own ink, so one rule works under any fill. */
 .dash .kpi .kpi-ic{
-  box-sizing:content-box; width:1.05rem; height:1.05rem; padding:.5rem;
-  border-radius:.625rem;
-  background:color-mix(in srgb, var(--tone, var(--primary)) 16%, transparent);
-  stroke:var(--tone, var(--muted));
+  box-sizing:content-box; width:.95rem; height:.95rem; padding:.45rem;
+  border-radius:.55rem; stroke-width:2;
+  background:color-mix(in srgb, currentColor 20%, transparent);
+  stroke:currentColor;
 }
+.dash .kpi .kpi-lb{
+  color:currentColor; opacity:.82; text-transform:none;
+  letter-spacing:0; font-size:.78rem; font-weight:600;
+}
+.dash .kpi .kpi-v{
+  color:currentColor; font-weight:700; font-size:2rem;
+  letter-spacing:-.035em; margin-top:.2rem;
+}
+.dash .kpi .kpi-s,
+.dash .kpi .kpi-d,
+.dash .kpi .kpi-d b,
+.dash .kpi .kpi-d .kpi-arrow{ color:currentColor; opacity:.9; font-size:.75rem; }
+.dash .kpi .kpi-s b{ color:currentColor; opacity:1; }
 .kpi-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:.5rem; }
 .kpi-lb{
   font-size:.75rem; font-weight:600; letter-spacing:.07em; text-transform:uppercase;
