@@ -23,3 +23,6 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 /database/database.sqlite
+
+# Claude Code: project settings are shared; the .local file is per-machine.
+/.claude/settings.local.json
