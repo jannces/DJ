@@ -44,6 +44,27 @@
         </x-list-toolbar>
     </div>
 
+    {{--
+      Column names, because a row on its own does not say what its parts are.
+      "2d" reads as a duration but not as WHICH duration until something calls
+      it Filed, and the reference at the far end of the panel could be a
+      reference to anything.
+
+      Outside the list rather than inside it: the rows already carry their own
+      text for a screen reader, so this is a visual key and nothing else. It
+      disappears below 900px, where the row wraps and there are no columns left
+      to head.
+    --}}
+    <div class="thread-labels" aria-hidden="true">
+        <span class="thread-when">Filed</span>
+        <span class="thread-av-gap"></span>
+        <span class="thread-body">
+            <span>Leave and dates</span>
+            <span class="thread-ref">Reference</span>
+        </span>
+        <span class="thread-meta">Employee &amp; status</span>
+    </div>
+
     <div data-list>
         <ul class="thread-list">
             @forelse ($requests as $r)

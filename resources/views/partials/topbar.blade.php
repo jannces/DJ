@@ -34,11 +34,62 @@
             </a>
         @endcan
 
-        <a href="{{ route('notifications.index') }}" class="icon-btn" aria-label="Notifications" title="Notifications">
-            <i class="bi bi-bell"></i>
-            @php $unread = auth()->user()?->unreadNotifications()->count() ?? 0 @endphp
-            @if ($unread)<span class="dot-badge">{{ $unread > 99 ? '99+' : $unread }}</span>@endif
-        </a>
+        {{--
+          The bell opens the last few notifications rather than a whole page.
+          Reading one is a glance, not a destination; the page is still there
+          behind "See all" for the rest.
+
+          Bootstrap's dropdown, which is what the profile menu beside this
+          already uses -- no new script, and the keyboard and dismiss
+          behaviour comes with it.
+        --}}
+        @php
+            $inbox = auth()->user()?->notifications()->latest()->limit(6)->get() ?? collect();
+            $unread = auth()->user()?->unreadNotifications()->count() ?? 0;
+        @endphp
+        <div class="dropdown">
+            <button class="icon-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                    aria-expanded="false"
+                    aria-label="Notifications{{ $unread ? ", $unread unread" : '' }}"
+                    title="Notifications">
+                <i class="bi bi-bell"></i>
+                @if ($unread)<span class="dot-badge">{{ $unread > 99 ? '99+' : $unread }}</span>@endif
+            </button>
+
+            <div class="dropdown-menu dropdown-menu-end nb-menu">
+                <div class="nb-head">
+                    <span class="nb-title">Notifications</span>
+                    @if ($unread)<span class="nb-count">{{ $unread }} new</span>@endif
+                    @if ($unread)
+                        <form method="POST" action="{{ route('notifications.read-all') }}" data-no-loader class="nb-allread">
+                            @csrf<button class="nb-link" type="submit">Mark all read</button>
+                        </form>
+                    @endif
+                </div>
+
+                <ul class="nb-list">
+                    @forelse ($inbox as $n)
+                        <li class="nb-item @unless($n->read_at) is-unread @endunless">
+                            <span class="nb-when">{{ $n->created_at->diffForHumans(short: true, syntax: \Carbon\CarbonInterface::DIFF_ABSOLUTE) }}</span>
+                            <a class="nb-body" href="{{ $n->data['url'] ?? route('notifications.index') }}">
+                                <span class="nb-subject">{{ $n->data['title'] ?? 'Notification' }}</span>
+                                <span class="nb-text">{{ \Illuminate\Support\Str::limit($n->data['message'] ?? '', 90) }}</span>
+                            </a>
+                            {{-- The dot says unread on its own; the text beside
+                                 it is for anyone the colour does not reach. --}}
+                            @unless ($n->read_at)
+                                <span class="nb-dot" aria-hidden="true"></span>
+                                <span class="visually-hidden">Unread</span>
+                            @endunless
+                        </li>
+                    @empty
+                        <li class="nb-empty">Nothing yet.</li>
+                    @endforelse
+                </ul>
+
+                <a class="nb-foot" href="{{ route('notifications.index') }}">See all notifications</a>
+            </div>
+        </div>
 
         <button class="icon-btn" onclick="lmsToggleTheme()" aria-label="Toggle dark mode" title="Light / dark mode">
             <i class="theme-icon bi bi-moon-stars"></i>

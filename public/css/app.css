@@ -4270,7 +4270,9 @@ span.dash-link{ justify-content:flex-start; }
   border-bottom:0; padding:0; flex:1 1 24rem;
   justify-content:flex-end; gap:.5rem;
 }
-.thread-head .toolbar-search{ flex:1 1 9rem; min-width:7rem; max-width:14rem; }
+/* Wider than it was: the magnifier and its padding take 2.6rem off the
+   left, so the old 14rem cap cut the placeholder mid-word. */
+.thread-head .toolbar-search{ flex:1 1 12rem; min-width:9rem; max-width:18rem; }
 /* One line once there is room for one. Below this the toolbar wraps as it
    does everywhere else, which is the behaviour its own rules already give. */
 @media (min-width:900px){
@@ -4736,4 +4738,168 @@ span.dash-link{ justify-content:flex-start; }
   .thread-head .list-toolbar{ flex:1 1 auto; justify-content:flex-start; margin-top:.7rem; }
   .thread-head .toolbar-search{ flex:1 1 100%; min-width:0; max-width:none; }
   .thread-head .toolbar-filters{ flex:1 1 100%; }
+}
+
+/* ==========================================================================
+   SEARCH FIELDS
+   One shape for every search box in the system: a pill with the magnifier
+   inside it, room to type, and a shadow that appears when it is focused.
+
+   The list toolbars had a plain rectangle with no icon, so the only thing
+   telling you it was a search box was the placeholder. The topbar had a pill
+   defined at line 257 and a 2rem rounded rectangle at 1004 -- the second won,
+   which is why it had quietly become a small box.
+
+   The icon is a background image rather than an element, so this reaches every
+   `input[type=search]` in the application without touching a single template.
+   ========================================================================== */
+:root{
+  --icon-search:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%235B6779' stroke-width='1.6' stroke-linecap='round'%3E%3Ccircle cx='7' cy='7' r='4.5'/%3E%3Cpath d='M10.5 10.5 L14 14'/%3E%3C/svg%3E");
+}
+:root[data-bs-theme="dark"], [data-bs-theme="dark"]{
+  --icon-search:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%239AA6BC' stroke-width='1.6' stroke-linecap='round'%3E%3Ccircle cx='7' cy='7' r='4.5'/%3E%3Cpath d='M10.5 10.5 L14 14'/%3E%3C/svg%3E");
+}
+
+.toolbar-search[type="search"]{
+  height:2.75rem; border-radius:999px;
+  padding:0 1rem 0 2.6rem;
+  background-color:var(--surface);
+  background-image:var(--icon-search);
+  background-repeat:no-repeat;
+  background-position:left 1rem center;
+  background-size:1rem 1rem;
+  border:1px solid var(--border);
+  font-size:.9rem; color:var(--text);
+  transition:border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.toolbar-search[type="search"]::placeholder{ color:var(--muted); }
+/* Google's bar lifts on hover and holds the lift while focused. The border
+   carries the state as well as the shadow, because a shadow alone is invisible
+   to anyone who has turned contrast up. */
+.toolbar-search[type="search"]:hover{
+  border-color:var(--border-strong);
+  box-shadow:0 1px 6px rgb(15 23 42 / .10);
+}
+.toolbar-search[type="search"]:focus{
+  outline:none; border-color:var(--primary);
+  box-shadow:0 1px 8px rgb(15 23 42 / .12),
+             0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+/* The browser's own clear button, so the pill does not end in a square X. */
+.toolbar-search[type="search"]::-webkit-search-cancel-button{
+  -webkit-appearance:none; appearance:none;
+  width:.85rem; height:.85rem; cursor:pointer;
+  background:var(--icon-close, none) center/contain no-repeat;
+  opacity:.55;
+}
+.toolbar-search[type="search"]::-webkit-search-cancel-button:hover{ opacity:1; }
+
+/* The topbar takes the same shape at its own size. Its magnifier is a real
+   element already, so no background image here. */
+.lms-search input[type="search"]{
+  height:2.5rem; border-radius:999px;
+  padding:0 3.6rem 0 2.5rem;
+  background:var(--surface); border:1px solid var(--border);
+  font-size:.85rem;
+  transition:border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.lms-search input[type="search"]:hover{
+  border-color:var(--border-strong); box-shadow:0 1px 6px rgb(15 23 42 / .10);
+}
+.lms-search input[type="search"]:focus{
+  border-color:var(--primary);
+  box-shadow:0 1px 8px rgb(15 23 42 / .12),
+             0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+.lms-search .bi{ left:.95rem; }
+
+/* ==========================================================================
+   NOTIFICATION INBOX
+   The bell drops a short inbox rather than sending you to a page. Same shape
+   as the leave list: when it arrived down the left, the thing itself beside
+   it, one row per notification.
+   ========================================================================== */
+.nb-menu{
+  width:min(24rem, calc(100vw - 1.6rem));
+  padding:0; border-radius:.9rem; overflow:hidden;
+  border:1px solid var(--border); box-shadow:var(--card-shadow);
+}
+.nb-head{
+  display:flex; align-items:center; gap:.5rem;
+  padding:.75rem .9rem; border-bottom:1px solid var(--border);
+}
+.nb-title{ font-weight:650; font-size:.9rem; color:var(--text); }
+.nb-count{
+  font-size:.7rem; font-weight:600; color:var(--primary);
+  background:var(--primary-soft); border-radius:2rem; padding:.1rem .45rem;
+}
+.nb-allread{ margin:0 0 0 auto; }
+.nb-link{
+  background:none; border:0; padding:0; font-size:.75rem;
+  color:var(--primary); cursor:pointer; text-decoration:underline;
+  text-underline-offset:.15em;
+}
+.nb-link:hover{ color:var(--primary-hover); }
+
+/* Capped and scrollable: six is the most it will ever hold, but a long
+   subject on a short screen should not push the footer off the bottom. */
+.nb-list{
+  list-style:none; margin:0; padding:0;
+  max-height:min(22rem, 60vh); overflow-y:auto; overscroll-behavior:contain;
+}
+.nb-item{
+  display:flex; align-items:flex-start; gap:.65rem;
+  padding:.65rem .9rem; border-bottom:1px solid var(--border);
+}
+.nb-item:last-child{ border-bottom:0; }
+.nb-item:hover{ background:var(--surface-hover); }
+.nb-item.is-unread{ background:color-mix(in srgb, var(--primary) 5%, transparent); }
+.nb-when{
+  flex:none; width:2.4rem; padding-top:.1rem;
+  font-size:.7rem; color:var(--muted); font-variant-numeric:tabular-nums;
+}
+.nb-body{
+  flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:.1rem;
+  color:inherit; text-decoration:none;
+}
+.nb-body:hover{ color:inherit; }
+.nb-body:focus-visible{ outline:var(--focus-ring); outline-offset:2px; border-radius:.35rem; }
+.nb-subject{ font-size:.82rem; font-weight:600; color:var(--text); }
+.nb-text{ font-size:.76rem; color:var(--muted); line-height:1.4; }
+/* Unread is a dot AND a hidden word, never the tint alone. */
+.nb-dot{
+  flex:none; width:.45rem; height:.45rem; border-radius:50%;
+  background:var(--primary); margin-top:.45rem;
+}
+.nb-empty{ padding:2rem 1rem; text-align:center; color:var(--muted); font-size:.82rem; }
+.nb-foot{
+  display:block; padding:.7rem .9rem; text-align:center;
+  font-size:.8rem; font-weight:550; color:var(--primary);
+  border-top:1px solid var(--border); text-decoration:none;
+}
+.nb-foot:hover{ background:var(--surface-hover); color:var(--primary-hover); }
+
+/* ---- Column names above the thread list ----------------------------------
+   Built from the same flex parts as a row so the words sit over the things
+   they name. The avatar has no label -- it is the same person as the name at
+   the other end -- so its column is a spacer, not an empty heading. */
+.thread-labels{
+  display:flex; align-items:center; gap:.9rem;
+  padding:.55rem 1.25rem; border-bottom:1px solid var(--border);
+  font-size:.7rem; font-weight:600; letter-spacing:.06em;
+  text-transform:uppercase; color:var(--muted);
+}
+.thread-labels .thread-when{ padding-top:0; }
+.thread-labels .thread-av-gap{ flex:none; width:2rem; }
+.thread-labels .thread-body{
+  display:flex; justify-content:space-between; gap:.7rem;
+  padding:0 .75rem;   /* line up with the text inside the bubble below */
+}
+.thread-labels .thread-ref{ margin-left:auto; letter-spacing:.06em; }
+.thread-labels .thread-meta{ padding-top:0; text-align:right; }
+
+/* Below 900 the row wraps into two lines and the columns stop existing, so
+   the key would be naming positions that are no longer there. */
+@media (max-width:899px){
+  .thread-labels{ display:none; }
 }
