@@ -64,7 +64,7 @@
   /* Inter first, then the stack that was here — so a browser that cannot
      load the bundled file still renders in something sane rather than Times. */
   --font-sans:'Inter','Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;
-  --fs-xs:.75rem; --fs-sm:.8125rem; --fs-base:.9rem; --fs-md:1rem;
+  --fs-xs:.75rem; --fs-sm:.8125rem; --fs-base:.9375rem; --fs-md:1rem;
   --fs-lg:1.125rem; --fs-xl:1.375rem; --fs-2xl:1.75rem; --fs-3xl:2.25rem;
   --lh:1.55;
 
@@ -214,11 +214,11 @@ a:hover { color:var(--primary-hover); }
 /* Small violet fist-mark accent to nod to the logo */
 .lms-brand .brand-name { font-weight:800; font-size:1rem; color:#fff; letter-spacing:.02em; line-height:1.1; }
 .lms-brand .brand-name .accent { color:var(--gold-500); }
-.lms-brand .brand-sub { font-size:.66rem; color:#c3b9e6; letter-spacing:.09em; text-transform:uppercase; }
+.lms-brand .brand-sub { font-size:.75rem; color:#c3b9e6; letter-spacing:.09em; text-transform:uppercase; }
 
 .lms-nav { padding:.85rem .75rem; overflow-y:auto; flex:1; }
 .lms-nav::-webkit-scrollbar-thumb { background:rgba(255,255,255,.16); border-color:transparent; }
-.lms-nav .nav-heading { font-size:.66rem; font-weight:700; letter-spacing:.1em;
+.lms-nav .nav-heading { font-size:.75rem; font-weight:700; letter-spacing:.1em;
   text-transform:uppercase; color:#a99ad6; padding:1rem .75rem .35rem; }
 .lms-nav .nav-link {
   color:#d8cfec; border-radius:var(--r); padding:.6rem .75rem; margin-bottom:2px;
@@ -270,7 +270,7 @@ a:hover { color:var(--primary-hover); }
 .icon-btn:hover { background:var(--surface-hover); color:var(--text); border-color:var(--border-strong); transform:translateY(-1px); }
 .icon-btn .dot-badge { position:absolute; top:-4px; right:-4px; min-width:18px; height:18px;
   padding:0 5px; border-radius:var(--r-full); background:var(--danger); color:#fff;
-  font-size:.65rem; font-weight:700; display:flex; align-items:center; justify-content:center;
+  font-size:.75rem; font-weight:700; display:flex; align-items:center; justify-content:center;
   border:2px solid var(--surface); }
 
 .profile-btn { display:flex; align-items:center; gap:.6rem; padding:.3rem .7rem .3rem .35rem;
@@ -349,14 +349,14 @@ a:hover { color:var(--primary-hover); }
    in view without touching type size or the 24px minimum for the controls in
    the last column. */
 .table > :not(caption) > * > * { padding:var(--row-pad-y) var(--row-pad-x); border-bottom-color:var(--border); }
-.table thead th { background:var(--surface-2); color:var(--muted); font-size:.72rem;
+.table thead th { background:var(--surface-2); color:var(--muted); font-size:.75rem;
   text-transform:uppercase; letter-spacing:.05em; font-weight:700; border-bottom:1px solid var(--border); }
 .table-hover tbody tr { transition:background var(--dur) var(--ease); }
 .table-hover tbody tr:hover { background:var(--surface-hover); }
 .table td { vertical-align:middle; }
 
 /* ---- 11. Badges ---------------------------------------------------------- */
-.badge { font-weight:600; font-size:.72rem; padding:.35em .65em; border-radius:var(--r-full);
+.badge { font-weight:600; font-size:.75rem; padding:.35em .65em; border-radius:var(--r-full);
   letter-spacing:.01em; }
 .badge.rounded-pill { border-radius:var(--r-full); }
 .badge.bg-success{ background:var(--success-bg)!important; color:var(--success)!important; }
@@ -434,7 +434,7 @@ a:hover { color:var(--primary-hover); }
 .timeline .tl-item{ position:relative; margin-bottom:1.3rem; }
 .timeline .tl-dot{ position:absolute; left:-1.75rem; top:.1rem; width:1.15rem; height:1.15rem;
   border-radius:50%; background:var(--surface); border:2px solid var(--border-strong); display:flex;
-  align-items:center; justify-content:center; font-size:.6rem; }
+  align-items:center; justify-content:center; font-size:.75rem; }
 .timeline .tl-dot.done{ background:var(--success); border-color:var(--success); color:#fff; }
 .timeline .tl-dot.reject{ background:var(--danger); border-color:var(--danger); color:#fff; }
 .timeline .tl-dot.warn{ background:var(--warning); border-color:var(--warning); color:#fff; }
@@ -729,10 +729,10 @@ footer.app-foot{ text-align:center; color:var(--muted-2); font-size:.76rem; padd
 .sec-badge{
   display:inline-flex; align-items:center; gap:.25rem; flex:none;
   border:1px solid var(--border); border-radius:var(--r-full);
-  padding:.15rem .5rem; font-size:.72rem; font-weight:500; color:var(--text-2);
+  padding:.15rem .5rem; font-size:.75rem; font-weight:500; color:var(--text-2);
   background:var(--surface);
 }
-.sec-badge i{ font-size:.7rem; }
+.sec-badge i{ font-size:.75rem; }
 .sec-badge.is-up{ color:var(--success); border-color:color-mix(in srgb,var(--success) 35%,var(--border)); }
 .sec-badge.is-down{ color:var(--danger); border-color:color-mix(in srgb,var(--danger) 35%,var(--border)); }
 
@@ -774,7 +774,7 @@ footer.app-foot{ text-align:center; color:var(--muted-2); font-size:.76rem; padd
 .pill{
   display:inline-flex; align-items:center; gap:.3rem;
   border:1px solid var(--border); border-radius:var(--r-full);
-  padding:.1rem .5rem; font-size:.73rem; font-weight:500; color:var(--text-2);
+  padding:.1rem .5rem; font-size:.75rem; font-weight:500; color:var(--text-2);
 }
 .pill-dot{ width:.4rem; height:.4rem; border-radius:50%; background:currentColor; }
 
@@ -830,7 +830,7 @@ footer.app-foot{ text-align:center; color:var(--muted-2); font-size:.76rem; padd
   align-items:center; justify-content:center; text-align:center; pointer-events:none;
 }
 .mix-total{ font-size:1.25rem; font-weight:600; font-variant-numeric:tabular-nums; line-height:1.1; }
-.mix-total-label{ font-size:.68rem; color:var(--muted); }
+.mix-total-label{ font-size:.75rem; color:var(--muted); }
 .mix-legend{ flex:1; min-width:0; display:flex; flex-direction:column; gap:.15rem; }
 .mix-item{
   display:flex; align-items:center; justify-content:space-between; gap:.5rem;
@@ -846,7 +846,7 @@ footer.app-foot{ text-align:center; color:var(--muted-2); font-size:.76rem; padd
 
 /* Stat trio + split bar */
 .trio{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.75rem; }
-.trio-label{ font-size:.72rem; color:var(--muted); margin-bottom:.15rem; }
+.trio-label{ font-size:.75rem; color:var(--muted); margin-bottom:.15rem; }
 .trio-value{ font-size:1.05rem; font-weight:600; font-variant-numeric:tabular-nums; }
 .splitbar{ display:flex; height:.5rem; border-radius:var(--r-full); overflow:hidden; background:var(--hair); margin:.35rem 0 .6rem; }
 .splitbar span{ display:block; height:100%; }
@@ -873,9 +873,9 @@ footer.app-foot{ text-align:center; color:var(--muted-2); font-size:.76rem; padd
 /* Status pills — the only place colour is used in the table. */
 .st{
   display:inline-flex; align-items:center; gap:.3rem; border-radius:var(--r-full);
-  padding:.15rem .5rem; font-size:.74rem; font-weight:500; white-space:nowrap;
+  padding:.15rem .5rem; font-size:.75rem; font-weight:500; white-space:nowrap;
 }
-.st i{ font-size:.72rem; }
+.st i{ font-size:.75rem; }
 /* The four status colours are defined once, further down, against the theme
    tokens. A second set of them lived here in raw hex and lost every time --
    same selectors, earlier in the file -- so it was four lines of colour that
@@ -939,11 +939,11 @@ body{ background:var(--bg); color:var(--text); }
   background:var(--primary); color:#fff; box-shadow:none;
 }
 .lms-brand .brand-name{ color:var(--side-text-hi); font-size:.875rem; font-weight:600; }
-.lms-brand .brand-sub{ color:var(--muted); font-size:.68rem; letter-spacing:.04em; }
+.lms-brand .brand-sub{ color:var(--muted); font-size:.75rem; letter-spacing:.04em; }
 
 .lms-nav{ padding:.5rem .7rem; }
 .lms-nav .nav-heading{
-  color:var(--muted); font-size:.7rem; font-weight:500; letter-spacing:.01em;
+  color:var(--muted); font-size:.75rem; font-weight:500; letter-spacing:.01em;
   text-transform:none; padding:.9rem .6rem .3rem;
 }
 .lms-nav .nav-link{
@@ -987,7 +987,7 @@ body{ background:var(--bg); color:var(--text); }
   display:inline-flex; gap:.12rem; pointer-events:none;
 }
 .kbd b{
-  font:inherit; font-size:.68rem; font-weight:500; color:var(--muted);
+  font:inherit; font-size:.75rem; font-weight:500; color:var(--muted);
   border:1px solid var(--border); border-radius:.25rem; padding:0 .28rem; background:var(--surface-2);
 }
 .profile-btn{
@@ -1028,7 +1028,7 @@ body{ background:var(--bg); color:var(--text); }
 
 
 /* Badges become quiet status pills everywhere. */
-.badge{ border-radius:var(--r-full); font-size:.74rem; font-weight:500; padding:.2rem .55rem; }
+.badge{ border-radius:var(--r-full); font-size:.75rem; font-weight:500; padding:.2rem .55rem; }
 .badge.bg-success{ background:color-mix(in srgb,var(--success) 14%,transparent)!important; color:var(--success)!important; }
 .badge.bg-danger{ background:color-mix(in srgb,var(--danger) 14%,transparent)!important; color:var(--danger)!important; }
 .badge.bg-warning{ background:color-mix(in srgb,var(--warning) 16%,transparent)!important; color:var(--warning)!important; }
@@ -1038,7 +1038,7 @@ body{ background:var(--bg); color:var(--text); }
 }
 .chip{
   border:1px solid var(--border); background:var(--surface); color:var(--muted);
-  border-radius:var(--r-full); font-size:.73rem; padding:.15rem .5rem;
+  border-radius:var(--r-full); font-size:.75rem; padding:.15rem .5rem;
 }
 
 .page-head{ margin-bottom:1.25rem; }
@@ -1283,8 +1283,15 @@ body{ background:var(--bg); color:var(--text); }
 
 /* ---- 1. Palette ---------------------------------------------------------- */
 :root{
-  /* Violet-tinted neutrals: cleaner than grey, warmer than pure white. */
-  --bg:#f4f3fa; --bg-soft:#edebf6;
+  /* Violet-tinted neutrals: cleaner than grey, warmer than pure white.
+
+     The ground is DEEPER than it was. At #f4f3fa it measured 244 against a
+     255 card -- eleven points of luminance, which the eye reads as one flat
+     surface, and it is why a page of white panels looked like a blank sheet
+     rather than a set of cards. Taking it to #ebe9f5 doubles the separation
+     to 22 points and lets the shadow do its job, while staying a pale tint
+     that never competes with the content sitting on it. */
+  --bg:#ebe9f5; --bg-soft:#e2dfef;
   --surface:#ffffff; --surface-2:#f8f7fc; --surface-hover:#f1eff9;
   --text:#16121f; --text-2:#3d3552; --muted:#6b6480; --muted-2:#9b93ae;
   --border:#e6e2f1; --border-strong:#d5cfe6;
@@ -1327,7 +1334,13 @@ body{ background:var(--bg); color:var(--text); }
 /* Cards lift very slightly off the tinted page. .card is not listed: it has
    its own two-layer shadow now, and naming it here only meant two rules
    fighting over the same property. */
-.dash-frame{ box-shadow:0 1px 2px rgba(22,18,31,.05); }
+/* The panels on the dashboard get the same depth as every other card. This
+   line used to set a 5%-opacity 2px shadow of its own, which measured as
+   nothing on screen: the frames sat flat on a background 11 luminance points
+   away from them, and a page of white rectangles on near-white is the whole
+   "it looks dead" complaint in one measurement. --card-shadow is the two-layer
+   stack the rest of the application already uses. */
+.dash-frame{ box-shadow:var(--card-shadow); }
 
 /* Split bar reads as brand vs muted rather than black vs grey.
    This rule used to begin with two orphaned dark-mode selectors --
@@ -1873,7 +1886,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .lf .card{ margin-bottom:0; }
 .lf .card-header i{ color:var(--primary); }
 .lf-ref{
-  font-family:var(--mono, ui-monospace, monospace); font-size:.66rem; letter-spacing:.08em;
+  font-family:var(--mono, ui-monospace, monospace); font-size:.75rem; letter-spacing:.08em;
   color:var(--muted-2); background:var(--surface-2); padding:.2rem .45rem;
   border-radius:.35rem; font-weight:500;
 }
@@ -1886,7 +1899,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .lf-f{ display:flex; flex-direction:column; gap:.3rem; min-width:0; }
 .lf-f > label{ font-size:.76rem; font-weight:600; color:var(--muted); margin:0; }
 .lf-f .req{ color:var(--primary); }
-.lf-f .hint{ font-size:.74rem; color:var(--muted-2); }
+.lf-f .hint{ font-size:.75rem; color:var(--muted-2); }
 /* A value the employee cannot change — office, position, salary, name. */
 .lf-fixed{
   font-size:.92rem; font-weight:600; color:var(--text-2);
@@ -1898,11 +1911,11 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .lf-sub{ display:flex; align-items:center; gap:.6rem; margin:1.35rem 0 .85rem; }
 .lf-sub:first-child{ margin-top:0; }
 .lf-sub b{
-  font-size:.72rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+  font-size:.75rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
   color:var(--text-2); white-space:nowrap;
 }
 .lf-sub .code{
-  font-family:var(--mono, ui-monospace, monospace); font-size:.68rem;
+  font-family:var(--mono, ui-monospace, monospace); font-size:.75rem;
   color:var(--primary); background:var(--primary-soft);
   padding:.15rem .4rem; border-radius:.3rem; font-weight:600;
 }
@@ -2104,10 +2117,15 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
    The rail and the Back/Continue pair go away with it; they would be steering
    a form that is no longer in steps. */
 .lf-flat .lf-step{ display:block; }
-.lf-flat .lf-track,
+/* The rail STAYS. It is how the form says what it is, and losing it on the one
+   screen where the employee is already frustrated would make the page feel
+   like a different form than the one they filled in. Only the Back/Continue
+   pair goes, because there is nothing left to page between. */
 .lf-flat .lf-nav .lf-back,
 .lf-flat .lf-nav .lf-next,
 .lf-flat .lf-nav .note{ display:none; }
+.lf-flat .lf-track{ margin-bottom:1.4rem; }
+.lf-flat .lf-track label{ cursor:default; }
 /* The submit button is NOT in that list. It lives in the last step's nav, and
    hiding the row it sits in would leave the form with no way to send it. */
 .lf-flat .lf-step + .lf-step{ margin-top:1.15rem; }
@@ -2232,7 +2250,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   color:var(--text-2);
 }
 .lf-credits th{
-  background:var(--surface-2); font-size:.7rem; letter-spacing:.06em;
+  background:var(--surface-2); font-size:.75rem; letter-spacing:.06em;
   text-transform:uppercase; color:var(--muted); font-weight:600;
 }
 .lf-credits th:not(:first-child),.lf-credits td:not(:first-child){
@@ -2291,7 +2309,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 /* ---- Period switch: a radio group, revealed with :has() ------------------ */
 .an-switch{ display:flex; gap:.3rem; flex-wrap:wrap; }
 .an-switch label{
-  cursor:pointer; font-size:.74rem; padding:.28rem .7rem; border-radius:.45rem;
+  cursor:pointer; font-size:.75rem; padding:.28rem .7rem; border-radius:.45rem;
   border:1px solid var(--border); background:var(--surface-2);
   color:var(--muted); white-space:nowrap; margin:0; transition:.15s;
 }
@@ -2363,7 +2381,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 }
 .an-numbers summary:hover{ color:var(--text); }
 .an-numbers summary::-webkit-details-marker{ display:none; }
-.an-numbers summary::before{ content:"\25B8"; font-size:.7rem; }
+.an-numbers summary::before{ content:"\25B8"; font-size:.75rem; }
 .an-numbers[open] summary::before{ content:"\25BE"; }
 .an-numbers .table-responsive{ margin-top:.6rem; }
 
@@ -2410,7 +2428,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 }
 
 .reports-group{
-  font-size:.72rem; font-weight:600; letter-spacing:.09em; text-transform:uppercase;
+  font-size:.75rem; font-weight:600; letter-spacing:.09em; text-transform:uppercase;
   color:var(--muted); margin:0 0 .6rem;
 }
 
@@ -2430,7 +2448,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .report-title{ font-size:.92rem; font-weight:600; margin:0; letter-spacing:-.012em; color:var(--text); }
 /* One line saying what the report contains. Four titles in a row and nothing
    else is a menu you have to have memorised. */
-.report-about{ font-size:.74rem; color:var(--muted); margin:.15rem 0 0; }
+.report-about{ font-size:.75rem; color:var(--muted); margin:.15rem 0 0; }
 /* `margin-top:auto` pins the controls to the foot, so cards of different
    description lengths still line their buttons up across the row. */
 .report-body{ padding:0 1.05rem 1.05rem; margin-top:auto; }
@@ -2470,7 +2488,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
    ignores it when the period is annual — the harmless failure. */
 
 .report-snap{
-  font-size:.74rem; color:var(--muted); margin:0 0 .55rem;
+  font-size:.75rem; color:var(--muted); margin:0 0 .55rem;
   padding:.32rem .55rem; border:1px dashed var(--border-strong);
   border-radius:.5rem; display:inline-block;
 }
@@ -2615,12 +2633,12 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   display:flex; align-items:baseline; justify-content:space-between; gap:.75rem;
   flex-wrap:wrap;
 }
-.card-note{ font-size:.74rem; font-weight:400; color:var(--muted); }
+.card-note{ font-size:.75rem; font-weight:400; color:var(--muted); }
 
 /* A required field says so in its label, not only when you get it wrong. */
 .user-form .req{ color:var(--danger); font-weight:700; margin-left:.1rem; }
 .user-form .form-label{ font-size:.8rem; font-weight:600; margin-bottom:.3rem; }
-.user-form .form-text{ font-size:.72rem; margin-top:.2rem; }
+.user-form .form-text{ font-size:.75rem; margin-top:.2rem; }
 /* A row's columns are equal height, so a helper line under one field used to
    leave a matching hole under the fields beside it. Each cell lays itself out
    and the helper sits at the foot of its own cell. */
@@ -2642,7 +2660,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .role-option:has(input:focus-visible){ outline:2px solid var(--primary); outline-offset:1px; }
 .role-option input{ margin-top:.2rem; flex:none; }
 .role-name{ display:block; font-size:.85rem; font-weight:600; }
-.role-desc{ display:block; font-size:.72rem; color:var(--muted); line-height:1.35; }
+.role-desc{ display:block; font-size:.75rem; color:var(--muted); line-height:1.35; }
 /* Same rule as a single field: colour, icon, message. The message is the
    @error text printed under the group; this adds the other two. */
 .is-invalid-group{
@@ -2666,7 +2684,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 /* ---- Permission overrides ------------------------------------------------- */
 .perm-module{ margin-bottom:.9rem; }
 .perm-module-name{
-  font-size:.66rem; letter-spacing:.1em; text-transform:uppercase;
+  font-size:.75rem; letter-spacing:.1em; text-transform:uppercase;
   color:var(--muted); font-weight:600; margin-bottom:.2rem;
 }
 .perm-row{
@@ -3104,14 +3122,38 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 
    AND NO HOVER LIFT. A lift says "click me"; these tiles are not links. See
    CardTest, which fails the day one of them becomes one. */
+/* THE TILE CARRIES ITS TONE.
+   Four white boxes in a row are one grey texture: nothing tells you which
+   number to look at first, and the eye slides off the whole band. The tone was
+   already decided per tile -- it coloured the number and the icon -- and the
+   ground now carries it too, at a strength you read as "this one is about
+   credits" without it becoming decoration.
+
+   7% of the tone over the surface, not a saturated fill: the number and the
+   caption still have to clear 4.5:1 on top of it, which they do because the
+   ground barely moves off white. The border takes a heavier 28% so the tile
+   has an edge in the tint's own hue rather than a neutral grey line that
+   would read as a mistake. */
 .dash .kpi{
-  background:var(--surface); border:1px solid var(--border);
+  background:color-mix(in srgb, var(--tone, var(--primary)) 7%, var(--surface));
+  border:1px solid color-mix(in srgb, var(--tone, var(--primary)) 28%, var(--border));
   border-radius:1rem; padding:1.75rem; min-width:0;
   box-shadow:var(--card-shadow);
 }
+
+/* The icon moves into a disc of its own tone. Stroked-on-nothing was correct
+   when the tile was white -- a filled glyph would have been the only saturated
+   thing on it -- but on a tinted ground the bare stroke disappears, and the
+   disc gives the tile a fixed point that is not the number. */
+.dash .kpi .kpi-ic{
+  box-sizing:content-box; width:1.05rem; height:1.05rem; padding:.5rem;
+  border-radius:.625rem;
+  background:color-mix(in srgb, var(--tone, var(--primary)) 16%, transparent);
+  stroke:var(--tone, var(--muted));
+}
 .kpi-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:.5rem; }
 .kpi-lb{
-  font-size:.7rem; font-weight:600; letter-spacing:.07em; text-transform:uppercase;
+  font-size:.75rem; font-weight:600; letter-spacing:.07em; text-transform:uppercase;
   color:var(--muted); margin:0 0 .3rem;
 }
 /* Stroked, never filled: at this size a filled glyph is a solid block of colour
@@ -3134,7 +3176,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
    is neither good nor bad and stays grey; a rise in people away is not. */
 .kpi-d{
   display:flex; align-items:center; gap:.3rem;
-  font-size:.72rem; color:var(--muted); margin:.5rem 0 0;
+  font-size:.75rem; color:var(--muted); margin:.5rem 0 0;
 }
 .kpi-d b{ font-weight:600; font-variant-numeric:tabular-nums; color:var(--text-2); }
 .kpi-arrow{ font-size:.8rem; line-height:1; }
@@ -3143,11 +3185,11 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 
 /* ---- Panel captions ------------------------------------------------------ */
 .dash-note{
-  font-size:.73rem; color:var(--muted); margin:.9rem 0 0; line-height:1.55;
+  font-size:.75rem; color:var(--muted); margin:.9rem 0 0; line-height:1.55;
 }
 .dash-note a{ color:var(--primary); }
 .dash-count{
-  font-size:.68rem; font-weight:700; margin-left:.4rem; padding:.08rem .35rem;
+  font-size:.75rem; font-weight:700; margin-left:.4rem; padding:.08rem .35rem;
   border-radius:3px; background:var(--danger-soft); color:var(--danger);
   vertical-align:.1em;
 }
@@ -3164,13 +3206,13 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   font-size:.76rem; color:var(--text-2); min-width:0;
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
-.hb-mono{ font-family:ui-monospace,Consolas,monospace; font-size:.72rem; }
+.hb-mono{ font-family:ui-monospace,Consolas,monospace; font-size:.75rem; }
 .hb-t{ height:.85rem; background:var(--ch-grid); border-radius:3px; overflow:hidden; }
 .hb-f{ display:block; height:100%; background:var(--ch-mute); border-radius:0 3px 3px 0; }
 .hb-r[data-hero] .hb-f{ background:var(--ch-hero); }
 .hb-r[data-hero] .hb-l{ color:var(--text); font-weight:600; }
 .hb-v{
-  font-family:ui-monospace,Consolas,monospace; font-size:.74rem;
+  font-family:ui-monospace,Consolas,monospace; font-size:.75rem;
   text-align:right; color:var(--text-2); font-variant-numeric:tabular-nums;
 }
 .hb-r[data-hero] .hb-v{ color:var(--text); font-weight:700; }
@@ -3181,7 +3223,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .hb-r[data-series] .hb-l{ color:var(--text); font-weight:600; }
 /* The stored category, under the label it maps to. */
 .hb-sub{
-  font-size:.68rem; color:var(--muted); margin:-.15rem 0 .35rem;
+  font-size:.75rem; color:var(--muted); margin:-.15rem 0 .35rem;
   padding-left:calc(11rem + .6rem);
 }
 @media (max-width:640px){ .hb-sub{ padding-left:0; } }
@@ -3190,11 +3232,11 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .hb-zero{ display:flex; align-items:center; gap:.6rem; margin:.5rem 0 .35rem; }
 .hb-zero::after{ content:""; flex:1 1 auto; height:1px; background:var(--border-strong); }
 .hb-zero span{
-  font-size:.66rem; letter-spacing:.05em; text-transform:uppercase;
+  font-size:.75rem; letter-spacing:.05em; text-transform:uppercase;
   color:var(--muted); white-space:nowrap;
 }
 .tag-s{
-  font-size:.62rem; font-weight:600; padding:.08rem .3rem; border-radius:3px;
+  font-size:.75rem; font-weight:600; padding:.08rem .3rem; border-radius:3px;
   margin-left:.4rem; vertical-align:.05em; white-space:nowrap;
 }
 .tag-blocked{ background:var(--danger-soft); color:var(--danger); }
@@ -3212,12 +3254,12 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .vb-b{ width:100%; background:var(--ch-mute); border-radius:3px 3px 0 0; min-height:2px; }
 .vb-c[data-hero] .vb-b{ background:var(--ch-hero); }
 .vb-n{
-  font-family:ui-monospace,Consolas,monospace; font-size:.68rem; color:var(--muted);
+  font-family:ui-monospace,Consolas,monospace; font-size:.75rem; color:var(--muted);
   font-variant-numeric:tabular-nums;
 }
 .vb-c[data-hero] .vb-n{ color:var(--text); font-weight:700; }
 .vb-x{ display:flex; gap:.35rem; margin-top:.3rem; }
-.vb-x span{ flex:1 1 0; text-align:center; font-size:.66rem; color:var(--muted); }
+.vb-x span{ flex:1 1 0; text-align:center; font-size:.75rem; color:var(--muted); }
 
 /* ---- Line ---------------------------------------------------------------- */
 /* Direct-labelled at the peak instead of a legend box: one series needs no key,
@@ -3226,7 +3268,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .ln-y{
   display:flex; flex-direction:column; justify-content:space-between;
   height:8.5rem; text-align:right;
-  font-family:ui-monospace,Consolas,monospace; font-size:.66rem;
+  font-family:ui-monospace,Consolas,monospace; font-size:.75rem;
   color:var(--muted); font-variant-numeric:tabular-nums;
 }
 /* The first and last ticks sit ON the top and bottom gridlines, so they are
@@ -3244,13 +3286,13 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .ln-peak{ position:absolute; transform:translateX(-50%); white-space:nowrap; }
 .ln-peak[data-first]{ transform:none; }
 .ln-peak[data-last]{ transform:translateX(-100%); }
-.ln-lab{ font-size:.7rem; font-weight:600; color:var(--ch-hero); }
+.ln-lab{ font-size:.75rem; font-weight:600; color:var(--ch-hero); }
 /* Each label is placed at its own point's x. In equal-width slots a label sits
    at (i+0.5)/n while its point sits at i/(n-1) — invisible at twelve points and
    most of a week off at twenty-eight. */
 .ln-x{ position:relative; height:1rem; margin:.35rem 0 0 2.85rem; }
 .ln-x span{
-  position:absolute; top:0; font-size:.66rem; color:var(--muted);
+  position:absolute; top:0; font-size:.75rem; color:var(--muted);
   white-space:nowrap; transform:translateX(-50%);
 }
 .ln-x span[data-first]{ transform:none; }
@@ -3268,7 +3310,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .sb-pending{  background:var(--k-warn-f); }
 .sb-key{
   display:flex; gap:1rem; flex-wrap:wrap; margin-top:.6rem;
-  font-size:.74rem; color:var(--text-2);
+  font-size:.75rem; color:var(--text-2);
 }
 .sb-key span{ display:flex; align-items:center; gap:.35rem; }
 .sb-key b{ font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; }
@@ -3290,7 +3332,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .bal-u{ background:var(--ch-mute); }
 .bal-k{ background:var(--ch-hero); }
 .bal-v{
-  font-family:ui-monospace,Consolas,monospace; font-size:.73rem;
+  font-family:ui-monospace,Consolas,monospace; font-size:.75rem;
   color:var(--text-2); white-space:nowrap;
 }
 /* Three days or fewer left, on the absolute figure — 65% of three days and 65%
@@ -3314,13 +3356,13 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .wl-r:last-of-type{ border-bottom:0; }
 .wl-r:has(.wl-act){ grid-template-columns:4.4rem minmax(0,1fr) auto auto; }
 .wl-ref{
-  font-family:ui-monospace,Consolas,monospace; font-size:.71rem; color:var(--muted);
+  font-family:ui-monospace,Consolas,monospace; font-size:.75rem; color:var(--muted);
 }
 .wl-m{ color:var(--text-2); min-width:0; }
 .wl-m b{ color:var(--text); font-weight:600; }
 .wl-m small{ display:block; color:var(--muted); font-size:.92em; }
-.wl-age{ font-size:.72rem; white-space:nowrap; color:var(--text-2); }
-.wl-mono{ font-family:ui-monospace,Consolas,monospace; font-size:.71rem; }
+.wl-age{ font-size:.75rem; white-space:nowrap; color:var(--text-2); }
+.wl-mono{ font-family:ui-monospace,Consolas,monospace; font-size:.75rem; }
 .wl-age.hot{ color:var(--k-bad); font-weight:600; }
 .wl-act{ margin:0; }
 .wl-act button{
@@ -3360,7 +3402,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 /* Zero here is the good answer, so it is not painted as an alarm; any other
    number is the one thing on the page worth acting on. */
 .sv-n.is-bad{ color:var(--k-bad); }
-.sv-l{ font-size:.72rem; color:var(--muted); line-height:1.25; }
+.sv-l{ font-size:.75rem; color:var(--muted); line-height:1.25; }
 
 .sv-rows{ list-style:none; margin:0; padding:0; display:grid; gap:1rem; }
 .sv-row{ min-width:0; }
@@ -3373,7 +3415,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .sv-v{ margin-left:auto; font-size:.82rem; font-variant-numeric:tabular-nums; color:var(--text); }
 .sv-t{ height:.55rem; background:var(--ch-grid); border-radius:3px; overflow:hidden; }
 .sv-f{ display:block; height:100%; border-radius:3px; min-width:2px; }
-.sv-note{ margin:.3rem 0 0; font-size:.72rem; color:var(--muted); }
+.sv-note{ margin:.3rem 0 0; font-size:.75rem; color:var(--muted); }
 
 .sv-critical{ background:var(--k-bad-f); }
 .sv-high{ background:var(--k-warn-f); }
@@ -3736,7 +3778,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 }
 .rk-tabs label:has(input:focus-visible){ outline:2px solid var(--primary); outline-offset:2px; }
 .rk-count{
-  font-size:.7rem; padding:0 .35rem; border-radius:1rem;
+  font-size:.75rem; padding:0 .35rem; border-radius:1rem;
   background:color-mix(in srgb,var(--text) 8%,transparent);
 }
 .rk-tabs label:has(input:checked) .rk-count{ background:rgb(255 255 255 / .22); }
@@ -3757,7 +3799,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 #rk:has(#rk-MON:checked) .rk-pane[data-code="MON"],
 #rk:has(#rk-TL:checked) .rk-pane[data-code="TL"],
 #rk:has(#rk-AL:checked) .rk-pane[data-code="AL"]{ display:block; }
-.rk-table th{ font-size:.7rem; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); }
+.rk-table th{ font-size:.75rem; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); }
 .rk-th-rank{ width:4.5rem; }
 .rk-th-days{ width:13rem; }
 
@@ -3782,7 +3824,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .person-av{
   display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;
   width:1.9rem; height:1.9rem; border-radius:50%;
-  font-size:.68rem; font-weight:700; color:#fff; letter-spacing:.02em;
+  font-size:.75rem; font-weight:700; color:#fff; letter-spacing:.02em;
 }
 .person-av[data-n="0"]{ background:var(--lt-s1); }
 .person-av[data-n="1"]{ background:var(--lt-s2); }
@@ -3833,12 +3875,12 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .cv-r[data-risk] .cv-f{ background:var(--k-bad-f); }
 .cv-r[data-risk] .hb-l{ color:var(--text); font-weight:600; }
 .cv-v{
-  font-family:ui-monospace,Consolas,monospace; font-size:.72rem;
+  font-family:ui-monospace,Consolas,monospace; font-size:.75rem;
   text-align:right; color:var(--text-2);
 }
 .cv-r[data-risk] .cv-v{ color:var(--k-bad); font-weight:600; }
 .cv-when{
-  font-size:.68rem; color:var(--muted);
+  font-size:.75rem; color:var(--muted);
   margin:-.1rem 0 .5rem; padding-left:calc(11rem + .6rem);
 }
 @media (max-width:640px){ .cv-when{ padding-left:0; } }
@@ -3919,7 +3961,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 @media (max-width:900px){ .perm-cols{ columns:1; } }
 .perm-group{ break-inside:avoid; margin-bottom:1.15rem; }
 .perm-cap{
-  font-size:.66rem; letter-spacing:.09em; text-transform:uppercase;
+  font-size:.75rem; letter-spacing:.09em; text-transform:uppercase;
   color:var(--muted); font-weight:600; margin:0 0 .4rem;
   padding-bottom:.25rem; border-bottom:1px solid var(--border);
 }
@@ -3928,7 +3970,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .perm label{ font-size:.82rem; color:var(--text-2); cursor:pointer; margin:0; }
 .perm.is-locked label{ color:var(--muted); cursor:default; }
 .perm-lock{
-  font-size:.62rem; font-weight:600; padding:.05rem .32rem; border-radius:3px;
+  font-size:.75rem; font-weight:600; padding:.05rem .32rem; border-radius:3px;
   background:var(--surface-2); color:var(--muted); margin-left:.3rem;
   vertical-align:.08em;
 }
@@ -4065,7 +4107,7 @@ span.dash-link{ justify-content:flex-start; }
   color:var(--muted-2); text-decoration:line-through;
   text-decoration-thickness:1px;
 }
-.audit-arrow{ color:var(--muted-2); font-size:.7rem; }
+.audit-arrow{ color:var(--muted-2); font-size:.75rem; }
 .audit-now{ color:var(--text); font-weight:600; }
 /* Most entries change one or two fields. The few that change a dozen stay one
    row high until asked, so a single wide entry cannot push the rest of the

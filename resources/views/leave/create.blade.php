@@ -202,11 +202,23 @@
     <input class="lf-radio" type="radio" name="lf-step" id="lf-s3" aria-label="Step 3 of 4: Dates" @checked($openStep === 3)>
     <input class="lf-radio" type="radio" name="lf-step" id="lf-s4" aria-label="Step 4 of 4: Sign and submit" @checked($openStep === 4)>
 
+    @php
+        // Which steps the server found a problem on, so the rail can point at
+        // them. $stepOf already knows the field-to-step map the summary uses.
+        $badSteps = array_unique(array_map($stepOf, array_keys($errors->messages())));
+    @endphp
     <ol class="lf-track no-print">
-        <li><label for="lf-s1"><span class="lf-dot">1</span><span class="lf-lbl">Employee</span></label></li>
-        <li><label for="lf-s2"><span class="lf-dot">2</span><span class="lf-lbl">Leave type</span></label></li>
-        <li><label for="lf-s3"><span class="lf-dot">3</span><span class="lf-lbl">Dates</span></label></li>
-        <li><label for="lf-s4"><span class="lf-dot">4</span><span class="lf-lbl">Sign &amp; submit</span></label></li>
+        @foreach ([1 => 'Employee', 2 => 'Leave type', 3 => 'Dates', 4 => 'Sign & submit'] as $n => $label)
+            <li @class(['has-error' => in_array($n, $badSteps, true)])>
+                <label for="lf-s{{ $n }}">
+                    <span class="lf-dot">{{ $n }}</span>
+                    <span class="lf-lbl">{{ $label }}</span>
+                    @if (in_array($n, $badSteps, true))
+                        <span class="visually-hidden">has a problem</span>
+                    @endif
+                </label>
+            </li>
+        @endforeach
     </ol>
 
     <section class="lf-step" data-step="1">
