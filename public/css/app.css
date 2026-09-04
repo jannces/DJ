@@ -4177,7 +4177,7 @@ span.dash-link{ justify-content:flex-start; }
   gap:1rem; padding:1rem 1.15rem .75rem;
 }
 .set-group{
-  margin:0; font-size:.72rem; font-weight:600; letter-spacing:.09em;
+  margin:0; font-size:.75rem; font-weight:600; letter-spacing:.09em;
   text-transform:uppercase; color:var(--muted);
 }
 .set-count{ margin:0; font-size:.75rem; color:var(--muted-2); }
@@ -4193,7 +4193,7 @@ span.dash-link{ justify-content:flex-start; }
 .set-copy{ display:flex; flex-direction:column; gap:.15rem; min-width:0; margin:0; cursor:pointer; }
 .set-name{ font-size:.875rem; font-weight:550; color:var(--text); }
 .set-key{
-  font-family:var(--mono, ui-monospace, monospace); font-size:.72rem;
+  font-family:var(--mono, ui-monospace, monospace); font-size:.75rem;
   color:var(--muted-2); background:transparent; padding:0;
 }
 .set-control{ flex:none; display:flex; align-items:center; }
@@ -4302,7 +4302,7 @@ span.dash-link{ justify-content:flex-start; }
    times themselves vary from "2m" to "11mo". */
 .thread-when{
   flex:none; width:3.1rem; padding-top:.5rem;
-  font-size:.72rem; color:var(--muted); font-variant-numeric:tabular-nums;
+  font-size:.75rem; color:var(--muted); font-variant-numeric:tabular-nums;
 }
 .thread-av{ flex:none; margin-top:.15rem; }
 
@@ -4328,7 +4328,7 @@ span.dash-link{ justify-content:flex-start; }
 /* auto margin, not a spacer: the reference sits at the end of whatever room
    the line has, and falls in behind the dates when there is not enough. */
 .thread-ref{
-  margin-left:auto; font-size:.72rem; color:var(--muted-2);
+  margin-left:auto; font-size:.75rem; color:var(--muted-2);
   font-variant-numeric:tabular-nums; white-space:nowrap;
 }
 
@@ -4841,16 +4841,37 @@ span.dash-link{ justify-content:flex-start; }
 }
 .nb-title{ font-weight:700; font-size:1rem; color:var(--text); letter-spacing:-.015em; }
 .nb-count{
-  font-size:.7rem; font-weight:600; color:var(--primary);
+  font-size:.75rem; font-weight:600; color:var(--primary);
   background:var(--primary-soft); border-radius:2rem; padding:.1rem .45rem;
 }
 .nb-allread{ margin:0 0 0 auto; }
-.nb-link{
-  background:none; border:0; padding:0; font-size:.75rem;
-  color:var(--primary); cursor:pointer; text-decoration:underline;
-  text-underline-offset:.15em;
+/* A control, not a sentence. It was an underlined text link, which read as
+   prose in a header made of prose and was the easiest thing there to miss.
+   A tinted pill with the "mark everything" glyph gives it an edge to aim at
+   and matches the chip language the rest of this menu already uses. */
+.nb-allread-btn{
+  display:inline-flex; align-items:center; gap:.35rem;
+  padding:.3rem .6rem; border-radius:2rem;
+  border:1px solid transparent; background:var(--primary-soft);
+  /* --primary measures 4.24:1 on --primary-soft, just under the floor for
+     text this size. The hover variant is the same hue, one step darker. */
+  color:var(--primary-hover); font-size:.75rem; font-weight:600;
+  cursor:pointer; white-space:nowrap;
+  transition:background var(--dur) var(--ease), color var(--dur) var(--ease),
+             border-color var(--dur) var(--ease);
 }
-.nb-link:hover{ color:var(--primary-hover); }
+.nb-allread-btn i{ font-size:.85rem; }
+/* Fills on hover rather than just darkening: the pill is small, and a shift
+   of shade alone is easy to miss at this size. */
+.nb-allread-btn:hover{
+  background:var(--primary); color:#fff; border-color:var(--primary);
+}
+.nb-allread-btn:focus-visible{ outline:var(--focus-ring); outline-offset:2px; }
+.nb-allread-btn:active{ transform:translateY(.5px); }
+@media (prefers-reduced-motion: reduce){
+  .nb-allread-btn{ transition:none; }
+  .nb-allread-btn:active{ transform:none; }
+}
 
 .nb-list{
   list-style:none; margin:0; padding:0;
@@ -4890,15 +4911,15 @@ span.dash-link{ justify-content:flex-start; }
 /* Unread says so in a word. The row tint alone is 5% and reaches nobody who
    cannot see it; this badge is read out and is not a colour. */
 .nb-new{
-  flex:none; font-size:.62rem; font-weight:700; letter-spacing:.06em;
+  flex:none; font-size:.75rem; font-weight:700; letter-spacing:.06em;
   text-transform:uppercase; color:#fff; background:var(--success);
   border-radius:.25rem; padding:.1rem .3rem;
 }
 .nb-when{
-  flex:none; margin-left:auto; font-size:.7rem; color:var(--muted);
+  flex:none; margin-left:auto; font-size:.75rem; color:var(--muted);
   font-variant-numeric:tabular-nums;
 }
-.nb-meta{ font-size:.72rem; color:var(--muted); font-variant-numeric:tabular-nums; }
+.nb-meta{ font-size:.75rem; color:var(--muted); font-variant-numeric:tabular-nums; }
 .nb-meta[data-tone="bad"]{  color:var(--danger);  font-weight:600; }
 .nb-meta[data-tone="warn"]{ color:var(--warning); font-weight:600; }
 
@@ -4925,7 +4946,7 @@ span.dash-link{ justify-content:flex-start; }
 .thread-labels{
   display:flex; align-items:center; gap:.9rem;
   padding:.55rem 1.25rem; border-bottom:1px solid var(--border);
-  font-size:.7rem; font-weight:600; letter-spacing:.06em;
+  font-size:.75rem; font-weight:600; letter-spacing:.06em;
   text-transform:uppercase; color:var(--muted);
 }
 .thread-labels .thread-when{ padding-top:0; }

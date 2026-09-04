@@ -62,7 +62,11 @@
                     @if ($unread)<span class="nb-count">{{ $unread }} new</span>@endif
                     @if ($unread)
                         <form method="POST" action="{{ route('notifications.read-all') }}" data-no-loader class="nb-allread">
-                            @csrf<button class="nb-link" type="submit">Mark all read</button>
+                            @csrf
+                            <button class="nb-allread-btn" type="submit">
+                                <i class="bi bi-check2-all" aria-hidden="true"></i>
+                                <span>Mark all read</span>
+                            </button>
                         </form>
                     @endif
                 </div>
