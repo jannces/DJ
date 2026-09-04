@@ -38,6 +38,10 @@ return [
     ['heading' => 'Leave'],
     ['label' => 'Apply for Leave', 'icon' => 'bi-calendar-plus', 'route' => 'leave.create', 'permission' => 'leave.apply'],
     ['label' => 'My Leave Requests', 'icon' => 'bi-card-checklist', 'route' => 'leave.index', 'permission' => 'leave.view-own'],
+    // Sits under Leave rather than in an Account section of its own: the only
+    // thing a signature does here is go on the applicant's line of CSC Form
+    // No. 6, so it belongs beside the applications it signs.
+    ['label' => 'My Signature', 'icon' => 'bi-pen', 'route' => 'signature.edit', 'permission' => 'leave.view-own'],
     // "My Balances" was removed: leave credits and credit history now live on the
     // employee dashboard (single location, one query path — see DashboardService).
     // HR decides leave, and nobody else does. The Mayor oversees applications

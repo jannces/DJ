@@ -283,6 +283,15 @@
                     </div>
 
                     <div class="csc-sign">
+                        {{-- On screen the signature comes through the private
+                             route, which decides for itself whether the person
+                             reading is allowed to see it. Never a path into
+                             storage/, and never the profile's current file:
+                             this is the copy the application was filed with. --}}
+                        @if ($r->applicant_signature_path)
+                            <img class="csc-sigimg" src="{{ route('leave.signature', $r) }}"
+                                 alt="Signature of {{ $r->applicant_signature }}">
+                        @endif
                         <div class="csc-value text-center">{{ $r->applicant_signature }}</div>
                         <div class="csc-rule"></div>
                         <div class="csc-sublabel">(Signature of Applicant)</div>

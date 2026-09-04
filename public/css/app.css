@@ -548,6 +548,14 @@ footer.app-foot{ text-align:center; color:var(--muted-2); font-size:.76rem; padd
 .csc-credits td:first-child{ text-align:left; font-style:italic; }
 
 .csc-sign{ margin-top:16px; }
+/* The signature sits on the applicant's line at a height that matches the
+   printed form: capped so a tall scan and a wide one land the same, and
+   mix-blend-mode drops the white paper the signature was photographed on so
+   it does not print as a grey rectangle over the rule. */
+.csc-sigimg{
+  display:block; margin:0 auto -2px; max-height:34px; max-width:200px;
+  mix-blend-mode:multiply;
+}
 .csc-sign-input{ text-align:center; font-weight:600; }
 .csc-signatory{ margin-top:20px; text-align:center; }
 .csc-signatory-wide{ margin-top:14px; }

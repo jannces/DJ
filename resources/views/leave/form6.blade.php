@@ -98,6 +98,16 @@
     // PaperSizeTest holds the one-page guarantee on all four, and it stresses
     // the long name and office deliberately, so that margin is measured
     // against the worst realistic application rather than the tidiest one.
+    // The signature file this application was filed with, as an absolute path
+    // dompdf can open. Verified to exist here rather than trusted from the
+    // column: a missing file must print the typed name, not a broken image on
+    // a government form.
+    $sigFile = null;
+    if ($r->applicant_signature_path) {
+        $candidate = \Illuminate\Support\Facades\Storage::disk('local')->path($r->applicant_signature_path);
+        $sigFile = is_file($candidate) ? $candidate : null;
+    }
+
     $bumps = ['legal' => 1.5, 'folio' => 1.5, 'a4' => 1.2, 'letter' => 0.8];
     $bump = $bumps[$paper ?? 'legal'] ?? 1.5;
     $pt = fn (float $base) => round($base + $bump, 2).'pt';
@@ -164,6 +174,10 @@
 
   .sign { text-align:center; padding-top:7pt; }
   .signline { border-top:1px solid #000; margin:0 auto; width:80%; }
+  /* Sized so a signature sits on the line rather than towering over it. The
+     height is capped and the width left to follow, so a wide scan and a tall
+     one both come out the same height on the paper. */
+  .sigimg { display:block; margin:0 auto -1pt; max-height:26pt; max-width:150pt; }
   .signname { font-weight:bold; font-size:{{ $pt(6.6) }}; }
   .foot { font-size:{{ $pt(5.2) }}; padding-top:2px; }
 </style></head>
@@ -284,7 +298,23 @@
           <tr><td class="b">{!! $box(! $r->commutation) !!}</td><td>Not Requested</td></tr>
           <tr><td class="b">{!! $box((bool) $r->commutation) !!}</td><td>Requested</td></tr>
         </table>
+        {{--
+          The applicant's signature, if they have one on file, and their typed
+          name if they do not.
+
+          dompdf reads the image off the local disk with public_path()/an
+          absolute path rather than fetching a URL: the signature is on the
+          PRIVATE disk behind an authorisation check, so a URL here would
+          either fail or -- worse -- have to be made fetchable without one.
+
+          The name is printed under the image either way. On the paper form
+          the applicant's name is written under the signature, and a signature
+          alone does not tell a reader who signed.
+        --}}
         <div class="sign">
+          @if ($sigFile)
+            <img class="sigimg" src="{{ $sigFile }}" alt="">
+          @endif
           <div class="signname">{{ $r->applicant_signature }}</div>
           <div class="signline"></div>
           <div class="lbl">(Signature of Applicant)</div>

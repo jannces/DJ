@@ -15,7 +15,8 @@ class EmployeeProfile extends Model
         'user_id', 'employee_no', 'first_name', 'middle_name', 'last_name',
         'gender', 'civil_status', 'birth_date', 'contact_no', 'address',
         'salary', 'department_id', 'position_id', 'employment_status',
-        'date_hired', 'signature_path', 'is_solo_parent',
+        'date_hired', 'signature_path', 'signature_hash', 'signature_uploaded_at',
+        'is_solo_parent',
     ];
 
     protected $casts = [

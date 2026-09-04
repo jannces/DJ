@@ -10,6 +10,7 @@ use App\Http\Controllers\Leave\LeaveTypeController;
 use App\Http\Controllers\Leave\PositionController;
 use App\Http\Controllers\Leave\RankingController;
 use App\Http\Controllers\Leave\ReportController;
+use App\Http\Controllers\SignatureController;
 use Illuminate\Support\Facades\Route;
 
 // Phase 6 populates these controllers; routes are declared here so the
@@ -36,6 +37,20 @@ Route::middleware('permission:leave.view-own')->group(function () {
     Route::get('leave/{leaveRequest}/timeline', [LeaveRequestController::class, 'timeline'])->name('leave.timeline');
     Route::post('leave/{leaveRequest}/documents', [LeaveRequestController::class, 'uploadDocument'])->name('leave.documents.store');
     Route::get('leave/documents/{document}', [LeaveRequestController::class, 'downloadDocument'])->name('leave.documents.download');
+    // The signature ON an application, addressed by the application. There is
+    // deliberately no route that takes an employee id: who may see a
+    // signature follows from who may see the application it is on.
+    Route::get('leave/{leaveRequest}/signature', [SignatureController::class, 'show'])->name('leave.signature');
+});
+
+// A person's own signature. Scoped to the signed-in user in the controller --
+// no id in the path, none in the form -- so `leave.view-own` is the whole
+// gate: anyone who can file leave can keep a signature to file it with.
+Route::middleware('permission:leave.view-own')->group(function () {
+    Route::get('profile/signature', [SignatureController::class, 'edit'])->name('signature.edit');
+    Route::get('profile/signature/image', [SignatureController::class, 'mine'])->name('signature.mine');
+    Route::post('profile/signature', [SignatureController::class, 'store'])->name('signature.store');
+    Route::delete('profile/signature', [SignatureController::class, 'destroy'])->name('signature.destroy');
 });
 Route::middleware('permission:leave.cancel')->group(function () {
     Route::post('leave/{leaveRequest}/cancel', [LeaveRequestController::class, 'cancel'])->name('leave.cancel');
