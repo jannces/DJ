@@ -12,10 +12,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Guards the employee-side restrictions: no global search, no CSV export, and
- * leave credits shown on the dashboard rather than a separate page. Each denial
- * is asserted against the ENDPOINT, not the markup — hiding a control in Blade
- * is not access control.
+ * Guards the employee-side restrictions: no CSV export, no global search (now
+ * removed outright), and leave credits shown on the dashboard rather than on a
+ * separate page. Each denial is asserted against the ENDPOINT, not the markup —
+ * hiding a control in Blade is not access control.
  */
 class EmployeeInterfaceTest extends TestCase
 {
@@ -45,34 +45,38 @@ class EmployeeInterfaceTest extends TestCase
 
     // ---------------------------------------------------------------- search
 
-    public function test_employee_cannot_reach_the_global_search_endpoint(): void
+    /**
+     * Global search is gone, for everyone.
+     *
+     * Three tests used to live here: employees denied /search, HR and the
+     * System Administrator allowed it. They asserted the `use-global-search`
+     * gate held the line between those roles. The feature has since been
+     * removed at the request of the LGU -- the box was the only way into it,
+     * and nobody used the page behind it -- so the gate, the controller, the
+     * view and the route are all gone with it.
+     *
+     * This is deliberately kept rather than simply deleted, and it asserts the
+     * stronger property: not "employees are refused" but "the endpoint does
+     * not exist for anyone, including the roles that used to have it". A
+     * removed feature cannot be re-exposed by a gate someone loosens later; if
+     * a future change reintroduces /search without thinking about who reaches
+     * it, this fails on the most privileged account in the system.
+     */
+    public function test_the_global_search_endpoint_no_longer_exists(): void
     {
-        $this->asEmployee()->get('/search?q=cruz')->assertForbidden();
+        foreach (['employee', 'hr', 'system-admin'] as $role) {
+            $this->actingAs($this->makeUser($role));
+            session(['otp_verified' => true]);
+
+            $this->get('/search?q=cruz')->assertNotFound();
+        }
     }
 
-    public function test_employee_dashboard_does_not_render_the_search_box(): void
+    public function test_no_dashboard_renders_a_global_search_box(): void
     {
         $this->asEmployee()->get('/dashboard')
             ->assertOk()
             ->assertDontSee('Search employees, requests, departments');
-    }
-
-    public function test_hr_can_still_use_global_search(): void
-    {
-        $hr = $this->makeUser('hr');
-        $this->actingAs($hr);
-        session(['otp_verified' => true]);
-
-        $this->get('/search?q=cruz')->assertOk();
-    }
-
-    public function test_system_administrator_can_still_use_global_search(): void
-    {
-        $admin = $this->makeUser('system-admin');
-        $this->actingAs($admin);
-        session(['otp_verified' => true]);
-
-        $this->get('/search?q=cruz')->assertOk();
     }
 
     // --------------------------------------------------------------- exports

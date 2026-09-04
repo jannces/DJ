@@ -8,17 +8,12 @@ use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SecurityController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\SearchController;
 use Illuminate\Support\Facades\Route;
 
 // Notifications (any authenticated user)
 Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
 Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
 Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
-
-// Global search — back-office only (see the `use-global-search` gate).
-// Employees are denied server-side, not merely hidden in the UI.
-Route::get('/search', [SearchController::class, 'index'])->middleware('can:use-global-search')->name('search');
 
 // Roles & permissions.
 // The five roles are fixed by the LGU's structure, so there is no `create` and

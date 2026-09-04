@@ -252,16 +252,6 @@ a:hover { color:var(--primary-hover); }
   backdrop-filter:saturate(180%) blur(12px); -webkit-backdrop-filter:saturate(180%) blur(12px);
   border-bottom:1px solid var(--border); padding:.6rem 1.25rem; min-height:62px;
 }
-.lms-search { position:relative; flex:1; max-width:460px; }
-.lms-search .bi { position:absolute; left:.85rem; top:50%; transform:translateY(-50%); color:var(--muted); }
-.lms-search input {
-  width:100%; height:42px; padding:0 1rem 0 2.5rem; border-radius:var(--r-full);
-  border:1px solid var(--border); background:var(--surface-2); color:var(--text);
-  font-size:.875rem; transition:all var(--dur) var(--ease);
-}
-.lms-search input:focus { background:var(--surface); border-color:var(--primary);
-  box-shadow:0 0 0 4px color-mix(in srgb,var(--primary) 15%,transparent); outline:none; }
-
 .icon-btn {
   width:42px; height:42px; border-radius:var(--r); border:1px solid var(--border);
   background:var(--surface); color:var(--text-2); display:inline-flex; align-items:center;
@@ -996,19 +986,6 @@ body{ background:var(--bg); color:var(--text); }
 }
 .icon-btn:hover{ background:var(--surface-hover); color:var(--text); }
 
-.lms-search{ max-width:260px; }
-.lms-search input{
-  background:var(--surface); border:1px solid var(--border); border-radius:.5rem;
-  font-size:.82rem; height:2rem; color:var(--text);
-}
-.lms-search .kbd{
-  position:absolute; right:.4rem; top:50%; transform:translateY(-50%);
-  display:inline-flex; gap:.12rem; pointer-events:none;
-}
-.kbd b{
-  font:inherit; font-size:.75rem; font-weight:500; color:var(--muted);
-  border:1px solid var(--border); border-radius:.25rem; padding:0 .28rem; background:var(--surface-2);
-}
 .profile-btn{
   border:1px solid var(--border); border-radius:.5rem; background:var(--surface);
   padding:.15rem .35rem .15rem .15rem;
@@ -1077,11 +1054,6 @@ body{ background:var(--bg); color:var(--text); }
 .dash{ --hair:var(--border); --dash-surface:var(--surface); }
 :root[data-bs-theme="dark"] .dash{ --hair:var(--border); --dash-surface:var(--surface); }
 :root[data-bs-theme="dark"] .dash .dash-frame{ background:var(--surface); }
-
-/* Search sits with the right-hand controls, sized for the ⌘K hint. */
-.lms-topbar .lms-search{ flex:0 1 240px; max-width:240px; }
-.lms-topbar .lms-search .bi-search{ left:.6rem; font-size:.85rem; }
-.lms-topbar .lms-search input{ height:2rem; padding:0 3.6rem 0 1.9rem; border-radius:.5rem; }
 
 /* ============================================================================
    SIDEBAR — correct behaviour under browser zoom and short viewports
@@ -4796,25 +4768,6 @@ span.dash-link{ justify-content:flex-start; }
   opacity:.55;
 }
 .toolbar-search[type="search"]::-webkit-search-cancel-button:hover{ opacity:1; }
-
-/* The topbar takes the same shape at its own size. Its magnifier is a real
-   element already, so no background image here. */
-.lms-search input[type="search"]{
-  height:2.5rem; border-radius:999px;
-  padding:0 3.6rem 0 2.5rem;
-  background:var(--surface); border:1px solid var(--border);
-  font-size:.85rem;
-  transition:border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
-}
-.lms-search input[type="search"]:hover{
-  border-color:var(--border-strong); box-shadow:0 1px 6px rgb(15 23 42 / .10);
-}
-.lms-search input[type="search"]:focus{
-  border-color:var(--primary);
-  box-shadow:0 1px 8px rgb(15 23 42 / .12),
-             0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
-}
-.lms-search .bi{ left:.95rem; }
 
 /* ==========================================================================
    NOTIFICATION INBOX

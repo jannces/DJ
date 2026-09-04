@@ -28,22 +28,6 @@ class AppServiceProvider extends ServiceProvider
             return $user->hasPermission($ability) ? true : null;
         });
 
-        // Global search is a back-office tool: it reaches employee records,
-        // departments and every leave request. Rank-and-file employees have no
-        // use for it and must not be offered it, so the ability is defined once
-        // here and consumed by BOTH the topbar (@can) and the /search route
-        // (can: middleware) — the UI and the server can never drift apart.
-        // Super Admin passes earlier via the wildcard in Gate::before.
-        Gate::define('use-global-search', function (User $user) {
-            foreach (['employees.view', 'leave.requests.view-all', 'users.manage', 'departments.manage'] as $permission) {
-                if ($user->hasPermission($permission)) {
-                    return true;
-                }
-            }
-
-            return false;
-        });
-
         // API rate limiting (STRIDE: Denial of Service). 60 req/min per user/IP.
         RateLimiter::for('api', function ($request) {
             $key = optional($request->user())->id ?: $request->ip();
