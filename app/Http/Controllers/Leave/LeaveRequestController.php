@@ -21,6 +21,16 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class LeaveRequestController extends Controller
 {
+    /**
+     * The papers CSC Form 6 is offered on, all verified to hold the whole
+     * sheet on one page: Legal 612x1008pt, Folio 612x936, A4 595x842, Letter
+     * 612x792. Adding a size here means checking it, not assuming it.
+     */
+    private const PAPER_SIZES = ['legal', 'folio', 'a4', 'letter'];
+
+    /** Long bond, which is the paper the LGU actually files this form on. */
+    private const DEFAULT_PAPER = 'legal';
+
     public function __construct(
         private readonly LeaveApplicationService $applications,
         private readonly LeavePolicyEngine $policy,
@@ -282,15 +292,44 @@ class LeaveRequestController extends Controller
         $vl = $this->balanceForUser($leaveRequest, 'VL');
         $sl = $this->balanceForUser($leaveRequest, 'SL');
 
-        // Legal portrait: the whole sheet — 1–5, all of 6 and all of 7 — is
-        // sized to land on ONE page, so the download is a single sheet of
-        // paper like the form it replaces.
+        // The sheet — 1–5, all of 6 and all of 7 — lands on ONE page on every
+        // size offered here, so the download is a single sheet of paper like
+        // the form it replaces. It used to be fixed to Legal, which meant a
+        // 14-inch page whatever was in the tray: printers then either shrank
+        // it until the citations were unreadable or clipped it.
+        // Resolved once and used twice, so the paper the view sets its type
+        // for is always the paper dompdf actually draws on. Reading the query
+        // string separately in each place is how those two quietly diverge.
+        $paper = $this->paperSize($request);
+
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('leave.form6', [
             'r' => $leaveRequest, 'vl' => $vl, 'sl' => $sl,
-            'types' => $this->cscOrderedTypes(),
-        ])->setPaper('legal', 'portrait');
+            'types' => $this->cscOrderedTypes(), 'paper' => $paper,
+        ])->setPaper($paper, 'portrait');
 
         return $pdf->stream("CSC-Form6-{$leaveRequest->reference_no}.pdf");
+    }
+
+    /**
+     * Which paper the sheet is drawn on.
+     *
+     * An allowlist, not the raw parameter. dompdf's setPaper() accepts any
+     * string it recognises and an arbitrary [x1,y1,x2,y2] array besides, so
+     * passing the query string through would let a caller choose the page
+     * geometry — a small thing on its own, and exactly the kind of unchecked
+     * input this system is not supposed to have.
+     *
+     * Legal -- long bond -- is the default, because that is the paper the LGU
+     * files this form on; an unknown value falls back to it rather than
+     * failing, since a wrong paper size is a nuisance and a 500 on a download
+     * is worse. An attack-shaped value never reaches here at all: the
+     * intrusion detection middleware refuses the request first.
+     */
+    private function paperSize(Request $request): string
+    {
+        $paper = strtolower((string) $request->query('paper', ''));
+
+        return in_array($paper, self::PAPER_SIZES, true) ? $paper : self::DEFAULT_PAPER;
     }
 
     /**

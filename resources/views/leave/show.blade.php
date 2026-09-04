@@ -14,7 +14,7 @@
     :back-url="$viewsAll ? route('leave.all') : route('leave.index')"
     :back-label="$viewsAll ? 'All Leave Requests' : 'My Leave Requests'">
     <div>
-        <a href="{{ route('leave.form6', $leaveRequest) }}" class="btn btn-outline-secondary btn-sm" target="_blank"><i class="bi bi-printer me-1"></i>CSC Form 6 (PDF)</a>
+        <x-paper-picker :request="$leaveRequest" />
         @if ($leaveRequest->user_id === auth()->id() && $leaveRequest->isCancellable())
             <form method="POST" action="{{ route('leave.cancel', $leaveRequest) }}" class="d-inline" data-confirm="Cancel this leave request? It cannot be un-cancelled.">
                 @csrf<button class="btn btn-outline-danger btn-sm">Cancel</button>

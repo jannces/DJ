@@ -8,8 +8,10 @@
   dompdf supports a small subset: tables and inline-block, no flexbox and no
   grid. So the layout here is built from tables where the web sheet uses flex.
 
-  It must fit ONE legal page (8.5in x 14in, set in the controller), which is why
-  the type is 6.4pt and the padding is measured in single pixels.
+  It must fit ONE page on every size the download offers -- long bond, short
+  bond, A4 and Letter -- which is why the type is small and the padding is
+  measured in single pixels. Letter is the binding case at 792pt; see the type
+  scale note below before enlarging anything.
 --}}
 @php
     $p = $r->user->employeeProfile;
@@ -66,11 +68,44 @@
     $sixA = $types->reject(fn ($t) => in_array($t->code, $inSixB, true));
     $sixB = $types->filter(fn ($t) => in_array($t->code, $inSixB, true))
                   ->sortBy(fn ($t) => array_search($t->code, $inSixB, true));
+
+    // ---- Type scale -------------------------------------------------------
+    //
+    // Every size on this sheet is a base size plus ONE bump. It was thirteen
+    // hardcoded numbers, which made "make the text a bit bigger" a thirteen-
+    // place edit with no way to check the result except by eye.
+    //
+    // The bump varies by paper, because the sheet has to stay on ONE page and
+    // the four sizes are not equally tight. Measured against a worst-case
+    // application -- a long hyphenated name, a full office title, a long
+    // position -- the whole sheet needs:
+    //
+    //     bump    height    legal 1008   folio 936   a4 842   letter 792
+    //     +0.8      775        +233         +161      +67       +17
+    //     +1.2      809        +199         +127      +33       -17
+    //     +1.5      847        +161          +89       -5       -55
+    //     +2.0      892        +116          +44      -50      -100
+    //
+    // A single shared bump would have to be Letter's, and Letter is the size
+    // this LGU uses least: capping the long bond it actually files on, which
+    // has 233pt spare, in order to protect Letter is the wrong trade. So each
+    // paper takes the largest bump that still leaves it roughly two lines of
+    // margin -- enough to absorb one more wrapped field.
+    //
+    // Letter is the only size that cannot take the full +1.5. It gets +0.8,
+    // still a clear lift on type that was 5.1pt at its smallest.
+    //
+    // PaperSizeTest holds the one-page guarantee on all four, and it stresses
+    // the long name and office deliberately, so that margin is measured
+    // against the worst realistic application rather than the tidiest one.
+    $bumps = ['legal' => 1.5, 'folio' => 1.5, 'a4' => 1.2, 'letter' => 0.8];
+    $bump = $bumps[$paper ?? 'legal'] ?? 1.5;
+    $pt = fn (float $base) => round($base + $bump, 2).'pt';
 @endphp
 <!DOCTYPE html>
 <html><head><meta charset="utf-8">
 <style>
-  @page { margin: 8mm 9mm; }
+  @page { margin: 5mm 7mm; }
   /* The sheet is set in a Times face, because the printed CSC form is.
 
      NOT the core "Times New Roman" though, and that is not a preference. dompdf
@@ -88,43 +123,49 @@
   @font-face { font-family:'LibSerif'; font-style:italic; font-weight:700;
     src:url("{{ public_path('fonts/liberation-serif/LiberationSerif-BoldItalic.ttf') }}") format('truetype'); }
 
-  body { font-family: 'LibSerif', "Times New Roman", Times, serif; font-size: 6.4pt; color:#000; line-height:1.25; }
+  /* Sizes come from $pt() above: the original base plus one shared bump.
+     A flat addition rather than a multiplier, because the sheet's smallest
+     type is the type that was hardest to read -- the legal citations set at
+     5.1pt were the complaint, and a flat bump lifts them proportionally more
+     than it lifts the 10pt title, which needed the help least. */
+  body { font-family: 'LibSerif', "Times New Roman", Times, serif; font-size: {{ $pt(6.4) }}; color:#000; line-height:1.16; }
 
   table { width:100%; border-collapse:collapse; }
-  td, th { border:1px solid #000; padding:2px 3px; vertical-align:top; }
+  td, th { border:1px solid #000; padding:1px 3px; vertical-align:top; }
   table.plain td { border:none; padding:0; }
 
-  .formno { font-size:6pt; font-style:italic; }
-  .annex  { font-size:6.4pt; font-weight:bold; text-align:right; }
+  .formno { font-size:{{ $pt(6) }}; font-style:italic; }
+  .annex  { font-size:{{ $pt(6.4) }}; font-weight:bold; text-align:right; }
   .head   { text-align:center; }
-  .lgu    { font-weight:bold; font-size:8pt; }
-  .title  { text-align:center; font-weight:bold; font-size:10pt;
-            letter-spacing:.5px; padding:3px 0 4px; }
+  .lgu    { font-weight:bold; font-size:{{ $pt(8) }}; }
+  .title  { text-align:center; font-weight:bold; font-size:{{ $pt(10) }};
+            letter-spacing:.5px; padding:2px 0 3px; }
 
   .sec { background:#e8e8e8; font-weight:bold; text-align:center;
-         letter-spacing:.4px; padding:2px 0; }
-  .num { font-weight:bold; font-size:6pt; }
-  .sub { font-weight:bold; font-size:6.2pt; padding-bottom:2px; }
-  .val { font-weight:bold; font-size:7.2pt; }
-  .cite { font-size:5.1pt; font-style:italic; }
+         letter-spacing:.4px; padding:1px 0; }
+  .num { font-weight:bold; font-size:{{ $pt(6) }}; }
+  .sub { font-weight:bold; font-size:{{ $pt(6.2) }}; padding-bottom:2px; }
+  .val { font-weight:bold; font-size:{{ $pt(7.2) }}; }
+  .cite { font-size:{{ $pt(5.1) }}; font-style:italic; }
   .case { font-style:italic; padding-top:2px; }
-  .lbl  { font-size:6pt; text-align:center; }
+  .lbl  { font-size:{{ $pt(6) }}; text-align:center; }
 
-  /* Drawn checkbox: 6pt square, an "x" when ticked. */
-  .bx { display:inline-block; width:5pt; height:5pt; line-height:5pt;
-        border:1px solid #000; text-align:center; font-size:5pt; font-weight:bold; }
+  /* Drawn checkbox, sized off the same scale as the text beside it: a box
+     left at its old 5pt against grown type reads as a smudge, not a tick. */
+  .bx { display:inline-block; width:{{ $pt(5) }}; height:{{ $pt(5) }}; line-height:{{ $pt(5) }};
+        border:1px solid #000; text-align:center; font-size:{{ $pt(5) }}; font-weight:bold; }
   /* Value on a ruled line. */
   .rl { display:inline-block; border-bottom:1px solid #000; min-width:40pt; }
   .blank { display:inline-block; border-bottom:1px solid #000; width:26pt; }
 
   /* 6.A rows: the box in a narrow cell keeps long names from wrapping under it. */
   table.rows td { border:none; padding:0 0 1px 0; vertical-align:top; }
-  table.rows td.b { width:8pt; }
+  table.rows td.b { width:{{ $pt(8.2) }}; }
 
-  .sign { text-align:center; padding-top:9pt; }
+  .sign { text-align:center; padding-top:7pt; }
   .signline { border-top:1px solid #000; margin:0 auto; width:80%; }
-  .signname { font-weight:bold; font-size:6.6pt; }
-  .foot { font-size:5.2pt; padding-top:3px; }
+  .signname { font-weight:bold; font-size:{{ $pt(6.6) }}; }
+  .foot { font-size:{{ $pt(5.2) }}; padding-top:2px; }
 </style></head>
 <body>
 

@@ -4959,3 +4959,18 @@ span.dash-link{ justify-content:flex-start; }
 @media (max-width:899px){
   .thread-labels{ display:none; }
 }
+
+/* ---- Paper size picker ----------------------------------------------------
+   The dimension sits to the right of the name, greyed: "A4" is what you pick
+   by, "210 x 297 mm" is what you check when you are not sure which one the
+   tray holds. */
+.paper-item{ display:flex; align-items:baseline; justify-content:space-between; gap:1.25rem; }
+.paper-dim{ font-size:.75rem; color:var(--muted); font-variant-numeric:tabular-nums; }
+.dropdown-item:hover .paper-dim, .dropdown-item:focus .paper-dim{ color:inherit; opacity:.75; }
+
+/* Marks the size the plain Download button already gives you, so the primary
+   action and the list agree about what happens if you do not choose. At the
+   12px floor, not below it -- it is a real word, not a decoration. */
+.paper-default{ margin-left:.4rem; padding:.05rem .3rem; border-radius:.25rem;
+  font-size:.75rem; font-weight:600; letter-spacing:.02em;
+  background:var(--lgu-050, #eef2f7); color:var(--lgu-700, #24405e); }

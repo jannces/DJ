@@ -78,9 +78,7 @@
         <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
             <i class="bi bi-printer me-1"></i>Print
         </button>
-        <a href="{{ route('leave.form6', $r) }}" class="btn btn-lgu btn-sm">
-            <i class="bi bi-download me-1"></i>Download Form
-        </a>
+        <x-paper-picker :request="$r" />
     </div>
 </x-page-head>
 
