@@ -18,22 +18,22 @@
     </x-list-toolbar>
 
     <div data-list>
-    <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
+    <div class="table-responsive table-stack-wrap">
+    <table class="table table-hover align-middle mb-0 table-stack">
         <thead><tr><th>Reference</th><th>Employee</th><th>Type</th><th>Dates</th><th>Status</th><th></th></tr></thead>
         <tbody>
         @forelse ($requests as $r)
             <tr>
-                <td class="fw-semibold">{{ $r->reference_no }}</td>
+                <td class="fw-semibold" data-label="Reference">{{ $r->reference_no }}</td>
                 {{-- The name goes where the row goes: this row is a leave
                      application, so the applicant's name opens the application
                      and not their HR record. One row, one destination. --}}
-                <td>
+                <td data-label="Employee">
                     <a href="{{ route('leave.show', $r) }}" class="name-link fw-semibold">{{ $r->user->name }}</a>
                 </td>
-                <td>{{ $r->leaveType->name }}</td>
-                <td class="small">{{ $r->start_date->format('M d') }} – {{ $r->end_date->format('M d, Y') }}</td>
-                <td>@include('leave._status_badge', ['status' => $r->status])</td>
+                <td data-label="Type">{{ $r->leaveType->name }}</td>
+                <td class="small" data-label="Dates">{{ $r->start_date->format('M d') }} – {{ $r->end_date->format('M d, Y') }}</td>
+                <td data-label="Status">@include('leave._status_badge', ['status' => $r->status])</td>
                 <td class="text-end"><a href="{{ route('leave.show', $r) }}" class="btn btn-sm btn-outline-secondary">View</a></td>
             </tr>
         @empty

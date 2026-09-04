@@ -4130,6 +4130,95 @@ span.dash-link{ justify-content:flex-start; }
 .toolbar-search{ flex:1 1 15rem; min-width:11rem; max-width:24rem; }
 .toolbar-select{ width:auto; min-width:9rem; }
 .toolbar-clear{ padding-inline:.4rem; font-size:.8rem; }
+/* ==========================================================================
+   NARROW SCREENS
+   A leave list on a 390px phone was the worst-looking thing in the system:
+   six columns wanted 597px inside a 351px container, so every cell wrapped --
+   a reference number broke across three lines, rows grew to 245px, and Status
+   sat off the right edge with nothing on screen to say it was there.
+
+   Two different fixes, because there are two kinds of table here. The lists
+   people actually open on a phone become stacked cards. The rest -- holidays,
+   positions, roles, the security pages, all of them desk work -- keep the
+   table and get an honest horizontal scroll instead.
+   ========================================================================== */
+@media (max-width:640px){
+
+  /* ---- The toolbar stops being ragged ---- */
+  /* Three controls at three different widths, each sized by its own content,
+     read as a mistake once they stack. On one column they should agree. */
+  .list-toolbar{ padding:.8rem .9rem; gap:.55rem; }
+  .list-toolbar .toolbar-filters{ display:grid; grid-template-columns:1fr 1fr; gap:.5rem; width:100%; }
+  .toolbar-search{ flex:1 1 100%; min-width:0; max-width:none; width:100%; }
+  .toolbar-select{ width:100%; min-width:0; }
+  .toolbar-submit{ grid-column:1 / -1; }
+  .toolbar-clear{ grid-column:1 / -1; text-align:center; }
+
+  /* ---- Lists that become cards ---- */
+  /* The wrapper exists to scroll a wide table. There is no wide table left
+     here, and leaving it in place would clip the cards' shadow. */
+  .table-stack-wrap{ overflow:visible; }
+
+  /* The header row carries the labels, and each cell repeats its own through
+     data-label -- so the head is removed from sight but NOT from the
+     accessibility tree, which still needs it to describe the cells. */
+  .table-stack thead{
+    position:absolute; width:1px; height:1px; overflow:hidden;
+    clip-path:inset(50%); white-space:nowrap;
+  }
+  .table-stack, .table-stack tbody, .table-stack tr, .table-stack td{
+    display:block; width:100%;
+  }
+  .table-stack tr{
+    border:1px solid var(--border); border-radius:.75rem;
+    padding:.7rem .85rem; margin:0 .9rem .6rem; background:var(--surface);
+    width:auto;
+  }
+  .table-stack tr:last-child{ margin-bottom:.9rem; }
+  /* The hairlines between cells are kept -- they turn the card into a
+     definition list, which is what it is -- but the card's own edge already
+     closes the last one, so that rule is dropped. The selector has to be
+     this specific to beat `.card .table > tbody > tr > td`, which sets a
+     border-bottom on every cell in the sheet. */
+  .card .table-stack > tbody > tr > td{
+    border:0; border-bottom:1px solid var(--border);
+    padding:.45rem 0; display:flex; gap:1rem;
+    align-items:baseline; justify-content:space-between; text-align:right;
+  }
+  .card .table-stack > tbody > tr > td:last-child{ border-bottom:0; }
+  .table-stack td::before{
+    content:attr(data-label); color:var(--muted); font-size:.78rem;
+    font-weight:500; flex:none; text-align:left;
+  }
+  /* The reference leads the card, so it gets the line to itself. */
+  .card .table-stack > tbody > tr > td[data-label="Reference"]{
+    font-size:1rem; padding-bottom:.5rem; text-align:left;
+  }
+  .table-stack td[data-label="Reference"]::before{ display:none; }
+  /* An action cell has no label to print and should span the card. */
+  .card .table-stack > tbody > tr > td.text-end{ justify-content:stretch; padding-top:.6rem; }
+  .table-stack td.text-end::before{ display:none; }
+  .table-stack td.text-end .btn{ width:100%; }
+  .table-stack .dash-empty, .table-stack td[colspan]{ text-align:center; }
+
+  /* ---- Lists that keep scrolling ---- */
+  /* Nothing wraps to three lines, and the shadow on the right edge says there
+     is more table out there -- which the old version never did. */
+  .table-responsive:not(.table-stack-wrap) > .table > :not(caption) > * > *{
+    white-space:nowrap;
+  }
+  .table-responsive:not(.table-stack-wrap){
+    background:
+      linear-gradient(to right, var(--surface) 30%, transparent),
+      linear-gradient(to left,  var(--surface) 30%, transparent) 100% 0,
+      radial-gradient(farthest-side at 0 50%, rgb(15 23 42 / .16), transparent),
+      radial-gradient(farthest-side at 100% 50%, rgb(15 23 42 / .16), transparent) 100% 0;
+    background-repeat:no-repeat;
+    background-size:36px 100%, 36px 100%, 12px 100%, 12px 100%;
+    background-attachment:local, local, scroll, scroll;
+  }
+}
+
 /* While the rows are being fetched, the old ones are still readable but are
    plainly not the answer yet. */
 [data-list][aria-busy="true"]{ opacity:.55; transition:opacity var(--dur) var(--ease); }
