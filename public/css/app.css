@@ -986,13 +986,9 @@ body{ background:var(--bg); color:var(--text); }
   border-bottom:1px solid var(--border);
   box-shadow:none; height:52px; padding:0 1rem; gap:.6rem;
 }
-.top-sep{ width:1px; height:18px; background:var(--border); flex:none; }
-.top-title{
-  display:flex; align-items:center; gap:.45rem;
-  font-size:.85rem; font-weight:500; color:var(--text); min-width:0;
-}
-.top-title i{ font-size:.9rem; color:var(--muted); }
-.top-title span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* .top-sep divided the sidebar toggle from the page name; with the name
+   gone there are no longer two things for it to sit between. */
+/* .top-title is gone: it repeated the page's own <h1> one line above it. */
 
 .icon-btn{
   border-radius:.5rem; color:var(--muted); background:transparent;

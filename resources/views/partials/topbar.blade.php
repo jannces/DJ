@@ -6,10 +6,19 @@
         <i class="bi bi-layout-sidebar"></i>
     </button>
 
-    <span class="top-sep d-none d-sm-block" aria-hidden="true"></span>
-    <div class="top-title">
-        <i class="bi bi-grid-1x2"></i><span>@yield('title', 'Dashboard')</span>
-    </div>
+    {{--
+      No page name here.
+
+      It rendered @yield('title') -- the same string 25 pages already print as
+      their own <h1> a few pixels below it. Which name to keep was decided by
+      what each one does: the heading is semantic, it is what a screen reader
+      builds its outline from, and on several pages it carries something extra
+      like the pending count. This was a div.
+
+      Wayfinding does not go missing either. The sidebar marks the current page
+      with a filled pill and never scrolls away, so the topbar was the third
+      statement of one fact rather than the only one.
+    --}}
 
     <div class="ms-auto d-flex align-items-center gap-1">
         {{-- Back-office only. Employees never see the global search box, and the
