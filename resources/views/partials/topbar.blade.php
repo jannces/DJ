@@ -69,18 +69,51 @@
 
                 <ul class="nb-list">
                     @forelse ($inbox as $n)
+                        @php
+                            // The mark says what KIND of thing this is, because
+                            // half of these are not about a person at all -- an
+                            // auto-blocked IP has no name to take initials from.
+                            // Leave notifications carry a reference; security
+                            // ones carry an address.
+                            $ref = $n->data['reference_no'] ?? null;
+                            $state = $n->data['status'] ?? null;
+                            $tone = match ($state) {
+                                'approved' => 'ok',
+                                'rejected' => 'bad',
+                                'returned' => 'warn',
+                                default => $ref ? 'info' : 'bad',
+                            };
+                            $meta = $ref
+                                ? trim($ref.($state ? ' · '.ucfirst(str_replace('_', ' ', $state)) : ''))
+                                : (isset($n->data['ip']) ? 'IP '.$n->data['ip'] : null);
+                        @endphp
                         <li class="nb-item @unless($n->read_at) is-unread @endunless">
-                            <span class="nb-when">{{ $n->created_at->diffForHumans(short: true, syntax: \Carbon\CarbonInterface::DIFF_ABSOLUTE) }}</span>
+                            <span class="nb-mark" data-tone="{{ $tone }}" aria-hidden="true">
+                                <i class="bi {{ $ref ? 'bi-file-earmark-text' : 'bi-shield-exclamation' }}"></i>
+                            </span>
+
                             <a class="nb-body" href="{{ $n->data['url'] ?? route('notifications.index') }}">
-                                <span class="nb-subject">{{ $n->data['title'] ?? 'Notification' }}</span>
-                                <span class="nb-text">{{ \Illuminate\Support\Str::limit($n->data['message'] ?? '', 90) }}</span>
+                                <span class="nb-top">
+                                    <span class="nb-subject">{{ $n->data['title'] ?? 'Notification' }}</span>
+                                    @unless ($n->read_at)
+                                        <span class="nb-new">New</span>
+                                    @endunless
+                                    <time class="nb-when" datetime="{{ $n->created_at->toIso8601String() }}"
+                                          title="{{ $n->created_at->format('d M Y, g:i a') }}">
+                                        {{ $n->created_at->diffForHumans(short: true, syntax: \Carbon\CarbonInterface::DIFF_ABSOLUTE) }}
+                                    </time>
+                                </span>
+
+                                @if ($meta)
+                                    {{-- Coloured only when the status is one you
+                                         have to do something about. Approved and
+                                         submitted stay grey: there is nothing
+                                         urgent to say, so nothing shouts. --}}
+                                    <span class="nb-meta" data-tone="{{ $tone }}">{{ $meta }}</span>
+                                @endif
+
+                                <span class="nb-text">{{ $n->data['message'] ?? '' }}</span>
                             </a>
-                            {{-- The dot says unread on its own; the text beside
-                                 it is for anyone the colour does not reach. --}}
-                            @unless ($n->read_at)
-                                <span class="nb-dot" aria-hidden="true"></span>
-                                <span class="visually-hidden">Unread</span>
-                            @endunless
                         </li>
                     @empty
                         <li class="nb-empty">Nothing yet.</li>

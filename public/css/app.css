@@ -4270,9 +4270,16 @@ span.dash-link{ justify-content:flex-start; }
   border-bottom:0; padding:0; flex:1 1 24rem;
   justify-content:flex-end; gap:.5rem;
 }
-/* Wider than it was: the magnifier and its padding take 2.6rem off the
-   left, so the old 14rem cap cut the placeholder mid-word. */
-.thread-head .toolbar-search{ flex:1 1 12rem; min-width:9rem; max-width:18rem; }
+/* The search takes the room, the filters take what they need.
+
+   They were the wrong way round: the search measured 226px and the two
+   dropdowns 257px and 271px, because a <select> sizes itself to its WIDEST
+   OPTION rather than the selected one -- and this one carries "Department
+   review (archived flow)". So the least-used control was the widest thing on
+   the bar. A fixed width fixes that; the closed control truncates, while the
+   open list is drawn by the browser at full width and is unaffected. */
+.thread-head .toolbar-search{ flex:1 1 22rem; min-width:12rem; max-width:34rem; }
+.thread-head .toolbar-select{ flex:0 0 auto; width:9.5rem; min-width:0; }
 /* One line once there is room for one. Below this the toolbar wraps as it
    does everywhere else, which is the behaviour its own rules already give. */
 @media (min-width:900px){
@@ -4815,20 +4822,24 @@ span.dash-link{ justify-content:flex-start; }
 
 /* ==========================================================================
    NOTIFICATION INBOX
-   The bell drops a short inbox rather than sending you to a page. Same shape
-   as the leave list: when it arrived down the left, the thing itself beside
-   it, one row per notification.
+   The bell drops a short inbox. A typed mark on the left, the title with its
+   unread badge and the time on one line, what it concerns underneath, then two
+   lines of the message itself.
+
+   NO SEARCH OR FILTER IN THE HEADER. Six rows do not need either, and a
+   control that cannot usefully act on what is under it is worse than no
+   control -- searching belongs on the page behind "See all".
    ========================================================================== */
 .nb-menu{
-  width:min(24rem, calc(100vw - 1.6rem));
+  width:min(28rem, calc(100vw - 1.6rem));
   padding:0; border-radius:.9rem; overflow:hidden;
   border:1px solid var(--border); box-shadow:var(--card-shadow);
 }
 .nb-head{
   display:flex; align-items:center; gap:.5rem;
-  padding:.75rem .9rem; border-bottom:1px solid var(--border);
+  padding:.8rem .95rem; border-bottom:1px solid var(--border);
 }
-.nb-title{ font-weight:650; font-size:.9rem; color:var(--text); }
+.nb-title{ font-weight:700; font-size:1rem; color:var(--text); letter-spacing:-.015em; }
 .nb-count{
   font-size:.7rem; font-weight:600; color:var(--primary);
   background:var(--primary-soft); border-radius:2rem; padding:.1rem .45rem;
@@ -4841,37 +4852,65 @@ span.dash-link{ justify-content:flex-start; }
 }
 .nb-link:hover{ color:var(--primary-hover); }
 
-/* Capped and scrollable: six is the most it will ever hold, but a long
-   subject on a short screen should not push the footer off the bottom. */
 .nb-list{
   list-style:none; margin:0; padding:0;
-  max-height:min(22rem, 60vh); overflow-y:auto; overscroll-behavior:contain;
+  max-height:min(26rem, 62vh); overflow-y:auto; overscroll-behavior:contain;
 }
 .nb-item{
-  display:flex; align-items:flex-start; gap:.65rem;
-  padding:.65rem .9rem; border-bottom:1px solid var(--border);
+  display:flex; align-items:flex-start; gap:.7rem;
+  padding:.75rem .95rem; border-bottom:1px solid var(--border);
 }
 .nb-item:last-child{ border-bottom:0; }
 .nb-item:hover{ background:var(--surface-hover); }
-.nb-item.is-unread{ background:color-mix(in srgb, var(--primary) 5%, transparent); }
-.nb-when{
-  flex:none; width:2.4rem; padding-top:.1rem;
-  font-size:.7rem; color:var(--muted); font-variant-numeric:tabular-nums;
+
+/* A disc of the notification's own tone. Not initials: half of these are about
+   an auto-blocked address, which has no name to take initials from, and a
+   silhouette for the other half would say nothing either. */
+.nb-mark{
+  flex:none; width:2.1rem; height:2.1rem; border-radius:50%;
+  display:grid; place-items:center; font-size:.9rem; margin-top:.1rem;
 }
+.nb-mark[data-tone="info"]{ background:var(--primary-soft); color:var(--primary); }
+.nb-mark[data-tone="ok"]{   background:var(--success-soft); color:var(--success); }
+.nb-mark[data-tone="warn"]{ background:var(--warning-soft); color:var(--warning); }
+.nb-mark[data-tone="bad"]{  background:var(--danger-soft);  color:var(--danger); }
+
 .nb-body{
-  flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:.1rem;
+  flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:.15rem;
   color:inherit; text-decoration:none;
 }
 .nb-body:hover{ color:inherit; }
 .nb-body:focus-visible{ outline:var(--focus-ring); outline-offset:2px; border-radius:.35rem; }
-.nb-subject{ font-size:.82rem; font-weight:600; color:var(--text); }
-.nb-text{ font-size:.76rem; color:var(--muted); line-height:1.4; }
-/* Unread is a dot AND a hidden word, never the tint alone. */
-.nb-dot{
-  flex:none; width:.45rem; height:.45rem; border-radius:50%;
-  background:var(--primary); margin-top:.45rem;
+
+.nb-top{ display:flex; align-items:baseline; gap:.4rem; }
+.nb-subject{
+  font-size:.85rem; font-weight:650; color:var(--text); min-width:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
-.nb-empty{ padding:2rem 1rem; text-align:center; color:var(--muted); font-size:.82rem; }
+/* Unread says so in a word. The row tint alone is 5% and reaches nobody who
+   cannot see it; this badge is read out and is not a colour. */
+.nb-new{
+  flex:none; font-size:.62rem; font-weight:700; letter-spacing:.06em;
+  text-transform:uppercase; color:#fff; background:var(--success);
+  border-radius:.25rem; padding:.1rem .3rem;
+}
+.nb-when{
+  flex:none; margin-left:auto; font-size:.7rem; color:var(--muted);
+  font-variant-numeric:tabular-nums;
+}
+.nb-meta{ font-size:.72rem; color:var(--muted); font-variant-numeric:tabular-nums; }
+.nb-meta[data-tone="bad"]{  color:var(--danger);  font-weight:600; }
+.nb-meta[data-tone="warn"]{ color:var(--warning); font-weight:600; }
+
+/* Two lines, then an ellipsis the browser places. This is what the wider menu
+   bought: the message used to be cut at 90 characters in PHP, mid-sentence,
+   whether or not there was room for the rest. */
+.nb-text{
+  font-size:.78rem; color:var(--text-2); line-height:1.45;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+.nb-empty{ padding:2.5rem 1rem; text-align:center; color:var(--muted); font-size:.82rem; }
 .nb-foot{
   display:block; padding:.7rem .9rem; text-align:center;
   font-size:.8rem; font-weight:550; color:var(--primary);
