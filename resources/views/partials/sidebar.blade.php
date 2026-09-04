@@ -28,23 +28,22 @@
 
 <nav class="lms-sidebar no-print" aria-label="Main navigation" id="lmsSidebar">
     {{--
-      The municipality's own mark, not a stand-in. This was a generic
+      The official seal of the Municipality of Alicia. This was a generic
       `bi-buildings` glyph in a coloured square, which is what every admin
       template ships with.
 
-      It is the MARK, not the full logo. One Alicia's lockup puts the fist
-      beside its own wordmark, and at the 34px this slot allows that wordmark
-      is an unreadable smudge sitting next to a perfectly readable "LGU
-      Alicia" saying much the same thing. So the fist comes in on its own and
-      the name stays in type beside it, which is the usual way a wide logo is
-      fitted to a narrow rail.
+      The seal is the right mark for this slot because it is already round
+      and already legible small -- its ring, hills and rice sheaf survive at
+      34px where a wordmark would not. It is also what the sign-in page and
+      the browser tab already show, so all three now agree.
 
-      The mark is decorative here: the words next to it already name the
-      organisation, so announcing it again would just repeat them.
+      Decorative: "LGU Alicia" sits in type immediately beside it, and the
+      seal says the same thing in a picture. Announcing both would read the
+      municipality's name to a screen reader twice in a row.
     --}}
     <div class="lms-brand">
-        <img class="brand-mark" src="{{ asset('img/one-alicia-mark.png') }}"
-             alt="" aria-hidden="true" width="256" height="256">
+        <img class="brand-mark" src="{{ asset('img/alicia-seal.png') }}"
+             alt="" aria-hidden="true" width="400" height="400">
         <div>
             <div class="brand-name">LGU Alicia</div>
             <div class="brand-sub">Leave Management</div>

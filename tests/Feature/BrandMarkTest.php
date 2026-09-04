@@ -13,12 +13,11 @@ use Tests\TestCase;
  * navigation, and a scales emoji drawn into an inline SVG as the favicon.
  * Neither said which municipality this belongs to.
  *
- * Three assets, each cut to its slot. The sidebar takes the FIST ALONE,
- * because One Alicia's full lockup carries its own wordmark and at 34px that
- * wordmark is a smudge sitting beside a perfectly readable "LGU Alicia" in
- * type. The favicon takes the circular seal, which is the only one of the
- * three that survives 16px -- and is what the sign-in page already used, so
- * the two layouts now agree.
+ * One asset in all three places: the municipal seal. It is already round and
+ * still legible small -- its ring, hills and rice sheaf survive at 34px in the
+ * rail and at 16px in the tab, where a wordmark would be a smudge. The
+ * sign-in page already used it, so the navigation, the tab and the sign-in
+ * screen finally show the same thing.
  */
 class BrandMarkTest extends TestCase
 {
@@ -33,12 +32,12 @@ class BrandMarkTest extends TestCase
         session(['otp_verified' => true]);
     }
 
-    public function test_the_navigation_carries_the_one_alicia_mark(): void
+    public function test_the_navigation_carries_the_municipal_seal(): void
     {
         $html = $this->get('/dashboard')->assertOk()->getContent();
 
         $this->assertStringContainsString('class="brand-mark"', $html);
-        $this->assertStringContainsString('img/one-alicia-mark.png', $html);
+        $this->assertStringContainsString('img/alicia-seal.png', $html);
 
         // The glyph-in-a-square it replaced.
         $this->assertStringNotContainsString('<div class="seal"><i class="bi bi-buildings">', $html,
@@ -76,7 +75,7 @@ class BrandMarkTest extends TestCase
     public function test_the_mark_reserves_its_own_space(): void
     {
         $this->assertMatchesRegularExpression(
-            '/<img class="brand-mark"[^>]*width="256"[^>]*height="256"/',
+            '/<img class="brand-mark"[^>]*width="400"[^>]*height="400"/',
             $this->get('/dashboard')->assertOk()->getContent());
     }
 
@@ -97,6 +96,11 @@ class BrandMarkTest extends TestCase
         $this->assertStringContainsString('object-fit:contain', $m[1],
             'the artwork is being cropped to the circle rather than fitted inside it');
         $this->assertStringNotContainsString('object-fit:cover', $m[1]);
+
+        // The seal draws its own ring. A disc behind it would be a second one.
+        $this->assertStringNotContainsString('background:#fff', $m[1],
+            'a white disc sits behind a mark that is already round');
+        $this->assertStringNotContainsString('border:1px', $m[1]);
     }
 
     /**
