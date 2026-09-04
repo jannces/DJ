@@ -1137,6 +1137,40 @@ body{ background:var(--bg); color:var(--text); }
 @media (max-width:1100px){
   .lms-sidebar{ position:fixed; top:0; left:0; height:100dvh; z-index:1040; }
 }
+/* ---- THE SHELL FLOATS -----------------------------------------------------
+   The rail and the topbar become cards sitting on the page rather than regions
+   divided from it by lines, with the ground running behind them.
+
+   WIDE SCREENS ONLY, and that is not a style preference. Below 1100px the rail
+   is a drawer that hides itself with `margin-left:-<width>`, and the collapse
+   toggle on desktop does the same. Setting a margin here without scoping it
+   would fight both of them -- a floating drawer is meaningless anyway when it
+   slides over the content.
+
+   `.lms-sidebar.collapsed` still wins on specificity, so the toggle keeps
+   working; the negative margin simply replaces the inset one. */
+@media (min-width:1101px){
+  .lms-sidebar{
+    margin:.8rem 0 .8rem .8rem;
+    height:calc(100dvh - 1.6rem);
+    max-height:calc(100dvh - 1.6rem);
+    top:.8rem;
+    border-radius:1.1rem;
+    border:1px solid var(--side-hair);
+    box-shadow:0 1px 2px rgb(15 23 42 / .05), 0 14px 30px -18px rgb(15 23 42 / .30);
+  }
+  .lms-topbar{
+    margin:.8rem .8rem 0;
+    top:.8rem;
+    border-radius:1.1rem;
+    border:1px solid var(--border);
+    box-shadow:0 1px 2px rgb(15 23 42 / .05);
+  }
+  /* The topbar no longer meets the content, so the gap has to be drawn rather
+     than inherited from a shared edge. */
+  .lms-content{ padding-top:1rem; }
+}
+
 /* Very short viewports (heavy zoom, or a landscape phone): the brand block
    compresses instead of eating the whole rail. */
 @media (max-height:520px){
