@@ -69,10 +69,24 @@ class ListFilterTest extends TestCase
 
         $html = $this->get($url)->assertOk()->getContent();
 
-        $this->assertMatchesRegularExpression(
-            '#<div class="card">\s*<form [^>]*class="list-toolbar"#', $html,
-            $url.' keeps its filters outside the list container'
-        );
+        // The rule is positional, so it is tested positionally: the toolbar
+        // opens after the container does and before the rows it filters. A
+        // regex on the exact tag sequence broke the moment All Leave Requests
+        // put a page title beside its filters -- still inside the card, still
+        // above the rows, still obeying the rule.
+        $card = strpos($html, '<div class="card');
+        $toolbar = strpos($html, 'class="list-toolbar"');
+        $rows = strpos($html, '<div data-list>');
+
+        $this->assertNotFalse($card, $url.' has no list container');
+        $this->assertNotFalse($toolbar, $url.' has no toolbar');
+        $this->assertNotFalse($rows, $url.' has no rows');
+
+        $this->assertGreaterThan($card, $toolbar,
+            $url.' keeps its filters outside the list container');
+        $this->assertLessThan($rows, $toolbar,
+            $url.' puts its filters below the rows they filter');
+
         $this->assertStringNotContainsString('card card-body mb-3', $html,
             $url.' still has the old floating filter card');
     }
@@ -88,8 +102,14 @@ class ListFilterTest extends TestCase
 
         $this->assertStringContainsString('<div data-list>', $html,
             $url.' has nothing for the script to replace');
-        $this->assertStringContainsString('<table',
-            substr($html, strpos($html, '<div data-list>')));
+
+        // Rows, not specifically a table: All Leave Requests renders its rows
+        // as a list rather than a grid, and the script swaps whatever is in
+        // here either way.
+        $swappable = substr($html, strpos($html, '<div data-list>'));
+        $this->assertTrue(
+            str_contains($swappable, '<table') || str_contains($swappable, '<ul class="thread-list"'),
+            $url.' has no rows inside the part the script replaces');
     }
 
     /**

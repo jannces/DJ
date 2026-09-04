@@ -36,10 +36,16 @@ class NarrowScreenTest extends TestCase
         $this->seedCore();
     }
 
-    /** @return array<string,string> the two lists that stack, by URL */
+    /**
+     * The lists that stack, by URL.
+     *
+     * All Leave Requests is NOT among them any more: it renders as a thread
+     * list, which is three flexible parts in a row and reflows on its own, so
+     * it needs no second layout underneath it.
+     */
     private function stackedLists(): array
     {
-        return ['/leave' => 'employee', '/all-leave' => 'hr'];
+        return ['/leave' => 'employee'];
     }
 
     private function seedRequest(): void
