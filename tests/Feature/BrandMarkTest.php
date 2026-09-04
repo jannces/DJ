@@ -81,6 +81,25 @@ class BrandMarkTest extends TestCase
     }
 
     /**
+     * The mark is a disc, and the artwork is inset rather than cropped.
+     *
+     * A circle cut straight out of the square would slice the yellow field at
+     * four points and read as damage. object-fit:contain scales the whole
+     * artwork into the disc instead, so the circle is made of white space.
+     */
+    public function test_the_mark_is_a_disc_that_does_not_cut_the_artwork(): void
+    {
+        $css = file_get_contents(public_path('css/app.css'));
+        preg_match('/\.lms-brand \.brand-mark\{(.*?)\}/s', $css, $m);
+
+        $this->assertNotEmpty($m, 'the brand mark has no rule of its own');
+        $this->assertStringContainsString('border-radius:50%', $m[1]);
+        $this->assertStringContainsString('object-fit:contain', $m[1],
+            'the artwork is being cropped to the circle rather than fitted inside it');
+        $this->assertStringNotContainsString('object-fit:cover', $m[1]);
+    }
+
+    /**
      * The short-viewport rule shrinks the mark, not the element it replaced.
      *
      * That block compressed `.seal`, which is gone from the brand row; without

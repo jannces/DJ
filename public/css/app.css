@@ -940,7 +940,15 @@ body{ background:var(--bg); color:var(--text); }
    No background and no tint: a municipal mark is not a theme token. */
 .lms-brand .brand-mark{
   width:34px; height:34px; flex-shrink:0; display:block;
-  object-fit:contain;
+  /* A disc, not a clipped square. The mark's yellow field runs to the
+     corners of its own artwork, so cropping a circle straight out of it
+     would slice that field at four points and read as damage. Instead the
+     fist is inset on a white disc: object-fit:contain scales the whole
+     artwork into the padded box, so nothing is cut and the circle is made
+     of white space rather than of a crop. */
+  border-radius:50%; background:#fff; padding:1px;
+  box-sizing:border-box; object-fit:contain;
+  border:1px solid var(--side-hair);
 }
 .lms-brand .seal{
   width:30px; height:30px; border-radius:.5rem; font-size:.95rem;
