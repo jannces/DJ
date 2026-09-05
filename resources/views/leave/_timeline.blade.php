@@ -9,9 +9,14 @@
   and never holds the timeline open.
 
   Expects: $r (LeaveRequest, with approvals.approver loaded).
+          $mine (bool, default true) -- whether the person reading is the
+          applicant. The employee's own pages address them directly; HR opens
+          the same request from the approval queue, where "you will be away"
+          is about somebody else and reads as though the officer had filed it.
 --}}
 
 @php
+    $mine = $mine ?? true;
     // Scoped to step 1. Unscoped, this picked up the department head's
     // notification row -- which is not pending, and is not a decision -- and
     // printed the head as the officer who decided the application.
@@ -55,8 +60,9 @@
                 <div class="tl-title">Department Head Notified</div>
                 <div class="tl-meta">{{ optional($tlNotified->acted_at)->format('F d, Y — g:i A') }}</div>
                 <div class="tl-note">
-                    {{ $tlNotified->signature ?? $tlNotified->approver?->name ?? 'Your department head' }}
-                    was informed that you will be away. No approval is needed from them.
+                    {{ $tlNotified->signature ?? $tlNotified->approver?->name
+                        ?? ($mine ? 'Your department head' : 'The department head') }}
+                    was informed of {{ $mine ? 'your' : 'this' }} absence. No approval is needed from them.
                 </div>
             </div>
         </li>
@@ -72,7 +78,13 @@
             @if ($tlDecided)
                 <div class="tl-note">Reviewed by HR.</div>
             @elseif ($tlReturned)
-                <div class="tl-note">Returned to you for revision — please review and resubmit.</div>
+                <div class="tl-note">
+                    @if ($mine)
+                        Returned to you for revision — please review and resubmit.
+                    @else
+                        Returned to the applicant for revision.
+                    @endif
+                </div>
             @else
                 <div class="tl-note">Waiting for HR to validate and decide.</div>
             @endif
@@ -103,7 +115,9 @@
             @elseif ($tlCancelled)
                 <div class="tl-title">Cancelled</div>
                 <div class="tl-meta">{{ optional($r->decided_at)->format('F d, Y — g:i A') }}</div>
-                <div class="tl-note">You cancelled this application.</div>
+                <div class="tl-note">
+                    {{ $mine ? 'You cancelled this application.' : 'Cancelled by the applicant.' }}
+                </div>
             @else
                 <div class="tl-title text-muted">Approved / Rejected</div>
                 <div class="tl-note">Will be updated when HR takes action.</div>
