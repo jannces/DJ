@@ -3276,12 +3276,24 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .dash.dash-sharp .ig-track{
   fill:none; stroke:var(--ch-grid); stroke-width:14; stroke-linecap:round;
 }
-/* The system's own violet rather than a new hue: the three grades below carry
-   red, amber and grey, and a fourth signal colour on the same card would be a
-   fourth thing to learn. */
-.dash.dash-sharp .ig-fill{
-  fill:none; stroke:var(--primary); stroke-width:14; stroke-linecap:round;
+/* One segment per grade, in the grade's own colour, with a gap between them.
+   The ring used to be a single violet sweep filled to the share refused; it
+   is divided now so it shows what the total in the middle is MADE of. The
+   colours are therefore not a new scale -- they are the same three the legend
+   beneath already uses, which is what lets the ring be read without one. */
+.dash.dash-sharp .ig-seg{
+  fill:none; stroke-width:14; stroke-linecap:butt;
 }
+.dash.dash-sharp .ig-critical{ stroke:var(--k-bad-f); }
+.dash.dash-sharp .ig-high{ stroke:var(--k-warn-f); }
+.dash.dash-sharp .ig-medium{ stroke:var(--ch-mute); }
+
+/* Shown only when something got through, so it reads as an exception rather
+   than a status line that is present either way. */
+.dash.dash-sharp .ig-alarm{
+  margin:10px 0 0; font-size:.8125rem; color:var(--k-bad);
+}
+.dash.dash-sharp .ig-alarm b{ font-weight:700; }
 /* Sat inside the arc's opening, not across its top. At 44% the caption line
    crossed the stroke as soon as the dial was narrowed; the ring's interior is
    widest just below its centre, so the stack is anchored there. */
@@ -3324,6 +3336,92 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
    on position. */
 .ln .p1.p1-bad{ stroke:var(--k-bad); }
 .ln-peak[data-tone="bad"] .ln-lab{ color:var(--k-bad); }
+
+/* ---- The trend chart's own furniture ------------------------------------
+   A wash under the curve, the week before it as a dotted line, a marker on
+   every reading, and a pill on the last one. */
+
+/* The wash fades out downward so the plot does not end in a hard band of
+   colour where the area meets the axis. */
+.ln-g0{ stop-color:var(--ch-hero); stop-opacity:.28; }
+.ln-g1{ stop-color:var(--ch-hero); stop-opacity:0; }
+.ln .ln-area{ stroke:none; }
+.ln svg:has(.ln-area-bad) .ln-g0{ stop-color:var(--k-bad); stop-opacity:.26; }
+.ln svg:has(.ln-area-bad) .ln-g1{ stop-color:var(--k-bad); stop-opacity:0; }
+
+/* Last week, behind. Dotted and unlabelled on the plot itself: it is there to
+   be compared against, not read off, and a second solid line would compete
+   with the one that matters. */
+.ln .ln-prev{
+  fill:none; stroke:var(--muted); stroke-width:1.5; opacity:.55;
+  stroke-dasharray:2 3; stroke-linecap:round;
+}
+
+/* One marker per reading. Positioned in percentages over the stretched plot,
+   as HTML rather than SVG, because preserveAspectRatio="none" would draw an
+   SVG circle as an ellipse. */
+.ln-dot{
+  position:absolute; width:7px; height:7px; margin:-3.5px 0 0 -3.5px;
+  border-radius:50%; background:var(--surface);
+  border:2px solid var(--ch-hero); box-sizing:border-box;
+}
+.ln-dot-bad{ border-color:var(--k-bad); }
+
+/* Which line is which, stated under the plot where nothing can land on top of
+   it and nothing can be clipped by the edge of the card. */
+.ln-legend{
+  display:flex; align-items:center; flex-wrap:wrap; gap:4px 16px; margin:8px 0 0;
+  font-size:.75rem; color:var(--muted);
+}
+.ln-legend span{ display:inline-flex; align-items:center; gap:6px; }
+.ln-legend i{ width:18px; height:0; flex:none; }
+.ln-legend-now{ border-top:2px solid var(--ch-hero); }
+.ln-legend-bad{ border-top:2px solid var(--k-bad); }
+.ln-legend-prev{ border-top:2px dotted color-mix(in srgb, var(--muted) 75%, transparent); }
+
+/* Taller here than the default plot, because on this page the chart shares a
+   row with the severity dial and was leaving a third of its own card empty. */
+.dash.dash-sharp .ln svg{ height:13rem; }
+
+/* ---- Recent alerts -------------------------------------------------------
+   Tinted cards, two up, one per statement. The tint is the grade and so is
+   the word beside the icon: a card that only means something if you can tell
+   red from amber means nothing to a reader who cannot, so every one is
+   labelled as well as coloured.
+
+   Each tone is built from one token with color-mix, so the wash, the border
+   and the ink can never drift apart, and both themes get the same treatment
+   from the same rule. */
+.al-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+@media (max-width:760px){ .al-grid{ grid-template-columns:minmax(0,1fr); } }
+
+.al{
+  --al:var(--muted);
+  border:1px solid color-mix(in srgb, var(--al) 38%, transparent);
+  background:color-mix(in srgb, var(--al) 9%, var(--dash-surface));
+  border-radius:10px; padding:12px 14px 14px; min-width:0;
+}
+.al[data-tone="critical"]{ --al:var(--k-bad); }
+.al[data-tone="warning"]{ --al:var(--k-warn); }
+.al[data-tone="info"]{ --al:var(--k-info); }
+.al[data-tone="healthy"]{ --al:var(--k-good); }
+
+.al-top{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.al-ic{ color:var(--al); font-size:1rem; line-height:1; }
+.al-tag{
+  font-size:.75rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--al);
+  background:color-mix(in srgb, var(--al) 18%, transparent);
+  padding:1px 7px; border-radius:999px;
+}
+.al-title{
+  margin:0 0 4px; font-size:.9375rem; font-weight:700; line-height:1.3;
+  color:var(--al);
+}
+/* The body stays in the page's own text colour. Running the sentence in the
+   tone as well would put a paragraph of low-contrast amber on the card, and
+   the grade is already stated twice above it. */
+.al-body{ margin:0; font-size:.8125rem; line-height:1.45; color:var(--text-2); }
 
 .kpi-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:.5rem; }
 .kpi-lb{

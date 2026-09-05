@@ -78,9 +78,16 @@ class SecurityDashboardTest extends TestCase
             $this->assertStringContainsString($label, $html);
         }
 
-        // The mapping, on screen.
-        $this->assertStringContainsString('xss + traversal', $html);
-        $this->assertStringContainsString('accounts locked', $html);
+        // The mapping is no longer printed under each bar -- dropped at the
+        // LGU's request. It still has to EXIST, because "Input manipulation"
+        // means nothing unless something says which detectors it covers, so
+        // the assertion moves from the screen to the source of truth.
+        $map = (new \ReflectionClass(\App\Services\Security\SecurityDashboardService::class))
+            ->getConstant('ATTACK_TYPES');
+        $this->assertSame('xss + traversal', $map['input']['source']);
+        $this->assertSame('accounts locked', $map['brute']['source']);
+        $this->assertStringNotContainsString('xss + traversal', $html,
+            'the per-bar caption is back on the panel');
 
         // Exactly three rows in that chart. Order is by count, so the set is
         // what is fixed, not the sequence.
@@ -130,9 +137,12 @@ class SecurityDashboardTest extends TestCase
         $this->assertTrue($rows[0]['blocked']);
         $this->assertFalse($rows[1]['blocked']);
 
-        $html = $this->asSysadmin()->get('/security')->assertOk()->getContent();
-        $this->assertStringContainsString('tag-blocked', $html);
-        $this->assertStringContainsString('tag-open', $html);
+        // The panel that drew these is gone from the dashboard -- the
+        // addresses are actionable on Blocked IPs, and repeating them here
+        // said nothing new. What is asserted is the RANKING, which Blocked IPs
+        // and the intruder list are both still built on.
+        $this->assertStringNotContainsString('Busiest source addresses',
+            $this->asSysadmin()->get('/security')->assertOk()->getContent());
     }
 
     /**
@@ -192,9 +202,13 @@ class SecurityDashboardTest extends TestCase
 
         preg_match('#Intrusion attempts per day.*?</div>\s*</div>#s', $html, $panel);
         $this->assertNotEmpty($panel);
-        $this->assertStringContainsString('<polyline', $panel[0]);
-        $this->assertStringContainsString('p1-bad', $panel[0],
-            'the trend line has lost its alarm colour');
+        // A curved <path>, not a <polyline>: the segments are cubic Béziers
+        // now, so seven daily counts read as one week rather than seven
+        // readings joined with a ruler.
+        $this->assertMatchesRegularExpression('/<path class="p1 p1-bad"[^>]*d="M /', $panel[0],
+            'the trend is no longer a curved path in the alarm colour');
+        $this->assertStringContainsString('ln-prev', $panel[0],
+            'the previous week is no longer drawn behind it');
 
         // Seven points, labelled Mon/Tue/Wed — M/T/W/T/F is ambiguous twice
         // over in five letters.

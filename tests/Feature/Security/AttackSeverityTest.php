@@ -211,7 +211,9 @@ class AttackSeverityTest extends TestCase
 
         $at = fn (string $needle) => strpos($html, $needle);
 
-        foreach (['Attempts by type', 'Most targeted pages', 'Busiest source addresses'] as $later) {
+        // "Most targeted pages" and "Busiest source addresses" were dropped
+        // from this page; what is left below severity is the attack breakdown.
+        foreach (['Attempts by type', 'Failed sign-ins by reason'] as $later) {
             $this->assertLessThan($at($later), $at('Attack severity'),
                 "severity no longer comes before \"$later\"");
         }

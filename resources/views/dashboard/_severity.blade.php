@@ -34,16 +34,48 @@
     $share = $total > 0 ? $refused / $total : 1.0;
 
     // A 240-degree arc centred at (100,100), opening at the bottom. Angles are
-    // SVG's: 0 is right, 90 is down. Sweeping 150 -> 270 -> 30 goes clockwise
-    // over the top, so both arc flags are 1.
+    // SVG's: 0 is right, 90 is down; the sweep runs 150 -> 270 -> 30, clockwise
+    // over the top.
     $r = 76;
+    $span = 240;
+    $start = 150;
+
     $point = function (float $deg) use ($r) {
         $rad = deg2rad($deg);
 
         return round(100 + $r * cos($rad), 2).' '.round(100 + $r * sin($rad), 2);
     };
-    $path = 'M '.$point(150).' A '.$r.' '.$r.' 0 1 1 '.$point(30);
-    $arc = 2 * M_PI * $r * (240 / 360);
+    $arcPath = function (float $from, float $to) use ($point) {
+        $large = ($to - $from) > 180 ? 1 : 0;
+
+        return 'M '.$point($from).' A 76 76 0 '.$large.' 1 '.$point($to);
+    };
+
+    // The track, and then one segment per grade.
+    //
+    // The arc used to be filled to the share refused -- a single sweep with a
+    // real ceiling. It is divided now, because the three grades already sum to
+    // the total in the middle, so the ring can show WHAT the total is made of
+    // rather than repeating a figure stated two lines above it. The gap
+    // between segments is what makes them three readings instead of a
+    // gradient.
+    $gap = 3.0;
+    $segments = [];
+    $at = $start;
+    foreach ($rows as $row) {
+        $slice = $total > 0 ? ($row['value'] / $total) * $span : 0.0;
+
+        // A grade with nothing in it draws nothing; a hairline stub would read
+        // as "a little of this" when the answer is none.
+        if ($slice > 0.01) {
+            $end = $at + max(0.5, $slice - $gap);
+            $segments[] = ['key' => $row['key'], 'd' => $arcPath($at, $end)];
+        }
+
+        $at += $slice;
+    }
+
+    $track = $arcPath($start, $start + $span);
 @endphp
 
 <div class="ig">
@@ -57,10 +89,11 @@
 
     <div class="ig-dial">
         <svg viewBox="0 0 200 150" role="img"
-             aria-label="{{ round($share * 100) }}% of this week's attempts were refused before reaching the application">
-            <path class="ig-track" d="{{ $path }}"/>
-            <path class="ig-fill" d="{{ $path }}"
-                  stroke-dasharray="{{ round($arc * $share, 2) }} {{ round($arc, 2) }}"/>
+             aria-label="{{ $total }} attempts this week: {{ collect($rows)->map(fn ($r) => $r['value'].' '.$r['label'])->implode(', ') }}">
+            <path class="ig-track" d="{{ $track }}"/>
+            @foreach ($segments as $segment)
+                <path class="ig-seg ig-{{ $segment['key'] }}" d="{{ $segment['d'] }}"/>
+            @endforeach
         </svg>
         <div class="ig-centre">
             <span class="ig-cap">Attempts this week</span>
@@ -79,19 +112,12 @@
         @endforeach
     </div>
 
-    <p class="dash-note">
-        {{-- Computed from the rules, not asserted: an attempt counts as
-             prevented when its category is one the detector refuses. --}}
-        @if ($reached === 0)
-            All {{ $total === 1 ? 'of it was' : 'were' }} refused before reaching the application.
-        @else
-            <b>{{ $reached }}</b> reached the application. That is the one thing on
-            this page worth acting on today.
-        @endif
-        @if ($severity['previous'] > 0 || $total > 0)
-            {{ $severity['previous'] }} last week{!! $change > 0
-                ? ' <span class="sv-up">&#9650;</span>'
-                : ($change < 0 ? ' <span class="sv-down">&#9660;</span>' : '') !!}
-        @endif
-    </p>
+    {{-- The prose footnote is gone at the LGU's request. What it said that
+         nothing else did -- that something got through -- is kept, because a
+         card reporting attacks must not go quiet on the one fact worth acting
+         on. It shows only when there IS something, rather than restating "all
+         were refused" on every quiet week. --}}
+    @if ($reached > 0)
+        <p class="ig-alarm"><b>{{ $reached }}</b> reached the application.</p>
+    @endif
 </div>

@@ -98,20 +98,135 @@ class SecurityDashboardService
 
     public function forDashboard(): array
     {
+        $trend = $this->intrusionsByDay();
+        $severity = $this->attackSeverity();
+        $queue = $this->unreviewed();
+        $failures = $this->failuresByReason();
+
         return [
             'kpis' => $this->kpis(),
-            'trend' => $this->intrusionsByDay(),
+            'trend' => $trend,
             'attacks' => $this->attacksByType(),
-            'attackers' => $this->topAttackers(),
-            'routes' => $this->targetedRoutes(),
 
-            'severity' => $this->attackSeverity(),
+            'severity' => $severity,
 
             // The three additions.
-            'queue' => $this->unreviewed(),
-            'failures' => $this->failuresByReason(),
+            'queue' => $queue,
+            'failures' => $failures,
             'privileges' => $this->privilegeChanges(),
+
+            // Derived from the four above, so this costs no query of its own.
+            'alerts' => $this->alerts($severity, $queue, $failures, $trend),
         ];
+    }
+
+    /**
+     * What the week's figures actually mean, as a short list of statements.
+     *
+     * The panels on this page each answer one question well and none of them
+     * answers "is anything wrong". An administrator opening the screen has to
+     * read four charts and do the comparison themselves; these do the
+     * comparison and say the answer.
+     *
+     * Every entry is COMPUTED from figures already on the page -- nothing here
+     * is a fixed message, and nothing is shown unless it is true right now. An
+     * alert nobody can trust is worse than no alert, so the thresholds are
+     * written down rather than tuned by feel:
+     *
+     *   critical  something got through, or an account was locked out
+     *   warning   attempts are up by half again on last week, or the failures
+     *             are dominated by usernames that do not exist
+     *   info      events are waiting to be reviewed
+     *   healthy   none of the above
+     *
+     * The healthy line is not decoration. A panel that shows nothing when
+     * nothing is wrong is indistinguishable from a panel that has broken, and
+     * on a security screen that difference matters.
+     *
+     * @return list<array{tone:string,label:string,title:string,body:string}>
+     */
+    private function alerts(array $severity, array $queue, array $failures, array $trend): array
+    {
+        $alerts = [];
+        $reached = (int) $severity['reached'];
+        $total = (int) $severity['total'];
+        $previous = (int) $severity['previous'];
+
+        if ($reached > 0) {
+            $alerts[] = [
+                'tone' => 'critical',
+                'label' => 'Critical',
+                'title' => $reached === 1
+                    ? 'An attempt reached the application'
+                    : $reached.' attempts reached the application',
+                'body' => 'The detector did not refuse '.($reached === 1 ? 'it' : 'them')
+                    .' before the request was served. Open Intrusion Logs and check what '
+                    .($reached === 1 ? 'it' : 'they').' asked for.',
+            ];
+        }
+
+        // Half again on last week, and enough of a base that the ratio means
+        // something -- 3 against 2 is not a trend.
+        if ($previous >= 4 && $total > $previous * 1.5) {
+            $alerts[] = [
+                'tone' => 'warning',
+                'label' => 'Warning',
+                'title' => 'Attempts are up sharply on last week',
+                'body' => $total.' this week against '.$previous.' last week. The week is '
+                    .'not over, so the rise is worth watching rather than acting on yet.',
+            ];
+        }
+
+        // Failures against usernames that do not exist are a different attack
+        // from failures against passwords: somebody is guessing accounts.
+        $unknown = 0;
+        $allFailures = 0;
+        foreach ($failures as $row) {
+            $allFailures += (int) $row['value'];
+            if (str_contains(strtolower($row['label']), 'unknown')) {
+                $unknown += (int) $row['value'];
+            }
+        }
+
+        if ($allFailures >= 8 && $unknown > $allFailures / 2) {
+            $alerts[] = [
+                'tone' => 'warning',
+                'label' => 'Warning',
+                'title' => 'Sign-in failures are mostly unknown usernames',
+                'body' => $unknown.' of '.$allFailures.' failures were against accounts that do '
+                    .'not exist. That is somebody guessing account names rather than passwords.',
+            ];
+        }
+
+        if (($queue['total'] ?? 0) > 0) {
+            $alerts[] = [
+                'tone' => 'info',
+                'label' => 'Info',
+                'title' => $queue['total'].' '.($queue['total'] === 1 ? 'event is' : 'events are')
+                    .' waiting to be reviewed',
+                'body' => 'Reviewing is a decision, not a page view: the count stays up until '
+                    .'an administrator marks '.($queue['total'] === 1 ? 'it' : 'them').' handled.',
+            ];
+        }
+
+        if (! $alerts) {
+            $peak = $trend['data'] ? max(array_map('intval', $trend['data'])) : 0;
+
+            $alerts[] = [
+                'tone' => 'healthy',
+                'label' => 'Healthy',
+                'title' => $total === 0
+                    ? 'No attacks detected this week'
+                    : 'Everything this week was refused',
+                'body' => $total === 0
+                    ? 'Nothing matched a detector signature in the last seven days, and no '
+                        .'events are waiting to be reviewed.'
+                    : 'All '.$total.' attempts were refused before reaching the application, '
+                        .'the busiest day carrying '.$peak.'. Nothing is outstanding.',
+            ];
+        }
+
+        return $alerts;
     }
 
     // ---------------------------------------------------------------- counters
@@ -279,22 +394,42 @@ class SecurityDashboardService
     // ------------------------------------------------------------------ charts
 
     /**
-     * Intrusion events per day for the last seven days.
+     * Intrusion events per day for the last seven days, and the seven before.
      *
      * Seven, not four weeks: attacks have no weekly rhythm to read a week
-     * against, and a spike matters on the day it happens.
+     * against, and a spike matters on the day it happens. The week before is
+     * carried alongside as `compare`, because "eleven on Thursday" means one
+     * thing after a quiet week and another after the same again -- the chart
+     * draws it as a dotted line behind the solid one.
+     *
+     * FOURTEEN days in ONE query, then split. Two queries would read more
+     * plainly, but the second would be the thing this method is tested for not
+     * doing -- a query per period is how a chart turns into a query storm --
+     * and the split is three lines.
      */
     public function intrusionsByDay(int $days = 7): array
     {
         $from = today()->subDays($days - 1);
+        $previousFrom = today()->subDays($days * 2 - 1);
 
         $counts = IntrusionLog::query()
-            ->where('created_at', '>=', $from->copy()->startOfDay())
+            ->where('created_at', '>=', $previousFrom->copy()->startOfDay())
             ->selectRaw('date(created_at) as day, count(*) as total')
             ->groupBy('day')
             ->pluck('total', 'day');
 
-        return $this->series($from, today(), $counts, fn (Carbon $d) => $d->format('D'));
+        $series = $this->series($from, today(), $counts, fn (Carbon $d) => $d->format('D'));
+
+        // The same seven slots, one week earlier, so the two lines sit point
+        // for point: last Thursday is drawn under this Thursday.
+        $compare = [];
+        for ($d = $previousFrom->copy(); $d->lt($from); $d->addDay()) {
+            $compare[] = (int) ($counts[$d->toDateString()] ?? 0);
+        }
+
+        $series['compare'] = $compare;
+
+        return $series;
     }
 
 /** @param callable(Carbon):string $label */
@@ -339,12 +474,17 @@ class SecurityDashboardService
             'brute' => $lockouts,
         ];
 
+        // No 'source' caption. It printed the stored category under each bar
+        // -- "xss + traversal", "sqli", "accounts locked" -- which was there to
+        // make the grouping visible rather than assumed. Dropped at the LGU's
+        // request; ATTACK_TYPES still records the mapping, and Intrusion Logs
+        // still shows the raw category per event, so nothing about which
+        // detector fired is lost, only its repetition on this panel.
         $rows = [];
         foreach (self::ATTACK_TYPES as $key => $type) {
             $rows[] = [
                 'key' => $key,
                 'label' => $type['label'],
-                'source' => $type['source'],
                 'value' => $values[$key],
             ];
         }
@@ -567,20 +707,7 @@ class SecurityDashboardService
         ])->all();
     }
 
-    /** What an attacker aims at says what they think is worth having. */
-    public function targetedRoutes(int $days = 30, int $limit = 6): array
-    {
-        return IntrusionLog::query()
-            ->where('created_at', '>=', now()->subDays($days)->startOfDay())
-            ->whereNotNull('route')->where('route', '!=', '')
-            ->selectRaw('route, count(*) as total')
-            ->groupBy('route')->orderByDesc('total')->limit($limit)
-            ->get()
-            ->map(fn ($row) => ['label' => '/'.ltrim($row->route, '/'), 'value' => (int) $row->total])
-            ->all();
-    }
-
-    // ------------------------------------------------------------- the queue
+// ------------------------------------------------------------- the queue
 
     /**
      * Events nobody has marked reviewed.

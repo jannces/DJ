@@ -21,16 +21,30 @@
     --}}
 
     <div class="ms-auto d-flex align-items-center gap-1">
+        {{--
+          The security alert BUTTON is gone; the alerting behind it is not.
+
+          As a control it was redundant: clicking it went to the Security
+          Dashboard, which the sidebar links two rows down. But the element was
+          never really a button. It carries the poll URL and interval, and
+          app.js binds to it to raise a toast the moment the detector logs an
+          intrusion while the administrator is on some other page -- the
+          "real-time" this system is named for, and the only part of it a
+          person is not required to go looking for.
+
+          So the icon and its count are removed and the holder stays, hidden.
+          Nothing is clickable, nothing shows in the bar, and an intrusion
+          still announces itself. The badge span stays inside the hidden holder
+          because the poller writes to it; without it the script would throw on
+          the first alert and stop polling silently.
+        --}}
         @can('security.dashboard')
-            <a href="{{ route('security.dashboard') }}" id="alert-bell" class="icon-btn"
-               data-url="{{ route('web.security.alerts') }}"
-               data-interval="{{ \App\Models\SystemSetting::get('general.alerts_poll_seconds', 15) }}"
-               {{-- Where an alert sends you to read what the address did. --}}
-               data-log-url="{{ route('security.intrusions') }}?q="
-               aria-label="Security alerts" title="Security alerts">
-                <i class="bi bi-shield-exclamation"></i>
-                <span id="alert-badge" class="dot-badge d-none">0</span>
-            </a>
+            <span id="alert-bell" class="d-none"
+                  data-url="{{ route('web.security.alerts') }}"
+                  data-interval="{{ \App\Models\SystemSetting::get('general.alerts_poll_seconds', 15) }}"
+                  data-log-url="{{ route('security.intrusions') }}?q=" aria-hidden="true">
+                <span id="alert-badge" class="d-none">0</span>
+            </span>
         @endcan
 
         {{--

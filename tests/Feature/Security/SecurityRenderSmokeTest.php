@@ -114,9 +114,9 @@ class SecurityRenderSmokeTest extends TestCase
 
         // Every card has something in it rather than its empty state.
         foreach ([
-            'Intrusion attempts per day', 'Attempts by type', 'Busiest source addresses',
-            'Most targeted pages', 'Attack severity',
-            'Unreviewed events', 'Failed sign-ins by reason', 'Privilege changes',
+            'Intrusion attempts per day', 'Attempts by type',
+            'Attack severity', 'Unreviewed events', 'Failed sign-ins by reason',
+            'Privilege changes',
         ] as $card) {
             $this->assertStringContainsString($card, $html);
         }
@@ -139,13 +139,21 @@ class SecurityRenderSmokeTest extends TestCase
         $top = (int) $yTicks[1][0];
         $this->assertGreaterThan(0, $top, 'the trend axis has no top');
 
-        preg_match('/<polyline[^>]*points="([^"]+)"/', $html, $line);
+        preg_match('/<path class="p1[^"]*"[^>]*d="([^"]+)"/', $html, $line);
         $this->assertNotEmpty($line, 'the trend is not drawn as a line');
 
-        $values = array_map(
-            fn ($pair) => (int) round((100 - (float) explode(',', $pair)[1]) / 100 * $top),
-            preg_split('/\s+/', trim($line[1]))
-        );
+        // The curve is "M x y C c1 c1, c2 c2, x y C ...". Each segment's LAST
+        // coordinate pair is a real reading; the two before it are control
+        // points and belong to no day. So: the M point, then the end of every
+        // C segment.
+        $segments = preg_split('/(?=C )/', trim($line[1]));
+        $ys = [];
+        foreach ($segments as $segment) {
+            preg_match_all('/-?[\d.]+/', $segment, $numbers);
+            $ys[] = (float) $numbers[0][count($numbers[0]) - 1];
+        }
+
+        $values = array_map(fn ($y) => (int) round((100 - $y) / 100 * $top), $ys);
 
         // Six on the last day, not five: today also carries the lockout.
         $this->assertSame([2, 0, 1, 0, 3, 2, 6], $values,
