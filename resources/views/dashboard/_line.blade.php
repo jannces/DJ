@@ -19,6 +19,9 @@
      * Expects:
      *   $series ['labels' => [...], 'data' => [...]]   '' skips a label
      *   $peakLabel string  what to call the high point ('peak', 'high')
+     *   $tone      string  optional: 'bad' draws the line in the system's
+     *                      alarm red, for a series where a rise is bad news.
+     *                      Omitted, it stays the neutral hero colour.
      */
     $data = array_map('intval', $series['data']);
     $labels = $series['labels'];
@@ -63,7 +66,8 @@
                 <line class="gl" x1="0" x2="100" y1="{{ $y($tick) }}" y2="{{ $y($tick) }}"/>
             @endforeach
             <line class="ax" x1="0" x2="100" y1="100" y2="100"/>
-            <polyline class="p1" points="{{ implode(' ', $points) }}" vector-effect="non-scaling-stroke"/>
+            <polyline class="p1 {{ isset($tone) ? 'p1-'.$tone : '' }}"
+                      points="{{ implode(' ', $points) }}" vector-effect="non-scaling-stroke"/>
         </svg>
         @if ($peakAt !== null)
             {{-- Above the point normally; below it when the peak sits on the
@@ -75,7 +79,8 @@
                 $below = $peakY < 20;
                 $edge = $peakAt === 0 ? ' data-first' : ($peakAt === $n - 1 ? ' data-last' : '');
             @endphp
-            <div class="ln-peak" style="left:{{ $x($peakAt) }}%;top:{{ $below ? $peakY + 7 : $peakY - 17 }}%" {!! $edge !!}>
+            <div class="ln-peak" style="left:{{ $x($peakAt) }}%;top:{{ $below ? $peakY + 7 : $peakY - 17 }}%"
+                 @isset($tone) data-tone="{{ $tone }}" @endisset {!! $edge !!}>
                 <span class="ln-lab">{{ $peakLabel ?? 'peak' }} {{ $peak }}</span>
             </div>
         @endif

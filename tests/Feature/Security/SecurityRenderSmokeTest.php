@@ -115,7 +115,7 @@ class SecurityRenderSmokeTest extends TestCase
         // Every card has something in it rather than its empty state.
         foreach ([
             'Intrusion attempts per day', 'Attempts by type', 'Busiest source addresses',
-            'Most targeted pages', 'Successful sign-ins per day',
+            'Most targeted pages', 'Attack severity',
             'Unreviewed events', 'Failed sign-ins by reason', 'Privilege changes',
         ] as $card) {
             $this->assertStringContainsString($card, $html);
@@ -124,11 +124,31 @@ class SecurityRenderSmokeTest extends TestCase
         $this->assertStringNotContainsString('No failed sign-ins in the last 7 days.', $html);
 
         // The seven days really are seven days: two of them are empty, one is
-        // the spike, and the columns are not all piled onto today.
-        preg_match('#<div class="vb">(.*?)</div>\s*<div class="vb-x">#s', $html, $columns);
-        preg_match_all('/<span class="vb-n">(\d+)<\/span>/', $columns[1], $counts);
+        // the spike, and the events are not all piled onto today.
+        //
+        // Read back off the polyline now that the trend is a line rather than
+        // columns. The partial plots y = 100 - (value / top) * 100 against the
+        // axis whose top tick is the first entry in .ln-y, so inverting that
+        // recovers the value at each point. Worth the arithmetic: this is the
+        // assertion that catches a series collapsing onto one day, which is
+        // exactly what a fixture bug did to this chart while it was being
+        // built -- every event landed on today and the chart looked like a
+        // single spike.
+        preg_match('#<div class="ln-y">(.*?)</div>#s', $html, $yAxis);
+        preg_match_all('/<span>(\d+)<\/span>/', $yAxis[1], $yTicks);
+        $top = (int) $yTicks[1][0];
+        $this->assertGreaterThan(0, $top, 'the trend axis has no top');
+
+        preg_match('/<polyline[^>]*points="([^"]+)"/', $html, $line);
+        $this->assertNotEmpty($line, 'the trend is not drawn as a line');
+
+        $values = array_map(
+            fn ($pair) => (int) round((100 - (float) explode(',', $pair)[1]) / 100 * $top),
+            preg_split('/\s+/', trim($line[1]))
+        );
+
         // Six on the last day, not five: today also carries the lockout.
-        $this->assertSame([2, 0, 1, 0, 3, 2, 6], array_map('intval', $counts[1]),
+        $this->assertSame([2, 0, 1, 0, 3, 2, 6], $values,
             'the daily counts are not landing on their own days');
 
         // The axis is zero-based, whole, descending, and its top is at or

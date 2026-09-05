@@ -184,7 +184,20 @@ class AttackSeverityTest extends TestCase
             'the scale sorted itself by count, which makes it not a scale');
     }
 
-    public function test_the_panel_is_on_the_dashboard_beside_the_other_two(): void
+    /**
+     * Severity leads the page.
+     *
+     * It used to sit to the side of "Attempts by type" and "Most targeted
+     * pages", stacked two-against-one, which read as though it were their
+     * sibling. It is not: it is the judgement about the set those two
+     * describe, so it now comes first, in the row directly under the counters,
+     * and the other two follow it.
+     *
+     * "Reached the app" as a label is gone with the redesign -- the figure is
+     * stated as prose in the card's subtitle instead -- so what is asserted
+     * here is the FACT, which has to survive any wording.
+     */
+    public function test_the_panel_leads_the_page(): void
     {
         $this->attack('203.0.113.9');
         $this->actingAs($this->makeUser('system-admin'));
@@ -193,24 +206,33 @@ class AttackSeverityTest extends TestCase
         $html = $this->get('/security')->assertOk()->getContent();
 
         $this->assertStringContainsString('Attack severity', $html);
-        $this->assertStringContainsString('Reached the app', $html);
+        $this->assertStringContainsString('reaching the application', $html,
+            'the card no longer says how many attempts reached the app');
 
-        // The two it runs alongside are stacked in one column, it is the other.
-        $this->assertMatchesRegularExpression('#<div class="dash-col">#', $html);
-        $column = substr($html, strpos($html, '<div class="dash-col">'));
-        $this->assertLessThan(strpos($column, 'Attack severity'), strpos($column, 'Attempts by type'));
-        $this->assertLessThan(strpos($column, 'Attack severity'), strpos($column, 'Most targeted pages'));
+        $at = fn (string $needle) => strpos($html, $needle);
+
+        foreach (['Attempts by type', 'Most targeted pages', 'Busiest source addresses'] as $later) {
+            $this->assertLessThan($at($later), $at('Attack severity'),
+                "severity no longer comes before \"$later\"");
+        }
     }
 
     /**
-     * Every panel on this page is in a row that can hold it.
+     * Every row holds exactly as many panels as its own class declares.
      *
-     * .dash-split is a two-column grid, so a third panel dropped into one
-     * wraps onto a half-width second row and the page reads as though
-     * something came loose. The stacked column and the tall panel beside it
-     * are one row of two, like every other row here.
+     * This used to assert "two", because every row was a .dash-split and a
+     * third panel dropped into one wrapped onto a half-width second row,
+     * looking as though something had come loose. The page now has rows of
+     * one, two and three, so the constant is wrong -- but the failure it
+     * guarded against is not: a panel added to a row without widening the
+     * grid still wraps, and still looks broken.
+     *
+     * So the rule is now relative. `ds-3` must hold three, `ds-2` two, a bare
+     * `ds-row` one; `ds-1-2` and `ds-2-1` are two columns of unequal width.
+     * The row declares its shape and the test holds it to it, which keeps
+     * working whatever the layout becomes next.
      */
-    public function test_the_dashboard_rows_hold_two_panels_each(): void
+    public function test_every_row_holds_the_panels_its_grid_declares(): void
     {
         $this->actingAs($this->makeUser('system-admin'));
         session(['otp_verified' => true]);
@@ -221,9 +243,10 @@ class AttackSeverityTest extends TestCase
 
         $this->assertNotEmpty($rows, 'the dashboard has no rows at all');
 
-        foreach ($rows as $number => $cells) {
-            $this->assertSame(2, $cells,
-                'row '.($number + 1).' holds '.$cells.' panels in a two-column grid');
+        foreach ($rows as $number => ['class' => $class, 'declared' => $declared, 'panels' => $panels]) {
+            $this->assertSame($declared, $panels, sprintf(
+                'row %d (%s) declares %d column(s) but holds %d panel(s), so one wraps',
+                $number + 1, $class, $declared, $panels));
         }
     }
 
@@ -242,14 +265,17 @@ class AttackSeverityTest extends TestCase
             'the stacked panels do not take up the slack, so the column ends short');
     }
 
+    /** How many columns each row's class declares. */
+    private const COLUMNS = ['ds-3' => 3, 'ds-2' => 2, 'ds-1-2' => 2, 'ds-2-1' => 2];
+
     /**
-     * How many cells each .dash-split row holds.
+     * Each row's declared column count against the panels actually in it.
      *
-     * Counted by walking div depth rather than by pattern, because a row's
-     * cells and the panels nested inside one of them are the same tag: a
-     * regex cannot tell the column's two panels from the row's two cells.
+     * Counted by walking div depth rather than by pattern, because a row and
+     * the panels inside it are the same tag: a regex cannot tell a row's own
+     * cells from the frames nested deeper within one of them.
      *
-     * @return array<int,int>
+     * @return list<array{class:string,declared:int,panels:int}>
      */
     private function rowCellCounts(string $html): array
     {
@@ -262,12 +288,19 @@ class AttackSeverityTest extends TestCase
         foreach ($m[0] as [$tag, $at]) {
             $opening = $tag !== '</div>';
 
-            if ($opening && $depth === null && str_contains($tag, 'class="dash-split"')) {
+            if ($opening && $depth === null && preg_match('/class="(ds-row[^"]*)"/', $tag, $c)) {
                 $depth = $level;          // the row itself
-                $rows[] = 0;
+                $declared = 1;
+                foreach (self::COLUMNS as $modifier => $count) {
+                    if (str_contains($c[1], $modifier)) {
+                        $declared = $count;
+                        break;
+                    }
+                }
+                $rows[] = ['class' => $c[1], 'declared' => $declared, 'panels' => 0];
             } elseif ($opening && $depth !== null && $level === $depth + 1
-                && preg_match('/class="dash-(frame|col)"/', $tag)) {
-                $rows[array_key_last($rows)]++;
+                && str_contains($tag, 'class="dash-frame"')) {
+                $rows[array_key_last($rows)]['panels']++;
             }
 
             $level += $opening ? 1 : -1;
@@ -287,6 +320,6 @@ class AttackSeverityTest extends TestCase
 
         $html = $this->get('/security')->assertOk()->getContent();
 
-        $this->assertStringContainsString('No attacks detected in the last 7 days.', $html);
+        $this->assertStringContainsString('Nothing detected in the last 7 days.', $html);
     }
 }

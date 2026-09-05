@@ -24,7 +24,16 @@
      to mean something -- red is an intrusion, amber a failed sign-in, green
      quiet -- and a tile that is already solid green cannot then turn green to
      say so. See "The security dashboard opts out" in app.css. --}}
-<div class="dash dash-plain">
+<div class="dash dash-plain dash-sharp">
+
+{{-- The page names itself, as every other page in the system does. The
+     window is NOT a control: each panel below counts over its own period --
+     seven days, thirty, four weeks -- and one dropdown across the top would
+     claim a scope the page does not have. --}}
+<div class="ds-head">
+    <h1>Security Dashboard</h1>
+    <p class="ds-sub">Live counts. Each panel states the period it covers.</p>
+</div>
 
 <div class="kpi-grid">
     @foreach ($kpis as $kpi)
@@ -32,17 +41,28 @@
     @endforeach
 </div>
 
-<div class="dash-split">
-    {{-- ---------- Attempts per day ---------- --}}
-    {{-- Seven days, not four weeks: attacks have no weekly rhythm to read a
-         week against, and a spike matters on the day it happens. --}}
+{{-- Severity leads the page because it is the judgement the rest of the page
+     supports. Beside it, where the seven-day chart used to sit, are the
+     addresses the attempts came from: the dial says how bad, the list says
+     who. The chart moved to the full-width slot lower down. --}}
+<div class="ds-row ds-1-2">
+    {{-- ---------- How bad ---------- --}}
+    {{-- The stored severity column is not a scale: the detector records all
+         three attack types at high and nothing at low or critical, so charting
+         it would draw one bar and two empty ones. What differs between two
+         injection attempts is the pattern behind them, so that is what is
+         graded -- here, in the analytics, leaving the log a record of what was
+         seen rather than of what was later concluded. --}}
     <div class="dash-frame">
         <div class="dash-head">
-            <p class="dash-title">Intrusion attempts per day</p>
-            <span class="dash-link">last 7 days</span>
+            <p class="dash-title">Attack severity</p>
+            {{-- The reference puts a "View All" on this card; here it goes
+                 somewhere real. The period moves into the line beneath, which
+                 already states the counts it belongs to. --}}
+            <a href="{{ route('security.intrusions') }}" class="dash-link">View all &rarr;</a>
         </div>
         <div class="dash-body">
-            @include('dashboard._vbars', ['series' => $trend])
+            @include('dashboard._severity', ['severity' => $severity])
         </div>
     </div>
 
@@ -62,84 +82,74 @@
 
 </div>
 
-{{-- Two panels stacked against one tall one. "Attempts by type" and "Most
-     targeted pages" both answer a question about the attacks -- what kind, and
-     at what -- so severity runs down the side of both rather than sitting under
-     one of them: how bad is the third question about the same set. --}}
-<div class="dash-split">
-    <div class="dash-col">
-        {{-- ---------- The three attacks ---------- --}}
-        {{-- The only chart on the system with a categorical colour scale,
-             because here the type IS the subject rather than a ranking. Three
-             hues, validated in both themes: worst adjacent colour-blind
-             separation 9.2 dE light and 9.4 dark against a target of 8.
+{{-- What the attacks were, and what they aimed at: two answers about the
+     same set, side by side at the same weight. --}}
+<div class="ds-row ds-2">
+    {{-- ---------- The three attacks ---------- --}}
+    {{-- The only chart on the system with a categorical colour scale,
+         because here the type IS the subject rather than a ranking. Three
+         hues, validated in both themes: worst adjacent colour-blind
+         separation 9.2 dE light and 9.4 dark against a target of 8.
 
-             The stored category sits under each label so the mapping is visible
-             rather than assumed. `xss` and `traversal` are grouped as input
-             manipulation HERE and nowhere else -- the detector keeps recording
-             them separately and Intrusion Logs keeps showing which. --}}
-        <div class="dash-frame">
-            <div class="dash-head">
-                <p class="dash-title">Attempts by type</p>
-                <span class="dash-link">last 30 days</span>
-            </div>
-            <div class="dash-body">
-                @include('dashboard._hbars', ['rows' => $attacks, 'series' => true])
-            </div>
+         The stored category sits under each label so the mapping is visible
+         rather than assumed. `xss` and `traversal` are grouped as input
+         manipulation HERE and nowhere else -- the detector keeps recording
+         them separately and Intrusion Logs keeps showing which. --}}
+    <div class="dash-frame">
+        <div class="dash-head">
+            <p class="dash-title">Attempts by type</p>
+            <span class="dash-link">last 30 days</span>
         </div>
-
-        {{-- ---------- What it aims at ---------- --}}
-        <div class="dash-frame">
-            <div class="dash-head">
-                <p class="dash-title">Most targeted pages</p>
-                <span class="dash-link">last 30 days</span>
-            </div>
-            <div class="dash-body">
-                @include('dashboard._hbars', [
-                    'rows' => $routes, 'mono' => true,
-                    'empty' => 'No intrusion events in the last 30 days.',
-                ])
-            </div>
+        <div class="dash-body">
+            @include('dashboard._hbars', ['rows' => $attacks, 'series' => true])
         </div>
     </div>
 
-    {{-- ---------- How bad ---------- --}}
-    {{-- The stored severity column is not a scale: the detector records all
-         three attack types at high and nothing at low or critical, so charting
-         it would draw one bar and two empty ones. What differs between two
-         injection attempts is the pattern behind them, so that is what is
-         graded -- here, in the analytics, leaving the log a record of what was
-         seen rather than of what was later concluded. --}}
+    {{-- ---------- What it aims at ---------- --}}
     <div class="dash-frame">
         <div class="dash-head">
-            <p class="dash-title">Attack severity</p>
-            <span class="dash-link">this week</span>
+            <p class="dash-title">Most targeted pages</p>
+            <span class="dash-link">last 30 days</span>
         </div>
         <div class="dash-body">
-            @include('dashboard._severity', ['severity' => $severity])
+            @include('dashboard._hbars', [
+                'rows' => $routes, 'mono' => true,
+                'empty' => 'No intrusion events in the last 30 days.',
+            ])
         </div>
     </div>
 </div>
 
-{{-- ---------- Sign-ins ---------- --}}
-{{-- Four weeks, unlike the seven-day chart above, because sign-ins DO have a
-     weekly rhythm. One week shows the shape but cannot say whether this week is
-     unusual; four lets this Monday be read against the last three. --}}
+{{-- ---------- Attempts per day ---------- --}}
+{{-- Seven days, not four weeks: attacks have no weekly rhythm to read a week
+     against, and a spike matters on the day it happens.
+
+     A line rather than the bars this used to be. Bars read as seven separate
+     counts; the shape of a week -- quiet, quiet, then a climb -- is what an
+     administrator is actually scanning for, and a line is what carries a shape.
+     Drawn in the system's alarm red, because on this series a rise is bad news;
+     it is the same red as a Critical grade on the dial above.
+
+     Full width, in the slot the sign-ins chart used to hold. That chart is
+     gone: it was the only panel here about ordinary use rather than about
+     attacks, and it is not what this page is for. --}}
+<div class="ds-row">
 <div class="dash-frame">
     <div class="dash-head">
-        <p class="dash-title">Successful sign-ins per day</p>
-        <span class="dash-link">last 4 weeks</span>
+        <p class="dash-title">Intrusion attempts per day</p>
+        <span class="dash-link">last 7 days</span>
     </div>
     <div class="dash-body">
-        @include('dashboard._line', ['series' => $signins, 'peakLabel' => 'high'])
+        @include('dashboard._line', ['series' => $trend, 'peakLabel' => 'peak', 'tone' => 'bad'])
     </div>
+</div>
 </div>
 
 {{-- ==================================================================== --}}
 {{-- The three additions                                                  --}}
 {{-- ==================================================================== --}}
 
-<div class="dash-split">
+<div class="ds-row ds-2-1">
     {{-- ---------- Unreviewed events ---------- --}}
     {{-- `intrusion_logs.handled` existed and was cleared for every row the
          moment this page rendered, so it recorded a page view rather than a
@@ -210,7 +220,9 @@
 
 {{-- ---------- Privilege changes ---------- --}}
 {{-- A system whose case rests on auditability should show its own role and
-     permission edits to the person making them. --}}
+     permission edits to the person making them. Last on the page because it
+     is the record rather than the alarm. --}}
+<div class="ds-row">
 <div class="dash-frame">
     <div class="dash-head">
         <p class="dash-title">Privilege changes</p>
@@ -227,6 +239,7 @@
             <p class="dash-empty">No role, permission or account changes in the last 7 days.</p>
         @endforelse
     </div>
+</div>
 </div>
 
 </div>{{-- /.dash --}}

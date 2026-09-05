@@ -56,4 +56,55 @@
             <span>{{ $kpi['delta']['of'] }}</span>
         </p>
     @endisset
+
+    {{--
+      The tile's own little chart, when the figure has one behind it.
+
+      APPENDED, never inserted: this partial is shared with the leave
+      dashboards, and putting it between the value and the subtitle would have
+      reordered their cards too. Where it needs to sit beside the value -- the
+      Security Dashboard -- the flex `order` in .dash-sharp moves it, which
+      costs the other pages nothing because they never set these keys.
+
+      Both are drawn from real series. A tile with nothing behind it gets no
+      chart rather than a flat line, because a flat line is a claim.
+    --}}
+    @isset ($kpi['spark'])
+        @php
+            $spark = array_map('intval', $kpi['spark']);
+            $peak = max(1, max($spark));
+            $n = max(1, count($spark));
+        @endphp
+        <div class="kpi-viz" aria-hidden="true">
+            <svg viewBox="0 0 {{ $n * 6 - 2 }} 24" preserveAspectRatio="none" focusable="false">
+                @foreach ($spark as $i => $v)
+                    @php $h = max(1.5, $v / $peak * 24); @endphp
+                    <rect class="kpi-bar" x="{{ $i * 6 }}" y="{{ round(24 - $h, 2) }}"
+                          width="4" height="{{ round($h, 2) }}" rx="1"/>
+                @endforeach
+            </svg>
+        </div>
+    @endisset
+
+    @isset ($kpi['ring'])
+        @php
+            $parts = $kpi['ring']['parts'];
+            $sum = max(1, array_sum(array_column($parts, 'value')));
+            $first = $parts[0]['value'] / $sum;
+            // r chosen so the circumference is a round 100, which lets the
+            // dash array be read as a percentage.
+            $c = 100;
+            $r = $c / (2 * M_PI);
+        @endphp
+        <div class="kpi-viz kpi-viz-ring"
+             title="{{ collect($parts)->map(fn ($p) => $p['label'].': '.$p['value'])->implode(' · ') }}">
+            <svg viewBox="0 0 40 40" focusable="false" role="img"
+                 aria-label="{{ collect($parts)->map(fn ($p) => $p['label'].': '.$p['value'])->implode(', ') }}">
+                <circle class="kpi-ring-track" cx="20" cy="20" r="{{ round($r, 3) }}"/>
+                <circle class="kpi-ring-fill" cx="20" cy="20" r="{{ round($r, 3) }}"
+                        stroke-dasharray="{{ round($first * $c, 2) }} {{ $c }}"
+                        transform="rotate(-90 20 20)"/>
+            </svg>
+        </div>
+    @endisset
 </div>

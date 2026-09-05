@@ -3106,6 +3106,225 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 /* The panels lose the lift with them, so the page reads as one flat surface
    of readings rather than a deck of cards. */
 .dash.dash-plain .dash-frame{ box-shadow:none; }
+
+/* ---- The security dashboard's own rhythm --------------------------------
+   A denser, flatter grid for the one screen that is read rather than filled
+   in. Everything here is scoped to `.dash-sharp`, which only the Security
+   Dashboard carries, so no other page moves.
+
+   The language, not the palette: hairline borders instead of shadow, a 4px
+   spacing rhythm, small letterspaced labels over large tabular numerals, and
+   surfaces kept monochrome so the only colour on the page belongs to the
+   data. That last rule is why this page opted out of the filled tiles above,
+   and it is the same rule stated at layout scale.
+
+   Written `.dash.dash-sharp` for the same reason the opt-out is: these sit in
+   the same specificity band as the `.dash ...` rules further up, and a tie
+   would be settled by file position. Doubling the class wins outright.
+
+   No webfont. The reference sets Mona Sans; this installation is served off a
+   LAN box with no CDN, and a 200KB face for one screen is a poor trade when
+   the rhythm and density carry the language, not the letterforms. */
+
+/* Rows. Named for the shape rather than the contents, because the contents
+   are what a later change is most likely to move. */
+.dash.dash-sharp .ds-row{ display:grid; gap:12px; margin-bottom:12px; }
+.dash.dash-sharp .ds-2{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+.dash.dash-sharp .ds-3{ grid-template-columns:repeat(3,minmax(0,1fr)); }
+.dash.dash-sharp .ds-1-2{ grid-template-columns:minmax(0,1fr) minmax(0,2fr); }
+.dash.dash-sharp .ds-2-1{ grid-template-columns:minmax(0,2fr) minmax(0,1fr); }
+
+/* One column from the width where a two-up panel stops being readable rather
+   than at a device size. 900px is where the rest of this sheet already
+   folds, so the page folds with it instead of inventing a breakpoint. */
+@media (max-width:900px){
+  .dash.dash-sharp .ds-2,
+  .dash.dash-sharp .ds-3,
+  .dash.dash-sharp .ds-1-2,
+  .dash.dash-sharp .ds-2-1{ grid-template-columns:minmax(0,1fr); }
+}
+
+/* Page head: the title, and what the numbers below it are counted over. The
+   window belongs here because every panel states its own and they differ --
+   seven days, thirty, four weeks -- so one dropdown would be a lie. */
+.dash.dash-sharp .ds-head{
+  display:flex; align-items:baseline; justify-content:space-between;
+  flex-wrap:wrap; gap:8px; margin-bottom:16px;
+}
+.dash.dash-sharp .ds-head h1{ font-size:1.5rem; font-weight:600; letter-spacing:-.02em; margin:0; }
+.dash.dash-sharp .ds-head .ds-sub{ font-size:.8125rem; color:var(--muted); margin:0; }
+
+/* Cards: hairline, 12px, flat, and tighter than the leave dashboards. */
+.dash.dash-sharp .dash-frame{
+  border:1px solid var(--hair); border-radius:12px; background:var(--dash-surface);
+  box-shadow:none; margin-bottom:0; display:flex; flex-direction:column;
+}
+.dash.dash-sharp .dash-head{
+  padding:16px 20px 0; border:0;
+  display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+}
+.dash.dash-sharp .dash-title{ font-size:.9375rem; font-weight:700; letter-spacing:-.01em; margin:0; }
+.dash.dash-sharp .dash-body{ padding:12px 20px 20px; flex:1 1 auto; }
+
+/* The panel's own window, set as a quiet label rather than a link-coloured
+   one -- "last 7 days" is not somewhere to go. Real links keep their colour. */
+.dash.dash-sharp span.dash-link{
+  font-size:.75rem; font-weight:600; letter-spacing:.04em; text-transform:uppercase;
+  color:var(--muted); white-space:nowrap;
+}
+.dash.dash-sharp a.dash-link,
+.dash.dash-sharp button.dash-link{
+  font-size:.8125rem; font-weight:600; border-radius:8px; white-space:nowrap;
+}
+
+/* KPI tiles at the same rhythm as the panels. */
+.dash.dash-sharp .kpi-grid{ gap:12px; margin-bottom:12px; }
+.dash.dash-sharp .kpi{
+  border:1px solid var(--hair); border-radius:12px; background:var(--dash-surface);
+  padding:16px 20px 18px; box-shadow:none;
+}
+.dash.dash-sharp .kpi .kpi-lb{
+  font-size:.75rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--muted); margin:0;
+}
+/* The tile is one wrapping flex row, not a stack.
+
+   The partial is shared, so its DOM order is fixed as label, value, subtitle,
+   change, chart -- putting the chart between value and subtitle would have
+   reordered the leave dashboards' cards too. `order` rearranges it here and
+   nowhere else: label on its own line, then value + change chip + chart
+   sharing a line, then the subtitle on a line of its own. */
+.dash.dash-sharp .kpi{ display:flex; flex-wrap:wrap; align-items:baseline; gap:0; }
+.dash.dash-sharp .kpi .kpi-top{ flex:1 0 100%; order:0; margin-bottom:12px; }
+.dash.dash-sharp .kpi .kpi-v{
+  order:1; font-size:2.25rem; font-weight:600; letter-spacing:-.035em; line-height:1;
+  font-variant-numeric:tabular-nums;
+}
+.dash.dash-sharp .kpi .kpi-d{ order:2; margin:0 0 0 8px; }
+.dash.dash-sharp .kpi .kpi-viz{ order:3; margin-left:auto; align-self:center; }
+.dash.dash-sharp .kpi .kpi-s{ flex:1 0 100%; order:4; font-size:.75rem; margin-top:10px; }
+
+/* The change reads as a chip, the way the reference sets it. Tinted from the
+   tone it already carries rather than a new colour: up-and-bad is red,
+   down-and-bad is green, and a measure where direction means nothing stays
+   grey. The service names the tone, because which way is bad depends on what
+   is being counted -- more blocked addresses is the system working. */
+.dash.dash-sharp .kpi .kpi-d{
+  display:inline-flex; align-items:center; gap:3px;
+  padding:2px 7px; border-radius:999px; font-size:.75rem; font-weight:600;
+  background:color-mix(in srgb, var(--dtone) 16%, transparent); color:var(--dtone);
+  --dtone:var(--muted);
+}
+.dash.dash-sharp .kpi .kpi-d b{ color:inherit; font-weight:600; }
+/* The trailing "vs last week" is the tile's subtitle job, not the chip's. */
+.dash.dash-sharp .kpi .kpi-d span:not(.kpi-arrow){ display:none; }
+.dash.dash-sharp .kpi .kpi-d[data-tone="bad"]{ --dtone:var(--k-bad-f); }
+.dash.dash-sharp .kpi .kpi-d[data-tone="good"]{ --dtone:var(--k-good-f); }
+.dash.dash-sharp .kpi .kpi-d[data-dir="up"][data-tone="bad"]{ --dtone:var(--k-bad-f); }
+.dash.dash-sharp .kpi .kpi-d[data-dir="down"][data-tone="bad"]{ --dtone:var(--k-good-f); }
+
+/* The spark: seven days as seven bars, oldest left. Sized so it reads as a
+   shape at a glance and never competes with the number beside it. */
+.dash.dash-sharp .kpi .kpi-viz svg{ display:block; width:74px; height:26px; }
+.dash.dash-sharp .kpi .kpi-bar{ fill:var(--tone,var(--muted)); opacity:.9; }
+.dash.dash-sharp .kpi[data-tone="good"] .kpi-bar{ fill:var(--k-good-f); }
+.dash.dash-sharp .kpi[data-tone="warn"] .kpi-bar{ fill:var(--k-warn-f); }
+.dash.dash-sharp .kpi[data-tone="bad"] .kpi-bar{ fill:var(--k-bad-f); }
+
+/* The ring, for the one tile that is a standing total rather than a rate. */
+.dash.dash-sharp .kpi .kpi-viz-ring svg{ width:42px; height:42px; }
+.dash.dash-sharp .kpi-ring-track{
+  fill:none; stroke:var(--ch-grid); stroke-width:4.5;
+}
+.dash.dash-sharp .kpi-ring-fill{
+  fill:none; stroke:var(--primary); stroke-width:4.5; stroke-linecap:round;
+}
+/* An empty panel says one short sentence; it does not need the height of a
+   full one to say it. 2.5rem of padding above and below left "No role,
+   permission or account changes" floating in 230px of nothing at the foot of
+   the page, which read as something failing to load. */
+.dash.dash-sharp .dash-empty{ padding:1.25rem 1rem; font-size:.8125rem; }
+
+/* Icon to the LEFT of its label, which is where the reference puts it. The
+   partial is shared with the leave dashboards, so the order is flipped here
+   rather than in the markup: row-reverse with the row packed to the start
+   swaps the two without either page needing its own template. */
+.dash.dash-sharp .kpi-top{
+  flex-direction:row-reverse; justify-content:flex-end; align-items:center; gap:8px;
+}
+.dash.dash-sharp .kpi .kpi-v{ margin-top:14px; }
+/* Outline, unfilled, at label size: it labels the tile, it is not the data. */
+.dash.dash-sharp .kpi .kpi-ic{
+  box-sizing:content-box; width:15px; height:15px; padding:0;
+  border:0; border-radius:0; background:none;
+  stroke:var(--tone,var(--muted)); stroke-width:1.7;
+}
+
+/* ---- The severity dial --------------------------------------------------
+   One figure in a ring, with the three grades that sum to it underneath. The
+   arc is filled to the share of attempts refused before reaching the
+   application -- a real 0-100% -- and NOT to the total, which has no ceiling
+   a dial could be drawn against. */
+.dash.dash-sharp .ig{ display:flex; flex-direction:column; height:100%; }
+.dash.dash-sharp .ig-sub{
+  font-size:.8125rem; color:var(--muted); margin:0 0 4px;
+}
+/* Capped narrower than the card so the dial does not set a height the panel
+   beside it then has to fill with nothing. */
+.dash.dash-sharp .ig-dial{ position:relative; margin:2px auto 0; width:100%; max-width:220px; }
+.dash.dash-sharp .ig-dial svg{ display:block; width:100%; height:auto; overflow:visible; }
+.dash.dash-sharp .ig-track{
+  fill:none; stroke:var(--ch-grid); stroke-width:14; stroke-linecap:round;
+}
+/* The system's own violet rather than a new hue: the three grades below carry
+   red, amber and grey, and a fourth signal colour on the same card would be a
+   fourth thing to learn. */
+.dash.dash-sharp .ig-fill{
+  fill:none; stroke:var(--primary); stroke-width:14; stroke-linecap:round;
+}
+/* Sat inside the arc's opening, not across its top. At 44% the caption line
+   crossed the stroke as soon as the dial was narrowed; the ring's interior is
+   widest just below its centre, so the stack is anchored there. */
+.dash.dash-sharp .ig-centre{
+  position:absolute; left:0; right:0; top:54%; transform:translateY(-50%);
+  display:flex; flex-direction:column; align-items:center; gap:1px; text-align:center;
+}
+.dash.dash-sharp .ig-cap{ font-size:.75rem; color:var(--muted); line-height:1.2; }
+.dash.dash-sharp .ig-n{
+  font-size:2.125rem; font-weight:600; line-height:1; letter-spacing:-.04em;
+  font-variant-numeric:tabular-nums; color:var(--text);
+}
+.dash.dash-sharp .ig-pct{ font-size:.75rem; color:var(--muted); }
+
+.dash.dash-sharp .ig-grades{
+  display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px;
+  padding-top:14px; margin-top:10px; border-top:1px solid var(--hair);
+}
+.dash.dash-sharp .ig-grade{ min-width:0; }
+.dash.dash-sharp .ig-key{
+  display:flex; align-items:center; gap:5px;
+  font-size:.75rem; color:var(--muted); white-space:nowrap;
+}
+.dash.dash-sharp .ig-grade b{
+  display:block; margin-top:4px; font-size:1.375rem; font-weight:600;
+  line-height:1.15; font-variant-numeric:tabular-nums; color:var(--text);
+}
+.dash.dash-sharp .ig-grade small{
+  display:block; font-size:.75rem; color:var(--muted); line-height:1.3;
+}
+.dash.dash-sharp .ig .dash-note{ margin-top:auto; padding-top:12px; }
+
+/* The trend line reads as an alarm, so it is drawn in the colour this system
+   already uses for one: --k-bad, the same red as a Critical grade above.
+
+   `.p1.p1-bad`, not `.p1-bad`. The neutral `.ln .p1` further down the sheet
+   is the same specificity and sits LATER, so a single class lost the tie and
+   the line came out violet while its peak label came out red -- which is how
+   the bug announced itself. Doubling the class wins on specificity instead of
+   on position. */
+.ln .p1.p1-bad{ stroke:var(--k-bad); }
+.ln-peak[data-tone="bad"] .ln-lab{ color:var(--k-bad); }
+
 .kpi-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:.5rem; }
 .kpi-lb{
   font-size:.75rem; font-weight:600; letter-spacing:.07em; text-transform:uppercase;
@@ -3198,23 +3417,6 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 .tag-open{ background:var(--warning-soft); color:var(--warning); }
 
 /* ---- Vertical bars ------------------------------------------------------- */
-.vb{
-  display:flex; align-items:flex-end; gap:.35rem; height:8.5rem;
-  border-bottom:1px solid var(--border-strong);
-}
-.vb-c{
-  flex:1 1 0; display:flex; flex-direction:column; justify-content:flex-end;
-  align-items:center; gap:.3rem; height:100%;
-}
-.vb-b{ width:100%; background:var(--ch-mute); border-radius:3px 3px 0 0; min-height:2px; }
-.vb-c[data-hero] .vb-b{ background:var(--ch-hero); }
-.vb-n{
-  font-family:ui-monospace,Consolas,monospace; font-size:.75rem; color:var(--muted);
-  font-variant-numeric:tabular-nums;
-}
-.vb-c[data-hero] .vb-n{ color:var(--text); font-weight:700; }
-.vb-x{ display:flex; gap:.35rem; margin-top:.3rem; }
-.vb-x span{ flex:1 1 0; text-align:center; font-size:.75rem; color:var(--muted); }
 
 /* ---- Line ---------------------------------------------------------------- */
 /* Direct-labelled at the peak instead of a legend box: one series needs no key,
@@ -3346,32 +3548,12 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
    isolated", and red against green is the one pair a colour-blind reader
    cannot separate, which matters on a panel where the colour carries the
    meaning. The neutral says "recorded, nothing to do". */
-.sv{ display:flex; flex-direction:column; height:100%; }
-.sv-heads{
-  display:grid; grid-template-columns:repeat(3, minmax(0,1fr));
-  gap:.75rem; padding-bottom:1rem; margin-bottom:1rem;
-  border-bottom:1px solid var(--ch-grid);
-}
-.sv-fig{ display:flex; flex-direction:column; gap:.15rem; min-width:0; }
-.sv-n{ font-size:1.5rem; font-weight:600; line-height:1.1; color:var(--text); }
 /* Zero here is the good answer, so it is not painted as an alarm; any other
    number is the one thing on the page worth acting on. */
-.sv-n.is-bad{ color:var(--k-bad); }
-.sv-l{ font-size:.75rem; color:var(--muted); line-height:1.25; }
-
-.sv-rows{ list-style:none; margin:0; padding:0; display:grid; gap:1rem; }
-.sv-row{ min-width:0; }
-.sv-key{ display:flex; align-items:baseline; gap:.4rem; margin-bottom:.35rem; }
 .sv-dot{
   display:inline-block; width:.5rem; height:.5rem; border-radius:50%;
   flex:none; align-self:center;
 }
-.sv-name{ font-size:.82rem; font-weight:600; color:var(--text); }
-.sv-v{ margin-left:auto; font-size:.82rem; font-variant-numeric:tabular-nums; color:var(--text); }
-.sv-t{ height:.55rem; background:var(--ch-grid); border-radius:3px; overflow:hidden; }
-.sv-f{ display:block; height:100%; border-radius:3px; min-width:2px; }
-.sv-note{ margin:.3rem 0 0; font-size:.75rem; color:var(--muted); }
-
 .sv-critical{ background:var(--k-bad-f); }
 .sv-high{ background:var(--k-warn-f); }
 .sv-medium{ background:var(--ch-mute); }

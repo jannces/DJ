@@ -51,12 +51,14 @@ class SecurityDashboardTest extends TestCase
 
         $this->assertStringNotContainsString('<canvas', $html);
 
-        // Three forms, chosen by what the number is: attempts per day are
-        // discrete daily counts (columns), sign-ins run four weeks (a line),
-        // and the rankings are sideways bars.
-        $this->assertStringContainsString('class="vb"', $html);
+        // Two forms now, chosen by what the number is: the seven-day trend is
+        // a line, and the rankings are sideways bars. The third -- the column
+        // chart -- is gone with the sign-ins panel it shared a partial with,
+        // and the trend it used to draw is a line too.
         $this->assertStringContainsString('class="ln"', $html);
         $this->assertStringContainsString('class="hb-f"', $html);
+        $this->assertStringNotContainsString('class="vb"', $html,
+            'the column chart is back; _vbars was deleted with the sign-ins panel');
     }
 
     /**
@@ -171,28 +173,36 @@ class SecurityDashboardTest extends TestCase
     }
 
     /**
-     * Bars, not a line. Attacks per day are seven discrete counts, so a day
-     * with none belongs as an absent bar — a line dipping to the axis and back
-     * reads as though something happened when nothing did.
+     * A line, and a red one.
      *
-     * Sign-ins are the opposite case and get the line: they run four weeks and
-     * do have a weekly rhythm, so the shape between the points is real.
+     * This asserted bars, on the reasoning that seven discrete daily counts
+     * belong as seven columns and that a line dipping to the axis reads as
+     * though something happened when nothing did. That is a fair argument and
+     * it lost to a better one: what an administrator scans this panel for is
+     * the SHAPE of a week -- quiet, quiet, then a climb -- and a shape is what
+     * a line carries and seven separate columns do not.
+     *
+     * Red because on this series a rise is bad news. It is the same --k-bad
+     * the Critical grade uses on the dial above, so the page has one red
+     * meaning one thing.
      */
-    public function test_the_seven_day_trend_is_drawn_as_bars(): void
+    public function test_the_seven_day_trend_is_drawn_as_a_red_line(): void
     {
         $html = $this->asSysadmin()->get('/security')->assertOk()->getContent();
 
         preg_match('#Intrusion attempts per day.*?</div>\s*</div>#s', $html, $panel);
         $this->assertNotEmpty($panel);
-        $this->assertStringContainsString('class="vb"', $panel[0]);
-        $this->assertStringNotContainsString('<polyline', $panel[0]);
+        $this->assertStringContainsString('<polyline', $panel[0]);
+        $this->assertStringContainsString('p1-bad', $panel[0],
+            'the trend line has lost its alarm colour');
 
-        // Seven columns, spelled Mon/Tue/Wed — M/T/W/T/F is ambiguous twice
+        // Seven points, labelled Mon/Tue/Wed — M/T/W/T/F is ambiguous twice
         // over in five letters.
-        preg_match('#<div class="vb-x">(.*?)</div>#s', $html, $labels);
-        preg_match_all('/<span>(\w+)<\/span>/', $labels[1], $days);
+        preg_match('#<div class="ln-x">(.*?)</div>#s', $html, $labels);
+        $this->assertNotEmpty($labels, 'the trend has no day axis');
+        preg_match_all('/<span[^>]*>(\w+)<\/span>/', $labels[1], $days);
         $this->assertCount(7, $days[1]);
-        $this->assertSame(now()->format('D'), end($days[1]), 'the last column must be today');
+        $this->assertSame(now()->format('D'), end($days[1]), 'the last point must be today');
     }
 
     /** Seven days, one query — not one count per day. */

@@ -104,7 +104,6 @@ class SecurityDashboardService
             'attacks' => $this->attacksByType(),
             'attackers' => $this->topAttackers(),
             'routes' => $this->targetedRoutes(),
-            'signins' => $this->signInsByDay(),
 
             'severity' => $this->attackSeverity(),
 
@@ -135,6 +134,16 @@ class SecurityDashboardService
         $blocked = BlockedIp::currentlyActive()->count();
         $blockedToday = BlockedIp::currentlyActive()->whereDate('created_at', $today)->count();
 
+        // The week before this one, for the change figures. Counted rather
+        // than estimated: a tile that says "up 13%" has to be able to say
+        // against what.
+        $prevFrom = now()->subDays(13)->startOfDay();
+        $prevIntrusions = IntrusionLog::whereBetween('created_at', [$prevFrom, $week])->count();
+        $failedToday = FailedLogin::whereDate('occurred_at', $today)->count();
+        $failedYesterday = FailedLogin::whereDate('occurred_at', $today->copy()->subDay())->count();
+        $blockedThisWeek = BlockedIp::where('created_at', '>=', $week)->count();
+        $blockedPrevWeek = BlockedIp::whereBetween('created_at', [$prevFrom, $week])->count();
+
         return [
             [
                 'label' => 'Accounts',
@@ -142,6 +151,16 @@ class SecurityDashboardService
                 'sub' => $employees.' with an employee record · '.max(0, $accounts - $employees).' other',
                 'icon' => 'people',
                 'tone' => 'info',
+                // A ring rather than a spark: accounts are a standing total,
+                // not a rate, so a seven-day line of it would be flat by
+                // definition. What DOES divide is the split the subtitle
+                // already states, so the ring draws that.
+                'ring' => [
+                    'parts' => [
+                        ['label' => 'With employee record', 'value' => $employees],
+                        ['label' => 'Other', 'value' => max(0, $accounts - $employees)],
+                    ],
+                ],
             ],
             [
                 'label' => 'Failed sign-ins today',
@@ -150,6 +169,8 @@ class SecurityDashboardService
                 'sub' => $lockedToday > 0 ? 'locked out' : 'no lockouts',
                 'icon' => 'keyx',
                 'tone' => $lockedToday > 0 ? 'bad' : 'warn',
+                'spark' => $this->dailyCounts(FailedLogin::query(), 'occurred_at'),
+                'delta' => $this->change($failedToday, $failedYesterday, 'vs yesterday', 'bad'),
             ],
             [
                 'label' => 'Intrusions this week',
@@ -159,6 +180,8 @@ class SecurityDashboardService
                     : 'nothing detected',
                 'icon' => 'bug',
                 'tone' => $weekTotal > 0 ? 'bad' : 'good',
+                'spark' => $this->dailyCounts(IntrusionLog::query(), 'created_at'),
+                'delta' => $this->change($weekTotal, $prevIntrusions, 'vs last week', 'bad'),
             ],
             [
                 'label' => 'Blocked addresses',
@@ -168,7 +191,88 @@ class SecurityDashboardService
                     : 'none added today',
                 'icon' => 'slash',
                 'tone' => 'good',
+                'spark' => $this->dailyCounts(BlockedIp::query(), 'created_at'),
+                // A block is the system acting, so more of them is not bad
+                // news the way more intrusions is. The arrow says which way
+                // and the tone stays neutral.
+                'delta' => $this->change($blockedThisWeek, $blockedPrevWeek, 'vs last week', 'flat'),
             ],
+        ];
+    }
+
+    /**
+     * Seven daily counts for a KPI's spark, oldest first.
+     *
+     * Days with nothing are zeros rather than gaps: a spark with a missing
+     * Tuesday reads as a quiet Tuesday shifted into Wednesday's place, which
+     * is a different week from the one that happened.
+     *
+     * @return list<int>
+     */
+    private function dailyCounts($query, string $column, int $days = 7): array
+    {
+        $from = today()->subDays($days - 1);
+
+        // Every selectRaw here takes a LITERAL. The first version built
+        // "date($column)" by interpolation and SqlInjectionTest refused it;
+        // the second passed a variable holding an allowlisted literal, and it
+        // refused that too -- correctly, since a reader of the call site
+        // cannot see what is in the variable. A column name can never be a
+        // binding, so the only safe form is a branch per column, each with the
+        // string written out where it is used. No default: an unknown column
+        // throws here rather than reaching the database.
+        $start = $from->copy()->startOfDay();
+
+        $counts = (match ($column) {
+            'created_at' => $query->where('created_at', '>=', $start)
+                ->selectRaw('date(created_at) as day, count(*) as total'),
+            'occurred_at' => $query->where('occurred_at', '>=', $start)
+                ->selectRaw('date(occurred_at) as day, count(*) as total'),
+        })
+            ->groupBy('day')
+            ->pluck('total', 'day');
+
+        $out = [];
+        for ($d = $from->copy(); $d->lte(today()); $d->addDay()) {
+            $out[] = (int) ($counts[$d->toDateString()] ?? 0);
+        }
+
+        return $out;
+    }
+
+    /**
+     * This period against the one before it, as the tiles' change figure.
+     *
+     * The percentage is only meaningful when there was something to compare
+     * to. 4 against 0 is not "up 400%", it is "up from nothing"; and 44
+     * against 2 is arithmetically "up 2100%" and useless to read -- a figure
+     * that size is noise dressed as precision. Below a baseline of five the
+     * change is reported as the plain difference instead, which is both
+     * shorter and the thing an administrator actually wants: "up 42".
+     *
+     * `tone` is passed in rather than derived from the arrow, because which
+     * direction is bad depends on the measure: more intrusions is bad news,
+     * more blocked addresses is the system working.
+     *
+     * @return array{value:string,dir:string,of:string,tone:string}|null
+     */
+    private function change(int $now, int $before, string $of, string $tone): ?array
+    {
+        if ($now === 0 && $before === 0) {
+            return null;
+        }
+
+        $dir = $now > $before ? 'up' : ($now < $before ? 'down' : 'flat');
+
+        $value = $before >= 5
+            ? round(abs($now - $before) / $before * 100).'%'
+            : ($now === $before ? '0' : (string) abs($now - $before));
+
+        return [
+            'value' => $value,
+            'dir' => $dir,
+            'of' => $of,
+            'tone' => $dir === 'flat' ? 'flat' : $tone,
         ];
     }
 
@@ -193,44 +297,7 @@ class SecurityDashboardService
         return $this->series($from, today(), $counts, fn (Carbon $d) => $d->format('D'));
     }
 
-    /**
-     * Successful sign-ins per day over four weeks.
-     *
-     * Four, unlike the chart above, because sign-ins DO have a weekly rhythm —
-     * the weekend collapse. One week shows the shape but cannot say whether
-     * this week is unusual; four lets this Monday be read against the last
-     * three, which is the question a security screen should answer.
-     */
-    public function signInsByDay(int $days = 28): array
-    {
-        $from = today()->subDays($days - 1);
-
-        $counts = AuditLog::query()
-            ->where('action', 'login')
-            ->where('created_at', '>=', $from->copy()->startOfDay())
-            ->selectRaw('date(created_at) as day, count(*) as total')
-            ->groupBy('day')
-            ->pluck('total', 'day');
-
-        // Every day would be 28 labels in the width of a card. One per week,
-        // and today, which is the only day anybody looks for by name.
-        $series = $this->series($from, today(), $counts, function (Carbon $d) use ($from, $days) {
-            $offset = (int) $from->diffInDays($d);
-
-            return match (true) {
-                $offset === 0 => '4 weeks ago',
-                $offset === 7 => '3 weeks',
-                $offset === 14 => '2 weeks',
-                $offset === 21 => 'last week',
-                $offset === $days - 1 => 'today',
-                default => '',
-            };
-        });
-
-        return $series;
-    }
-
-    /** @param callable(Carbon):string $label */
+/** @param callable(Carbon):string $label */
     private function series(Carbon $from, Carbon $to, $counts, callable $label): array
     {
         $labels = [];
