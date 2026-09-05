@@ -10,6 +10,9 @@ REM  this office signed it -- which is the only thing the browser is
 REM  complaining about. The traffic was already encrypted.
 REM
 REM  To undo:  deploy\trust-cert.bat remove
+REM
+REM  connect-client.bat calls this as `trust-cert.bat nopause`, which skips the
+REM  closing banner and the pause so it can run as one step inside that script.
 REM ============================================================================
 setlocal
 
@@ -31,9 +34,10 @@ if errorlevel 1 (
 
 if not exist "%CRT%" (
   echo [X] No certificate at %CRT%
-  echo     Run deploy\setup-https.bat first, or copy lms.crt here from
-  echo     the server -- the .crt is public and safe to copy. NEVER copy
-  echo     lms.key, which is the private half and belongs on the server only.
+  echo     Run deploy\setup-https.bat first, or copy lms.crt here from the
+  echo     server -- the .crt is the public half and is safe to copy.
+  echo     NEVER copy lms.key: that is the private half, and it belongs on
+  echo     the server and nowhere else.
   goto :fail
 )
 
@@ -48,6 +52,8 @@ if errorlevel 1 (
   echo [X] Could not add the certificate to the Trusted Root store.
   goto :fail
 )
+
+if /I "%~1"=="nopause" exit /b 0
 
 echo.
 echo ============================================================
@@ -71,6 +77,7 @@ pause
 exit /b 0
 
 :fail
+if /I "%~1"=="nopause" exit /b 1
 echo.
 pause
 exit /b 1

@@ -195,8 +195,87 @@ class HttpsConfigTest extends TestCase
      */
     public function test_no_escaped_pipe_survives_in_the_setup_script(): void
     {
-        $this->assertStringNotContainsString('^|', $this->file('deploy/setup-https.bat'),
-            'a pipeline is being run inside a backtick FOR block, which is what silently returned nothing');
+        foreach (['deploy/setup-https.bat', 'deploy/connect-client.bat'] as $path) {
+            $this->assertStringNotContainsString('^|', $this->file($path),
+                "{$path} runs a pipeline inside a backtick FOR block, which is what silently returned nothing");
+        }
+    }
+
+    /**
+     * The client half of the setup is a script, not a paragraph.
+     *
+     * The server can be perfectly configured and still be unreachable from
+     * every other desk, because two things have to happen on each client PC:
+     * the name has to resolve to the server, and the certificate has to be
+     * trusted. Left as written instructions, both are done by hand in a
+     * protected system file by whoever is nearest, which is how the server
+     * itself ended up with the hostname in its hosts file twice, commented
+     * out both times, and no working mapping.
+     */
+    public function test_there_is_a_client_setup_script(): void
+    {
+        $client = $this->file('deploy/connect-client.bat');
+
+        $this->assertStringContainsString('%HOSTSFILE%', $client,
+            'the client script does not write the hosts entry');
+        $this->assertStringContainsString('trust-cert.bat', $client,
+            'the client script does not trust the certificate, so every user meets a warning page');
+        $this->assertStringContainsString('net session', $client,
+            'the client script does not check for administrator, and both its steps need it');
+        $this->assertMatchesRegularExpression('/copy \/Y "%HOSTSFILE%"/', $client,
+            'the hosts file is edited with no backup taken first');
+        $this->assertStringContainsString('ipconfig /flushdns', $client,
+            'the resolver cache is not flushed, so a name that now works can still report NXDOMAIN');
+
+        // trust-cert.bat has to be callable as a step rather than a
+        // conversation, or the client script stops dead on its pause.
+        $this->assertStringContainsString('nopause', $this->file('deploy/trust-cert.bat'),
+            'trust-cert.bat always pauses, so it cannot be called from another script');
+    }
+
+    /**
+     * A client is never pointed at its own loopback.
+     *
+     * 127.0.0.1 is the correct mapping on the server and the wrong one
+     * everywhere else, and the natural way to set up the second PC is to copy
+     * the line off the first. The result is a name that resolves to the PC
+     * asking, which presents as a refused connection rather than as a
+     * misconfiguration.
+     */
+    public function test_the_client_script_refuses_the_loopback_address(): void
+    {
+        $client = $this->file('deploy/connect-client.bat');
+
+        $this->assertStringContainsString('findstr /B /C:"127."', $client,
+            'the client script would happily map the site to 127.0.0.1, which on a client means itself');
+    }
+
+    /**
+     * A stale mapping is corrected, not left beside a new one.
+     *
+     * The server's address is handed out by DHCP and will change. A client
+     * that already has an entry would otherwise keep asking the old address
+     * forever -- and appending a second line would not help, because the
+     * resolver takes the first match.
+     */
+    public function test_the_client_script_corrects_a_stale_mapping(): void
+    {
+        $client = $this->file('deploy/connect-client.bat');
+
+        $this->assertStringContainsString('%CURIP%', $client,
+            'the client script does not read the existing mapping, so it cannot tell a stale one from a correct one');
+        $this->assertStringContainsString('[0-9A-Fa-f:.]+', $client,
+            'the hosts check does not require the line to begin with an address, '
+            .'so a commented-out entry reads as a working mapping');
+    }
+
+    /** The private half of the certificate is never suggested for copying. */
+    public function test_nothing_tells_anyone_to_copy_the_private_key(): void
+    {
+        foreach (['deploy/connect-client.bat', 'deploy/trust-cert.bat', 'deploy/setup-https.bat'] as $path) {
+            $this->assertStringContainsString('NEVER copy lms.key', $this->file($path),
+                "{$path} discusses moving certificate files between PCs without warning off the private key");
+        }
     }
 
     /**

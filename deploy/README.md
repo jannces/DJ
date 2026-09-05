@@ -2,8 +2,9 @@
 
 | File | Purpose |
 |------|---------|
-| `setup-https.bat` | **Run as administrator once.** Does the whole HTTPS setup below, with backups |
-| `trust-cert.bat` | Run as administrator on each PC to remove the browser's certificate warning |
+| `setup-https.bat` | **On the SERVER, as administrator, once.** Whole HTTPS setup, with backups |
+| `connect-client.bat` | **On every OTHER PC, as administrator.** Points the name at the server and trusts the certificate |
+| `trust-cert.bat` | Trusts the certificate only. `connect-client.bat` calls this; run it alone if the name already resolves |
 | `make-cert.sh` / `make-cert.bat` | Generate a self-signed TLS cert (`certs/lms.crt`, `certs/lms.key`) |
 | `apache-vhost.conf` | Apache VirtualHost (HTTP→HTTPS redirect, LAN-only, TLS) |
 | `lms-queue.service` | systemd unit for the queue worker (Linux) |

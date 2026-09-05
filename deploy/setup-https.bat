@@ -326,15 +326,21 @@ echo   The browser warns about the certificate the first time on
 echo   each PC. That is expected - it is signed by this office,
 echo   not bought from a public authority. Advanced, then Continue.
 echo.
-echo   ON THE OTHER OFFICE PCs, add this line to
-echo     %%SystemRoot%%\System32\drivers\etc\hosts   (as administrator)
-echo   using THIS server's address, not 127.0.0.1:
+echo   ON EACH OF THE OTHER OFFICE PCs, copy this deploy folder
+echo   across and run, as administrator:
 echo.
-if not "%HOSTIP%"=="" echo       %HOSTIP%   %SITE%
-if "%HOSTIP%"=="" echo       ^<this server's IP^>   %SITE%
+if not "%HOSTIP%"=="" echo       deploy\connect-client.bat %HOSTIP%
+if "%HOSTIP%"=="" echo       deploy\connect-client.bat ^<this server's IP^>
 echo.
-echo   Better still: one DNS record on the router - one edit rather
-echo   than one per PC, and one edit when the IP changes.
+echo   That points the name at THIS server ^(not 127.0.0.1, which on
+echo   another PC means that PC^) and trusts the certificate.
+echo.
+echo   Copying deploy\certs\lms.crt across is fine - it is the public
+echo   half. NEVER copy lms.key; it belongs on this machine only.
+echo.
+echo   For a whole office: one DNS record on the router replaces the
+echo   hosts half of that on every PC at once, and covers phones and
+echo   tablets, which have no hosts file to edit.
 echo ============================================================
 echo.
 pause
