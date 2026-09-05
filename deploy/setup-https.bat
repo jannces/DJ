@@ -101,13 +101,37 @@ if errorlevel 1 (
 
 REM Both the mappings and the commented-out ones: this is a removal, and a
 REM commented line for a name that no longer exists is just confusing.
-REM Rewritten as an indexed loop rather than a Where-Object pipeline for the
-REM same reason as everywhere else in these scripts -- no pipe, nothing for
-REM cmd or a stray caret to get wrong.
+REM
+REM WRITTEN WITH .NET FILE I/O, NOT Set-Content, and that is the whole point.
+REM Set-Content failed here on a real machine with:
+REM
+REM   Set-Content : Stream was not readable.
+REM   FullyQualifiedErrorId : GetContentWriterArgumentError
+REM
+REM The FileSystem provider opens the target READABLE as well as writable so
+REM it can sniff the existing encoding. Anything holding the hosts file --
+REM Defender guards this file specifically, and an editor or another tool will
+REM do it too -- makes that read fail, and the provider reports it as an
+REM argument error against the path, which reads like a bad path rather than a
+REM locked file. [System.IO.File]::WriteAllLines opens write-only and never
+REM needs that reader, so the whole class of failure goes away. It also writes
+REM UTF-8 with no BOM, which is what the hosts file wants.
 copy /Y "%HOSTSFILE%" "%HOSTSFILE%.backup-%STAMP%" >nul
-powershell -NoProfile -Command "$p='%HOSTSFILE%'; $c=@(Get-Content $p); $k=New-Object System.Collections.ArrayList; foreach ($l in $c) { if ($l -notmatch 'onealicialms\.local') { [void]$k.Add($l) } }; Set-Content -Path $p -Value $k.ToArray()"
-if errorlevel 1 ( echo [X] Could not edit the hosts file. & goto :fail )
-echo       Old hosts lines removed. Backed up to hosts.backup-%STAMP%
+powershell -NoProfile -Command "try { $p='%HOSTSFILE%'; $k=@(); foreach ($l in [System.IO.File]::ReadAllLines($p)) { if ($l -notmatch 'onealicialms\.local') { $k += $l } }; [System.IO.File]::WriteAllLines($p, [string[]]$k); exit 0 } catch { Write-Host ('      ' + $_.Exception.Message); exit 1 }"
+
+REM NOT fatal, and it used to be. This step is housekeeping: the old lines do
+REM not stop the new name working, and aborting the entire HTTPS setup over
+REM them left the machine with nothing configured for the sake of two stale
+REM comments. Say what could not be done and carry on.
+if errorlevel 1 (
+  echo [!] Could not edit the hosts file - leaving it alone.
+  echo     Nothing is broken by this. The old lines are inert; remove them by
+  echo     hand later if you want to, with Notepad opened AS ADMINISTRATOR:
+  echo       %HOSTSFILE%
+  echo     Your original is at hosts.backup-%STAMP%
+) else (
+  echo       Old hosts lines removed. Backed up to hosts.backup-%STAMP%
+)
 
 REM The old certificate file itself is not deleted here. Step 7 checks whether
 REM deploy\certs\lms.crt covers the CURRENT hostname and reissues it if not,

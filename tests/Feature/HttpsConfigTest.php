@@ -333,6 +333,58 @@ class HttpsConfigTest extends TestCase
     }
 
     /**
+     * The hosts file is written with .NET file I/O, not Set-Content.
+     *
+     * Set-Content failed on a real machine with
+     *
+     *   Set-Content : Stream was not readable.
+     *   FullyQualifiedErrorId : GetContentWriterArgumentError
+     *
+     * The FileSystem provider opens the target readable as well as writable so
+     * it can sniff the existing encoding. Anything holding the hosts file --
+     * Defender guards this one specifically -- makes that read fail, and the
+     * provider reports it as an argument error against the path, which reads
+     * like a bad path rather than a locked file.
+     * [System.IO.File]::WriteAllLines opens write-only and never needs that
+     * reader, so the failure cannot occur.
+     */
+    public function test_the_hosts_file_is_not_rewritten_with_set_content(): void
+    {
+        foreach (['deploy/setup-https.bat', 'deploy/connect-client.bat'] as $path) {
+            $script = $this->file($path);
+
+            $this->assertStringContainsString('[System.IO.File]::WriteAllLines', $script,
+                "{$path} does not use .NET file I/O to rewrite the hosts file");
+            $this->assertStringNotContainsString('Set-Content -Path $p -Value $k', $script,
+                "{$path} is back to Set-Content, which fails with \"Stream was not readable\" "
+                .'whenever anything holds the hosts file open');
+        }
+    }
+
+    /**
+     * Failing to tidy the old name does not abandon the whole setup.
+     *
+     * It did. The cleanup step ran `goto :fail` on a hosts-file error, so a
+     * locked hosts file left the machine with no certificate, no vhost and no
+     * firewall rule -- the entire installation given up for the sake of two
+     * stale lines that were doing no harm.
+     */
+    public function test_a_failed_cleanup_does_not_abort_the_installation(): void
+    {
+        $setup = $this->file('deploy/setup-https.bat');
+
+        // Step 1 only. The prerequisite checks above it are a different
+        // matter: aborting before anything is written is exactly right there.
+        $from = (int) strpos($setup, '[1/9]');
+        $cleanup = substr($setup, $from, (int) strpos($setup, '[2/9]') - $from);
+
+        $this->assertStringNotContainsString('goto :fail', $cleanup,
+            'a failure tidying the old hostname aborts the whole HTTPS setup');
+        $this->assertStringContainsString('Could not edit the hosts file - leaving it alone', $cleanup,
+            'the cleanup step does not say what it could not do');
+    }
+
+    /**
      * One timestamped backup is not overwritten by a second.
      *
      * Both the cleanup step and the hosts step write to

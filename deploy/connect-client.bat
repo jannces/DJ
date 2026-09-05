@@ -120,12 +120,27 @@ powershell -NoProfile -Command "if (Select-String -Path '%HOSTSFILE%' -Pattern '
 if exist "%OFILE%" for /f "usebackq delims=" %%o in ("%OFILE%") do set OLDFOUND=%%o
 del "%OFILE%" 2>nul
 
+REM .NET file I/O rather than Set-Content. The provider opens the target
+REM readable as well as writable so it can sniff the encoding, and anything
+REM holding the hosts file -- Defender guards this one specifically -- makes
+REM that read fail with "Stream was not readable", reported as an argument
+REM error against the path. WriteAllLines opens write-only, so it cannot hit
+REM that, and it writes UTF-8 with no BOM, which is what hosts wants.
+REM
+REM Also not fatal: the old lines are inert and do not stop the new name
+REM working, so failing here would abandon the rest of the setup for nothing.
 if not defined OLDFOUND (
   echo       No old hosts lines to remove.
 ) else (
   copy /Y "%HOSTSFILE%" "%HOSTSFILE%.backup-%STAMP%" >nul
-  powershell -NoProfile -Command "$p='%HOSTSFILE%'; $c=@(Get-Content $p); $k=New-Object System.Collections.ArrayList; foreach ($l in $c) { if ($l -notmatch 'onealicialms\.local') { [void]$k.Add($l) } }; Set-Content -Path $p -Value $k.ToArray()"
-  echo       Old hosts lines removed. Backed up to hosts.backup-%STAMP%
+  powershell -NoProfile -Command "try { $p='%HOSTSFILE%'; $k=@(); foreach ($l in [System.IO.File]::ReadAllLines($p)) { if ($l -notmatch 'onealicialms\.local') { $k += $l } }; [System.IO.File]::WriteAllLines($p, [string[]]$k); exit 0 } catch { Write-Host ('      ' + $_.Exception.Message); exit 1 }"
+  if errorlevel 1 (
+    echo [!] Could not edit the hosts file - leaving it alone. Nothing is
+    echo     broken by this; the old lines are inert. Original kept at
+    echo     hosts.backup-%STAMP%
+  ) else (
+    echo       Old hosts lines removed. Backed up to hosts.backup-%STAMP%
+  )
 )
 
 REM --- Is the server actually answering? -------------------------------------
