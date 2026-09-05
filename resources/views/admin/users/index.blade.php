@@ -53,7 +53,7 @@
                     <td>{{ $user->employeeProfile?->department?->name ?? '—' }}</td>
                     <td>
                         @php $color = ['active'=>'success','inactive'=>'secondary','blocked'=>'danger'][$user->status] ?? 'secondary'; @endphp
-                        <span class="badge bg-{{ $color }} badge-status">{{ $user->status }}</span>
+                        <span class="badge bg-{{ $color }}">{{ $user->status }}</span>
                     </td>
                     <td class="text-end">
                         @if ($user->trashed())

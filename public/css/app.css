@@ -5085,6 +5085,20 @@ span.dash-link{ justify-content:flex-start; }
   padding:.75rem .95rem; border-bottom:1px solid var(--border);
 }
 .nb-item:last-child{ border-bottom:0; }
+
+/* An unread row, marked. The class was on the markup from the start with no
+   rule behind it, so the only thing separating read from unread was the small
+   "New" pill at the end of the subject line -- findable, but not something the
+   eye picks out while scanning six of them.
+
+   An accent down the leading edge rather than a tint across the row: the row
+   already changes colour on hover, and two backgrounds competing would make a
+   hovered read row look unread. The inset keeps the border off the panel edge
+   without moving the text, so read and unread rows still line up. */
+.nb-item.is-unread{ box-shadow:inset .1875rem 0 0 var(--primary); }
+
+/* After the unread rule, so hovering an unread row does not lose its accent
+   -- the shadow and the background are different properties and both apply. */
 .nb-item:hover{ background:var(--surface-hover); }
 
 /* A disc of the notification's own tone. Not initials: half of these are about

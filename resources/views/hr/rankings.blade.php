@@ -35,7 +35,7 @@
             </p>
         </div>
     @else
-        <div class="rk" id="rk">
+        <div id="rk">
             <div class="rk-tabs">
                 @foreach ($withRows as $ranking)
                     <label>
