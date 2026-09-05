@@ -21,6 +21,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Trust only the loopback interface as a reverse-proxy origin, so that
+        // when Apache/TLS termination sits in front of the app on the same
+        // host (e.g. a local TLS-terminating proxy), Laravel reads
+        // X-Forwarded-Proto and correctly generates https:// URLs/redirects
+        // instead of falling back to http://. A remote attacker cannot spoof
+        // "connecting from 127.0.0.1", so this cannot be used to fake HTTPS.
+        $middleware->trustProxies(at: ['127.0.0.1', '::1']);
+
         // Security kernel — order matters (see docs/Architecture.md §3).
         $middleware->prepend([
             BlockedIpMiddleware::class,
