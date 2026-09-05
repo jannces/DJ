@@ -21,9 +21,13 @@ echo   LGU Alicia LMS - Stopping
 echo ============================================================
 echo.
 
-REM --- 1. The two windows start.bat opened -------------------------------
-echo [1/3] Closing the web server...
-taskkill /FI "WINDOWTITLE eq LGU Alicia - Web Server*" /T /F >nul 2>&1
+REM --- 1. The web server and the worker ----------------------------------
+REM Apache serves the site now, not "php artisan serve", so stopping the
+REM window start.bat opened is no longer enough -- httpd keeps running in the
+REM background and port 443 stays held. Stop the process itself.
+echo [1/3] Stopping Apache...
+taskkill /FI "WINDOWTITLE eq LGU Alicia - Apache*" /T /F >nul 2>&1
+taskkill /IM httpd.exe /F >nul 2>&1
 if errorlevel 1 (echo       Not running.) else (echo       Stopped.)
 
 echo [2/3] Closing the background worker...

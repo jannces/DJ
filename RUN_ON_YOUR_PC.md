@@ -106,17 +106,32 @@ Run these commands **one line at a time** inside `C:\xampp\htdocs\lms`:
 
 For learning and testing, the simplest way to run it:
 
-```
-php artisan serve
-```
+Double-click **`start.bat`**. It starts MySQL, the background worker and
+Apache, then opens the browser at:
 
-Leave that window open. Now open your browser and go to:
-
-**http://127.0.0.1:8000**
+**https://onealicialms.local**
 
 You should see the **login page**. 🎉
 
-> To stop the system, click the Command Prompt window and press **Ctrl + C**.
+> To stop the system, run **`stop.bat`**.
+
+**Two things the first time:**
+
+1. **The browser warns about the certificate.** Expected — it is signed by this
+   office, not bought from a public authority. Choose *Advanced* → *Continue*.
+   The connection is encrypted either way.
+2. **The name has to resolve.** Add this line to
+   `C:\Windows\System32\drivers\etc\hosts`, editing it as Administrator:
+
+   ```
+   127.0.0.1   onealicialms.local
+   ```
+
+   On other office PCs use the **server's** address instead of `127.0.0.1`.
+   `start.bat` checks for this and tells you if it is missing.
+
+> **Why not `php artisan serve`?** It only speaks plain HTTP, so it can never
+> answer on an `https://` address. Apache does the serving now.
 
 ---
 
@@ -177,7 +192,7 @@ small letter, a number, and a symbol — for example `MyStr0ng!Pass2026`).
 | "could not find driver" | In XAMPP, edit `C:\xampp\php\php.ini`, remove the `;` before `extension=pdo_mysql`, save, restart Apache. |
 | Login says database error | Make sure MySQL is **green** in XAMPP and you created the `lms_alicia` database (Part C step 5). |
 | I didn't get the OTP email | Read it from `storage\logs\laravel.log` (Part E), or turn off OTP in System Settings for testing. |
-| Page looks unstyled | Run `php artisan storage:link` and refresh; make sure you opened `http://127.0.0.1:8000` (not the `public` folder directly). |
+| Page looks unstyled | Run `php artisan storage:link` and refresh; make sure you opened `https://onealicialms.local` (not the `public` folder directly). |
 | Locked out (3 wrong passwords) | Wait 24 hours, or ask a Super Admin to unblock you under **Users**, or reset with the CLI (below). |
 
 ### Reset everything and start fresh

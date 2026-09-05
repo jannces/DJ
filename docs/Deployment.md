@@ -22,7 +22,7 @@ Edit `.env` (LAN values):
 ```
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=https://lms.alicia.local
+APP_URL=https://onealicialms.local
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1  DB_DATABASE=lms_alicia  DB_USERNAME=lms_app  DB_PASSWORD=<strong>
 SESSION_DRIVER=database  SESSION_SECURE_COOKIE=true
@@ -49,30 +49,68 @@ php artisan config:cache && php artisan route:cache && php artisan view:cache
 ```
 
 ## 3. Apache VirtualHost + HTTPS (self-signed)
-Generate cert (Windows: use the bundled `deploy/make-cert.bat`; Linux: `deploy/make-cert.sh`):
+
+**Apache, not `php artisan serve`.** The dev server speaks plain HTTP on a port
+and cannot serve TLS at all, so it can never answer on `https://onealicialms.local`
+whatever `.env` says. `start.bat` starts Apache; `stop.bat` stops it.
+
+**1. Generate the certificate** (once per server). Windows: `deploy\make-cert.bat`.
+Linux: `deploy/make-cert.sh`.
+
 ```
-deploy/make-cert.sh lms.alicia.local   # outputs deploy/certs/lms.crt + lms.key
+deploy/make-cert.sh onealicialms.local   # outputs deploy/certs/lms.crt + lms.key
 ```
-`httpd-vhosts.conf`:
-```apache
-<VirtualHost *:80>
-  ServerName lms.alicia.local
-  Redirect permanent / https://lms.alicia.local/
-</VirtualHost>
-<VirtualHost *:443>
-  ServerName lms.alicia.local
-  DocumentRoot "C:/xampp/htdocs/lms/public"
-  SSLEngine on
-  SSLCertificateFile "C:/xampp/htdocs/lms/deploy/certs/lms.crt"
-  SSLCertificateKeyFile "C:/xampp/htdocs/lms/deploy/certs/lms.key"
-  <Directory "C:/xampp/htdocs/lms/public">
-    AllowOverride All
-    Require ip 192.168.1.0/24 127.0.0.1   # LAN-only at the web tier too
-  </Directory>
-</VirtualHost>
+
+It covers `onealicialms.local`, `localhost` and `127.0.0.1`, and is valid 825
+days. **The key is gitignored and must stay that way** — it is generated per
+installation, and a key in the repository is a key on every machine that clones it.
+
+**2. Add the vhost.** Copy `deploy/apache-vhost.conf` into `httpd-vhosts.conf`
+(or Include it), and enable `mod_ssl` and `mod_rewrite` in `httpd.conf`.
+
+Two lines in it must be edited:
+
+| Line | Set it to |
+|------|-----------|
+| `DocumentRoot` / `<Directory>` | where the project actually sits |
+| `Require ip` | **the subnet this server is on** |
+
+`Require ip` is the one that locks people out. It shipped as `192.168.1.0/24`,
+which is not a network this system has ever run on — every client on
+192.168.254.x would have been served a flat 403. Run `ipconfig` on the server
+and read the IPv4 address and mask: `192.168.254.17 / 255.255.255.0` means
+`192.168.254.0/24`.
+
+**3. Make the name resolve.** Each PC must map `onealicialms.local` to the
+server's IP. One DNS record on the router is one edit, forever; a hosts-file
+line (`C:\Windows\System32\drivers\etc\hosts`, edited as Administrator) is
+one edit *per PC*, and again whenever the IP changes.
+
 ```
-Enable `mod_ssl`/`mod_rewrite`, add `192.168.1.x lms.alicia.local` to clients' hosts file or LAN DNS,
-import `lms.crt` into client trust stores (avoids browser warnings).
+192.168.254.17   onealicialms.local
+```
+
+**4. The certificate warning.** Each browser warns once — the certificate is
+signed by this office rather than a public authority. Choose Advanced →
+Continue; traffic is encrypted either way. To remove the warning, import
+`lms.crt` into each client's Trusted Root store.
+
+### Moving to the agency
+
+The server's IP will change; the hostname does not. Only two things change with it:
+
+- the server's static IP (or DHCP reservation on its MAC — without one the
+  server can change address on a reboot and break every client at once);
+- the DNS record or hosts entries pointing the name at it.
+
+`APP_URL`, the certificate, the vhost and the code are untouched.
+
+### Why there is no HSTS
+
+`Strict-Transport-Security` makes Chrome refuse an untrusted certificate **with
+no way to click past it**. Against a self-signed certificate that turns the
+first-visit warning into a locked door on every office PC. Add it only after
+moving to a certificate the clients actually trust.
 
 ## 4. Workers & scheduler
 - Queue: `php artisan queue:work --tries=3` — install as a service

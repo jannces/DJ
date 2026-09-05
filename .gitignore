@@ -17,6 +17,8 @@
 /public/hot
 /public/storage
 /storage/*.key
+# The TLS private key. Generated per install by deploy/make-cert.*, never shared.
+/deploy/certs/
 /storage/pail
 /vendor
 Homestead.json

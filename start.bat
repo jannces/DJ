@@ -3,11 +3,14 @@ REM ============================================================
 REM  LGU Alicia LMS - START the system
 REM
 REM  Double-click this file, or run it from a terminal:
-REM      start.bat          serve on this PC only (127.0.0.1)
-REM      start.bat lan      serve to the whole local network
+REM      start.bat
 REM
-REM  It starts MySQL, the queue worker and the web server, then
-REM  opens your browser. Use stop.bat when you are finished.
+REM  It starts MySQL, the queue worker and Apache, then opens the
+REM  browser at https://onealicialms.local. Use stop.bat to finish.
+REM
+REM  APACHE, NOT "php artisan serve". The dev server speaks plain
+REM  HTTP on a port and cannot serve HTTPS at all, so it could never
+REM  answer on https://onealicialms.local whatever .env says.
 REM ============================================================
 setlocal enabledelayedexpansion
 
@@ -15,10 +18,7 @@ cd /d "%~dp0"
 
 REM Change this if XAMPP is not installed in the default folder.
 set XAMPP=C:\xampp
-set PORT=8000
-
-set BIND=127.0.0.1
-if /I "%1"=="lan" set BIND=0.0.0.0
+set SITE=onealicialms.local
 
 echo.
 echo ============================================================
@@ -95,45 +95,84 @@ REM user unless a worker is running. Keep this window open.
 echo [2/4] Starting the background worker...
 start "LGU Alicia - Queue Worker" /MIN cmd /c "php artisan queue:work --tries=3"
 
-REM --- 3. Web server -----------------------------------------------------
-echo [3/4] Starting the web server...
-start "LGU Alicia - Web Server" cmd /c "php artisan serve --host=%BIND% --port=%PORT%"
+REM --- 3. Web server (Apache, with HTTPS) --------------------------------
+echo [3/4] Starting Apache...
+
+if not exist "deploy\certs\lms.crt" (
+  echo [X] No TLS certificate found at deploy\certs\lms.crt
+  echo     Run this once, then try again:   deploy\make-cert.bat
+  goto :fail
+)
+
+findstr /C:"%SITE%" %SystemRoot%\System32\drivers\etc\hosts >nul 2>&1
+if errorlevel 1 (
+  echo [!] "%SITE%" is not in this PC's hosts file, so the name will not
+  echo     resolve here. Add this line to
+  echo       %SystemRoot%\System32\drivers\etc\hosts
+  echo     as Administrator:
+  echo.
+  echo       127.0.0.1   %SITE%
+  echo.
+  echo     On the other office PCs use the SERVER'S address instead of
+  echo     127.0.0.1 -- or add one record on the router, which is one
+  echo     edit rather than one per PC.
+  echo.
+)
+
+netstat -an | findstr /C:":443 " | findstr /C:"LISTENING" >nul
+if not errorlevel 1 (
+  echo       Apache is already running.
+  goto :webready
+)
+
+if not exist "%XAMPP%\apache\bin\httpd.exe" (
+  echo [X] Apache was not found at %XAMPP%\apache.
+  echo     Start it from the XAMPP control panel instead, then run this again.
+  goto :fail
+)
+
+start "LGU Alicia - Apache" /MIN "%XAMPP%\apache\bin\httpd.exe"
 
 set /a WAITED=0
 :waitweb
 timeout /t 1 /nobreak >nul
-netstat -an | find ":%PORT%" | find "LISTENING" >nul
+netstat -an | findstr /C:":443 " | findstr /C:"LISTENING" >nul
 if not errorlevel 1 goto :webready
 set /a WAITED+=1
 if !WAITED! lss 20 goto :waitweb
-echo [X] The web server did not start.
-echo     Look at the "LGU Alicia - Web Server" window for the reason.
+echo [X] Apache did not start listening on port 443.
+echo     Usual causes, in order:
+echo       - mod_ssl is not enabled in httpd.conf
+echo       - the vhost from deploy\apache-vhost.conf is not included
+echo       - another program already holds port 443 (Skype, IIS, VMware)
+echo     Check %XAMPP%\apache\logs\error.log for the reason.
 goto :fail
 
 :webready
 
 REM --- 4. Open the browser -----------------------------------------------
 echo [4/4] Opening the browser...
-start "" "http://127.0.0.1:%PORT%"
+start "" "https://%SITE%"
 
 echo.
 echo ============================================================
 echo   The system is running.
 echo.
-echo   On this PC:      http://127.0.0.1:%PORT%
-if /I "%1"=="lan" (
-  echo   On the network:  use one of the addresses below, with :%PORT%
-  for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /C:"IPv4"') do (
-    for /f "tokens=*" %%b in ("%%a") do echo                    http://%%b:%PORT%
-  )
-  echo.
-  echo   Set SESSION_SECURE_COOKIE=false in .env for network access,
-  echo   because the LAN is served over plain HTTP.
-)
+echo   Address:  https://%SITE%
 echo.
-echo   Two windows are now open and must stay open:
-echo     - LGU Alicia - Web Server
+echo   The browser warns about the certificate the first time on each
+echo   PC. That is expected: it is signed by this office rather than
+echo   bought from a public authority. Choose Advanced, then Continue.
+echo   The connection is encrypted either way.
+echo.
+echo   Every PC needs "%SITE%" to point at this server -- one DNS
+echo   record on the router, or a hosts-file line per PC. The server's
+echo   IP will change when this moves to the agency, and that mapping
+echo   is the only thing that has to change with it.
+echo.
+echo   Keep this helper window open:
 echo     - LGU Alicia - Queue Worker
+echo   Apache runs in the background; stop.bat closes it.
 echo.
 echo   Run stop.bat when you are finished.
 echo ============================================================
