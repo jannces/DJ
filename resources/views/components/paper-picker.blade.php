@@ -1,4 +1,4 @@
-@props(['request'])
+@props(['request' => null, 'label' => 'Download Form', 'icon' => 'bi-download'])
 
 {{--
   Which paper the PDF comes out on.
@@ -8,18 +8,29 @@
   paper the LGU files this form on; the rest are one click away rather than
   four buttons wide.
 
+  With no `request` it points at the BLANK form instead -- the same sheet with
+  nothing filled in, for completing by hand. Same component, because the paper
+  sizes and the reasoning about them are identical and a second picker would
+  be a second place to keep the list of sizes.
+
   Plain links, so this works with the keyboard and with JavaScript off. The
   server allowlists the value either way -- see LeaveRequestController::
   paperSize(), which will not pass a query string into dompdf's setPaper().
 --}}
 
+@php
+    $href = fn (?string $paper = null) => $request
+        ? route('leave.form6', $paper ? [$request, 'paper' => $paper] : [$request])
+        : route('leave.form6-blank', $paper ? ['paper' => $paper] : []);
+@endphp
+
 <div class="btn-group">
-    <a href="{{ route('leave.form6', $request) }}" class="btn btn-lgu btn-sm" target="_blank">
+    <a href="{{ $href() }}" class="btn btn-lgu btn-sm" target="_blank">
         {{-- "Download Form", not "Download PDF": this button existed before the
              picker did and its label is what the rest of the system, and
              ApprovalAuthorityTest, calls it. Renaming it was not part of
              adding a paper size. --}}
-        <i class="bi bi-download me-1" aria-hidden="true"></i>Download Form
+        <i class="bi {{ $icon }} me-1" aria-hidden="true"></i>{{ $label }}
     </a>
     <button type="button" class="btn btn-lgu btn-sm dropdown-toggle dropdown-toggle-split"
             data-bs-toggle="dropdown" aria-expanded="false">
@@ -35,11 +46,10 @@
             'folio' => ['Folio / short bond', '8.5 × 13 in', false],
             'a4' => ['A4', '210 × 297 mm', false],
             'letter' => ['Letter', '8.5 × 11 in', false],
-        ] as $value => [$label, $size, $isDefault])
+        ] as $value => [$size_label, $size, $isDefault])
             <li>
-                <a class="dropdown-item paper-item"
-                   href="{{ route('leave.form6', [$request, 'paper' => $value]) }}" target="_blank">
-                    <span>{{ $label }}@if ($isDefault)<span class="paper-default">default</span>@endif</span>
+                <a class="dropdown-item paper-item" href="{{ $href($value) }}" target="_blank">
+                    <span>{{ $size_label }}@if ($isDefault)<span class="paper-default">default</span>@endif</span>
                     <span class="paper-dim">{{ $size }}</span>
                 </a>
             </li>

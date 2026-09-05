@@ -311,6 +311,35 @@ class LeaveRequestController extends Controller
     }
 
     /**
+     * The same sheet with nothing filled in, to be completed by hand.
+     *
+     * The Apply page's Print button used to run window.print() over the web
+     * entry form, which produced three pages of rounded cards, bordered input
+     * boxes and a date-picker widget -- the application software, photographed.
+     * What an office wants off that button is the form: a walk-in applicant, a
+     * network down, an employee who would rather write it out.
+     *
+     * It renders through the SAME template as a filed application, on the same
+     * paper sizes. A separate blank template would be a second thing to keep in
+     * step with the first, which is the drift this whole change is undoing.
+     *
+     * No id in the path and no data loaded, because there is no application:
+     * it carries nobody's information, so there is nothing here to authorise
+     * beyond being a person who can file leave at all.
+     */
+    public function blankForm6(Request $request)
+    {
+        $paper = $this->paperSize($request);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('leave.form6', [
+            'r' => null, 'vl' => 0.0, 'sl' => 0.0,
+            'types' => $this->cscOrderedTypes(), 'paper' => $paper,
+        ])->setPaper($paper, 'portrait');
+
+        return $pdf->stream('CSC-Form6-blank.pdf');
+    }
+
+    /**
      * Which paper the sheet is drawn on.
      *
      * An allowlist, not the raw parameter. dompdf's setPaper() accepts any

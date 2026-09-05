@@ -76,23 +76,18 @@
             </form>
         @endif
         {{--
-          Print opens the PDF, it does not print this page.
+          There is no Print button, because there is nothing left for it to do.
 
-          window.print() rendered THIS markup through the browser, which is a
-          second renderer with its own fonts, its own margins and no page
-          budget -- measured at TWO pages on long bond, against the one page
-          PaperSizeTest guarantees for the PDF on all four sizes. So the paper
-          that came out of the browser was not the paper the LGU files.
+          It used to run window.print() over this markup -- a second renderer
+          with its own fonts, its own margins and no page budget, measured at
+          TWO pages on long bond where PaperSizeTest holds the PDF to one on
+          all four sizes. Pointing it at the PDF instead fixed that and made it
+          redundant in the same move: it then opened the very route the button
+          beside it already opens.
 
-          There is only one printable artefact now, and both controls lead to
-          it. The reader prints from the PDF viewer, where the size is already
-          right.
+          So the download IS the printable copy. It comes out on the paper the
+          reader chose, and they print it from the PDF viewer.
         --}}
-        <a class="btn btn-outline-secondary btn-sm" target="_blank"
-           href="{{ route('leave.form6', $r) }}"
-           title="Opens the PDF on long bond; print it from there">
-            <i class="bi bi-printer me-1" aria-hidden="true"></i>Print
-        </a>
         <x-paper-picker :request="$r" />
     </div>
 </x-page-head>

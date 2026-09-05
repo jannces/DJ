@@ -150,9 +150,21 @@
             <a href="{{ route('leave.instructions') }}" class="btn btn-outline-secondary btn-sm">
                 <i class="bi bi-info-circle me-1"></i>Instructions and Requirements
             </a>
-            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
-                <i class="bi bi-printer me-1"></i>Print
-            </button>
+            {{--
+              No Print button here.
+
+              It ran window.print() over this page and produced three pages of
+              rounded cards, bordered input boxes and a date-picker widget --
+              the application software, printed, which is nobody's idea of a
+              leave form. The honest replacement was a blank CSC Form 6, and a
+              blank form is a thing to hand somebody at a counter, not a thing
+              to offer an employee on the page where they are filing without
+              paper. It lives with HR now, on the approval queue.
+
+              What this page produces is a submitted application. It is printed
+              from the copy of it, on the preview page, where the paper size is
+              chosen and the sheet is guaranteed to fit one page.
+            --}}
         </div>
     </div>
 

@@ -11,8 +11,19 @@
      thing that keeps this page to HR — not this variable — and a template that
      silently assumes authority is a template that grants it the day the guard
      is loosened. --}}
-<x-page-head :title="$title"
-    sub="Waiting on a decision" />
+{{--
+  A blank CSC Form 6 lives here, on HR's own page.
+
+  It is the same PDF template a filed application renders through, with
+  nothing in it, on the same four paper sizes. HR is the office that would
+  hand paper across a counter -- a walk-in with no account, a day the LAN box
+  is down -- so it sits with HR rather than on the employee's Apply page,
+  where a button offering the paper path would work against the point of the
+  system.
+--}}
+<x-page-head :title="$title" sub="Waiting on a decision">
+    <x-paper-picker label="Blank form" icon="bi-printer" />
+</x-page-head>
 <div class="card">
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">

@@ -69,6 +69,17 @@ Route::middleware('permission:leave.requests.view-all')->group(function () {
 // queue and the decision are two requests and only the second one changes data.
 Route::middleware('permission:leave.approve.final')->group(function () {
     Route::get('review', [ApprovalController::class, 'queue'])->name('review.index');
+    // A BLANK CSC Form 6, to be filled in by hand.
+    //
+    // HR's, not the applicant's. It is the paper an office hands across a
+    // counter -- a walk-in with no account, a day the LAN box is down -- and
+    // offering it to an employee on the page where they file without paper
+    // would work against the point of the system. So it is gated on the
+    // permission only HR holds, and it sits on HR's queue page.
+    //
+    // Its own path segment, not `leave/blank-form`: that would sit under
+    // `leave/{leaveRequest}` and be read as an application id.
+    Route::get('blank-leave-form', [LeaveRequestController::class, 'blankForm6'])->name('leave.form6-blank');
     Route::post('review/{leaveRequest}/act', [ApprovalController::class, 'act'])->name('review.act');
 });
 

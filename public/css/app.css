@@ -479,8 +479,35 @@ footer.app-foot{ text-align:center; color:var(--muted-2); font-size:.76rem; padd
 @media print{
   .csc-sheet{ border:1px solid #000; padding:0 6px; margin:0; max-width:none; font-size:10.5px; box-shadow:none; }
   .csc-page-break{ break-before:page; page-break-before:always; }
-  .csc-table,.csc-credits,.csc-instr-cols{ break-inside:avoid; page-break-inside:avoid; }
+  .csc-table,.csc-credits{ break-inside:avoid; page-break-inside:avoid; }
   .csc-check-text,.csc-instr-col p,.csc-instr-col li{ font-size:9.5px; }
+
+  /* The instructions are TWO PAGES of prose, and this block used to carry
+     `break-inside:avoid` along with the form's tables.
+
+     A container taller than the paper cannot honour that. The browser did the
+     only thing it can: pushed the whole block to the next page -- leaving page
+     one holding the single lead sentence and a page of white -- and then broke
+     it across pages anyway, because it still did not fit. Four pages, the
+     first one blank in all but a line.
+
+     So the block breaks freely and the small things inside it are what stay
+     together: a heading is never left at the foot of a page without the
+     paragraph it introduces, and no single item is split across the fold. The
+     two columns become one, because a CSS grid spanning a page break is not
+     reliably supported and this is prose, which does not need them.
+
+     Written at `.instr-page .csc-instr-cols`, not at `.csc-instr-cols`: the
+     screen rule is the two-class one, a media query adds no specificity, and
+     a one-class rule here would simply lose to it. */
+  .instr-page .csc-instr-cols{ display:block; }
+  .csc-instr-col h3{ break-after:avoid; page-break-after:avoid; }
+  .csc-instr-col p,.csc-instr-col li{ break-inside:avoid; page-break-inside:avoid; }
+  .csc-instr-lead,.csc-instr-foot{ break-inside:avoid; page-break-inside:avoid; }
+
+  /* Print the document, not the card it is shown in. */
+  .instr-page{ padding:0; }
+  .card:has(.instr-page){ border:0; box-shadow:none; background:transparent; }
   .csc-input,.csc-line{ border-bottom:1px solid #000; }
   .csc-readonly{ background:transparent; }
   @page{ size:Letter portrait; margin:12mm; }

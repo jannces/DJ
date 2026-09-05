@@ -103,23 +103,26 @@ class FormPreviewTest extends TestCase
     }
 
     /**
-     * Print reaches the PDF, and never the browser's own rendering of this
-     * page.
+     * The download IS the printable copy; there is no separate Print button.
      *
-     * window.print() sent this markup through a second renderer with its own
-     * fonts, its own margins and no page budget: measured at two pages on long
-     * bond, where PaperSizeTest holds the PDF to one on all four sizes. A form
-     * that runs onto a second sheet is not the form the LGU files.
+     * There used to be one, running window.print() over this markup -- a
+     * second renderer with its own fonts, its own margins and no page budget,
+     * measured at two pages on long bond where PaperSizeTest holds the PDF to
+     * one on all four sizes. Pointing it at the PDF fixed that and made it
+     * redundant in the same move, since that is the route the button beside it
+     * already opens.
      */
-    public function test_print_opens_the_pdf_rather_than_printing_the_page(): void
+    public function test_the_only_printable_copy_is_the_pdf(): void
     {
         $r = $this->file();
         $html = $this->preview($r);
 
         $this->assertStringNotContainsString('window.print()', $html,
-            'the Print button still prints this page through the browser');
+            'the page is still printed through the browser, which pages it wrong');
         $this->assertStringContainsString(route('leave.form6', $r), $html,
             'nothing on the preview reaches the PDF the form is actually filed as');
+        $this->assertSame(0, substr_count($html, '>Print<'),
+            'Print is back beside Download Form, two controls opening one route');
     }
 
     /**

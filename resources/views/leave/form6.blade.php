@@ -14,8 +14,22 @@
   scale note below before enlarging anything.
 --}}
 @php
-    $p = $r->user->employeeProfile;
-    $details = $r->details ?? [];
+    /**
+     * $r is NULL on a blank form.
+     *
+     * The Apply page prints one to be filled in by hand, and it goes through
+     * this template rather than a second blank one -- a separate template
+     * would be another file to keep in step with this, which is exactly the
+     * drift that let the on-screen preview fall a redesign behind.
+     *
+     * So every field below is written to render empty rather than to render a
+     * placeholder: no em dashes, no "N/A", no ticked boxes. A blank government
+     * form is ruled lines and nothing else, and a dash printed where somebody
+     * has to write is worse than the space it took.
+     */
+    $blank = ($r ?? null) === null;
+    $p = $r?->user->employeeProfile;
+    $details = $r?->details ?? [];
     // Scoped to step 1, not "the first row that is not pending".
     //
     // That was unambiguous while an application had one approval row. It has
@@ -25,7 +39,7 @@
     //
     // This is the only thing kept from the form work; the blocks themselves are
     // exactly as they were.
-    $decision = $r->approvals->first(fn ($a) => $a->step_no === 1
+    $decision = $blank ? null : $r->approvals->first(fn ($a) => $a->step_no === 1
         && $a->action !== \App\Models\Approval::ACTION_PENDING);
 
     // Box 7.B names the head of the applicant's own office. Read from the
@@ -33,10 +47,12 @@
     // department record as it stands today: a form reprinted after a change of
     // head must still name whoever held the office on the day it was filed,
     // because that is who the document says was informed.
-    $deptHead = app(\App\Services\Leave\ApprovalWorkflowService::class)->notifiedHeadName($r);
-    $isApproved = $r->status === \App\Models\LeaveRequest::STATUS_APPROVED;
-    $isRejected = $r->status === \App\Models\LeaveRequest::STATUS_REJECTED;
-    $days = rtrim(rtrim(number_format((float) $r->working_days, 1), '0'), '.');
+    $deptHead = $blank
+        ? null
+        : app(\App\Services\Leave\ApprovalWorkflowService::class)->notifiedHeadName($r);
+    $isApproved = ! $blank && $r->status === \App\Models\LeaveRequest::STATUS_APPROVED;
+    $isRejected = ! $blank && $r->status === \App\Models\LeaveRequest::STATUS_REJECTED;
+    $days = $blank ? '' : rtrim(rtrim(number_format((float) $r->working_days, 1), '0'), '.');
 
     $citations = [
         'VL' => 'Sec. 51, Rule XVI, Omnibus Rules Implementing E.O. No. 292',
@@ -103,7 +119,7 @@
     // column: a missing file must print the typed name, not a broken image on
     // a government form.
     $sigFile = null;
-    if ($r->applicant_signature_path) {
+    if (! $blank && $r->applicant_signature_path) {
         $candidate = \Illuminate\Support\Facades\Storage::disk('local')->path($r->applicant_signature_path);
         $sigFile = is_file($candidate) ? $candidate : null;
     }
@@ -211,23 +227,26 @@
     <tr>
       <td style="width:34%">
         <span class="num">1. OFFICE/DEPARTMENT</span>
-        <div class="val">{{ $r->office_snapshot ?? $p?->department?->name ?? '—' }}</div>
+        {{-- `&nbsp;` rather than nothing on a blank form: an empty div
+             collapses in dompdf and the box loses the height somebody has to
+             write in. --}}
+        <div class="val">{{ $blank ? '' : ($r->office_snapshot ?? $p?->department?->name ?? '—') }}&nbsp;</div>
       </td>
       <td colspan="2">
         <span class="num">2. NAME:</span>
         <table class="plain"><tr>
-          <td style="width:33.3%"><div class="val lbl">{{ $p?->last_name ?? '—' }}</div><div class="lbl">(Last)</div></td>
-          <td style="width:33.3%"><div class="val lbl">{{ $p?->first_name ?? '—' }}</div><div class="lbl">(First)</div></td>
-          <td style="width:33.4%"><div class="val lbl">{{ $p?->middle_name ?? '—' }}</div><div class="lbl">(Middle)</div></td>
+          <td style="width:33.3%"><div class="val lbl">{{ $blank ? '' : ($p?->last_name ?? '—') }}&nbsp;</div><div class="lbl">(Last)</div></td>
+          <td style="width:33.3%"><div class="val lbl">{{ $blank ? '' : ($p?->first_name ?? '—') }}&nbsp;</div><div class="lbl">(First)</div></td>
+          <td style="width:33.4%"><div class="val lbl">{{ $blank ? '' : ($p?->middle_name ?? '—') }}&nbsp;</div><div class="lbl">(Middle)</div></td>
         </tr></table>
       </td>
     </tr>
     <tr>
-      <td><span class="num">3. DATE OF FILING</span><div class="val">{{ $r->date_filed->format('F d, Y') }}</div></td>
-      <td style="width:33%"><span class="num">4. POSITION</span><div class="val">{{ $r->position_snapshot ?? $p?->position?->title ?? '—' }}</div></td>
+      <td><span class="num">3. DATE OF FILING</span><div class="val">{{ $blank ? '' : $r->date_filed->format('F d, Y') }}&nbsp;</div></td>
+      <td style="width:33%"><span class="num">4. POSITION</span><div class="val">{{ $blank ? '' : ($r->position_snapshot ?? $p?->position?->title ?? '—') }}&nbsp;</div></td>
       <td style="width:33%">
         <span class="num">5. SALARY</span>
-        <div class="val">@if ($r->salary_snapshot)₱{{ number_format((float) $r->salary_snapshot, 2) }}@else—@endif</div>
+        <div class="val">@if (! $blank && $r->salary_snapshot)₱{{ number_format((float) $r->salary_snapshot, 2) }}@elseif (! $blank)—@endif&nbsp;</div>
       </td>
     </tr>
   </table>
@@ -243,7 +262,7 @@
         <table class="rows">
           @foreach ($sixA as $t)
             <tr>
-              <td class="b">{!! $box($t->id === $r->leave_type_id) !!}</td>
+              <td class="b">{!! $box(! $blank && $t->id === $r->leave_type_id) !!}</td>
               <td>
                 {{ $t->name }}
                 @if (!empty($citations[$t->code]))<br><span class="cite">({{ $citations[$t->code] }})</span>@endif
@@ -252,7 +271,7 @@
           @endforeach
           <tr>
             <td class="b">&nbsp;</td>
-            <td>Others: {!! $rule($r->purpose) !!}</td>
+            <td>Others: {!! $rule($blank ? null : $r->purpose) !!}</td>
           </tr>
         </table>
       </td>
@@ -278,7 +297,7 @@
           <tr><td class="b">&nbsp;</td><td><em>purpose:</em> {!! $rule($detail('purpose_other')) !!}</td></tr>
 
           @foreach ($sixB as $t)
-            <tr><td class="b">{!! $box($t->id === $r->leave_type_id) !!}</td><td>{{ $t->name }}</td></tr>
+            <tr><td class="b">{!! $box(! $blank && $t->id === $r->leave_type_id) !!}</td><td>{{ $t->name }}</td></tr>
           @endforeach
         </table>
       </td>
@@ -288,15 +307,15 @@
     <tr>
       <td>
         <div class="sub">6.C NUMBER OF WORKING DAYS APPLIED FOR</div>
-        <div class="val">{{ $days }} day(s)</div>
+        <div class="val">{{ $blank ? '' : $days.' day(s)' }}&nbsp;</div>
         <div class="case">INCLUSIVE DATES</div>
-        <div class="val">{{ $r->start_date->format('F d, Y') }} – {{ $r->end_date->format('F d, Y') }}</div>
+        <div class="val">{{ $blank ? '' : $r->start_date->format('F d, Y').' – '.$r->end_date->format('F d, Y') }}&nbsp;</div>
       </td>
       <td>
         <div class="sub">6.D COMMUTATION</div>
         <table class="rows">
-          <tr><td class="b">{!! $box(! $r->commutation) !!}</td><td>Not Requested</td></tr>
-          <tr><td class="b">{!! $box((bool) $r->commutation) !!}</td><td>Requested</td></tr>
+          <tr><td class="b">{!! $box(! $blank && ! $r->commutation) !!}</td><td>Not Requested</td></tr>
+          <tr><td class="b">{!! $box(! $blank && (bool) $r->commutation) !!}</td><td>Requested</td></tr>
         </table>
         {{--
           The applicant's signature, if they have one on file, and their typed
@@ -315,7 +334,7 @@
           @if ($sigFile)
             <img class="sigimg" src="{{ $sigFile }}" alt="">
           @endif
-          <div class="signname">{{ $r->applicant_signature }}</div>
+          <div class="signname">{{ $blank ? '' : $r->applicant_signature }}&nbsp;</div>
           <div class="signline"></div>
           <div class="lbl">(Signature of Applicant)</div>
         </div>
@@ -329,23 +348,23 @@
     <tr>
       <td style="width:50%">
         <div class="sub">7.A CERTIFICATION OF LEAVE CREDITS</div>
-        <div>As of {{ now()->format('F d, Y') }}</div>
+        <div>As of {{ $blank ? '' : now()->format('F d, Y') }}&nbsp;</div>
         <table style="margin-top:2px">
           <tr><th></th><th>Vacation Leave</th><th>Sick Leave</th></tr>
           <tr>
             <td>Total Earned</td>
-            <td>{{ number_format($vl, 3) }}</td>
-            <td>{{ number_format($sl, 3) }}</td>
+            <td>{{ $blank ? '' : number_format($vl, 3) }}&nbsp;</td>
+            <td>{{ $blank ? '' : number_format($sl, 3) }}&nbsp;</td>
           </tr>
           <tr>
             <td>Less this application</td>
-            <td>{{ $r->leaveType->credit_source === 'vacation' ? $days : '—' }}</td>
-            <td>{{ $r->leaveType->credit_source === 'sick' ? $days : '—' }}</td>
+            <td>{{ $blank ? '' : ($r->leaveType->credit_source === 'vacation' ? $days : '—') }}&nbsp;</td>
+            <td>{{ $blank ? '' : ($r->leaveType->credit_source === 'sick' ? $days : '—') }}&nbsp;</td>
           </tr>
           <tr>
             <td>Balance</td>
-            <td>{{ number_format($r->leaveType->credit_source === 'vacation' ? max(0, $vl - (float) $r->working_days) : $vl, 3) }}</td>
-            <td>{{ number_format($r->leaveType->credit_source === 'sick' ? max(0, $sl - (float) $r->working_days) : $sl, 3) }}</td>
+            <td>{{ $blank ? '' : number_format($r->leaveType->credit_source === 'vacation' ? max(0, $vl - (float) $r->working_days) : $vl, 3) }}&nbsp;</td>
+            <td>{{ $blank ? '' : number_format($r->leaveType->credit_source === 'sick' ? max(0, $sl - (float) $r->working_days) : $sl, 3) }}&nbsp;</td>
           </tr>
         </table>
         {{-- HR certifies the credits AND decides the application — one officer,
@@ -384,13 +403,13 @@
     <tr>
       <td>
         <div class="sub">7.C APPROVED FOR:</div>
-        <div><span class="blank">{{ $r->days_with_pay !== null ? rtrim(rtrim(number_format((float) $r->days_with_pay, 1), '0'), '.') : '' }}</span> days with pay</div>
-        <div><span class="blank">{{ $r->days_without_pay !== null ? rtrim(rtrim(number_format((float) $r->days_without_pay, 1), '0'), '.') : '' }}</span> days without pay</div>
+        <div><span class="blank">{{ ! $blank && $r->days_with_pay !== null ? rtrim(rtrim(number_format((float) $r->days_with_pay, 1), '0'), '.') : '' }}</span> days with pay</div>
+        <div><span class="blank">{{ ! $blank && $r->days_without_pay !== null ? rtrim(rtrim(number_format((float) $r->days_without_pay, 1), '0'), '.') : '' }}</span> days without pay</div>
         <div><span class="blank"></span> others (Specify)</div>
       </td>
       <td>
         <div class="sub">7.D DISAPPROVED DUE TO:</div>
-        <div>{{ $isRejected ? ($r->disapproval_reason ?? '—') : '' }}</div>
+        <div>{{ $isRejected ? ($r->disapproval_reason ?? '—') : '' }}&nbsp;</div>
       </td>
     </tr>
     <tr>
@@ -403,9 +422,23 @@
     </tr>
   </table>
 
-  <p class="foot">
-    Reference {{ $r->reference_no }} · status {{ strtoupper($r->status) }} · generated
-    electronically by the LGU Alicia Digital Leave Management System on
-    {{ now()->format('F d, Y H:i') }}. This document replaces the manual CSC Form No. 6.
-  </p>
+  {{-- The footer states what this piece of paper IS, and the two are not the
+       same statement. A filed application is a record and carries the
+       reference by which it can be found again; a blank form is stationery,
+       has no reference and no status, and printing "Reference · status ·
+       generated electronically" across the bottom of one would be the system
+       claiming an application that nobody has made. --}}
+  @if ($blank)
+    <p class="foot">
+      CSC Form No. 6 (Revised 2020) · blank copy printed from the LGU Alicia
+      Digital Leave Management System on {{ now()->format('F d, Y') }}.
+      Complete this form by hand and file it with the HRM Office.
+    </p>
+  @else
+    <p class="foot">
+      Reference {{ $r->reference_no }} · status {{ strtoupper($r->status) }} · generated
+      electronically by the LGU Alicia Digital Leave Management System on
+      {{ now()->format('F d, Y H:i') }}. This document replaces the manual CSC Form No. 6.
+    </p>
+  @endif
 </body></html>
