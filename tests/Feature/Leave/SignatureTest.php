@@ -127,6 +127,48 @@ class SignatureTest extends TestCase
     }
 
     /**
+     * The page you land on after uploading actually renders.
+     *
+     * It did not. `signature_uploaded_at` was fillable but not cast, so it
+     * came back from the database as a string and the signature page called
+     * ->format() on it -- a fatal, and a 500 on the redirect straight after a
+     * successful upload. The feature worked; the page confirming it crashed.
+     *
+     * The whole suite missed it, and the reason matters more than the bug:
+     * `actingAs()` keeps ONE User object for every request a test makes, so
+     * the profile the view read was the same in-memory instance the upload had
+     * just written a Carbon onto. Nothing ever re-read the row. A real browser
+     * gets a fresh user from the session on the next request, which is where
+     * the string -- and the crash -- came from.
+     *
+     * So this signs in AGAIN with a fresh instance before loading the page.
+     * Without that line this test passes against the broken code.
+     */
+    public function test_the_signature_page_renders_after_an_upload(): void
+    {
+        $this->upload($this->employee);
+
+        $this->app['auth']->forgetGuards();
+        $this->actingAs($this->employee->fresh());
+        session(['otp_verified' => true]);
+
+        $this->get(route('signature.edit'))
+            ->assertOk()
+            ->assertSee('Uploaded');
+    }
+
+    /** And the column is a date on the way back out, not just on the way in. */
+    public function test_the_upload_time_survives_a_round_trip_as_a_date(): void
+    {
+        $this->upload($this->employee);
+
+        $fresh = \App\Models\EmployeeProfile::where('user_id', $this->employee->id)->firstOrFail();
+
+        $this->assertInstanceOf(\Illuminate\Support\Carbon::class, $fresh->signature_uploaded_at,
+            'signature_uploaded_at reads back as a string, so anything formatting it fatals');
+    }
+
+    /**
      * Anything that is not an image is refused by the server.
      *
      * `accept` on the input is a convenience for the file picker and no kind

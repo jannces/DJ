@@ -24,6 +24,12 @@ class EmployeeProfile extends Model
         'date_hired' => 'date',
         'salary' => 'decimal:2',
         'is_solo_parent' => 'boolean',
+        // Without this the column comes back from the database as a STRING,
+        // and the signature page calls ->format() on it. It survived being
+        // written and read in one request -- the value is still the Carbon
+        // that was assigned -- and then fataled on the next one, which is the
+        // redirect straight after an upload.
+        'signature_uploaded_at' => 'datetime',
     ];
 
     /** The shape a generated employee number takes. */
