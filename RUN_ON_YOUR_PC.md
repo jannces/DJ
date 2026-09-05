@@ -120,6 +120,12 @@ You should see the **login page**. 🎉
 1. **The browser warns about the certificate.** Expected — it is signed by this
    office, not bought from a public authority. Choose *Advanced* → *Continue*.
    The connection is encrypted either way.
+
+   To stop it warning, right-click **`deploy\trust-cert.bat`** → *Run as
+   administrator*, then close and reopen the browser. Do that on each PC that
+   uses the system. Copy `deploy\certs\lms.crt` to the other PCs to run it
+   there — the `.crt` is public and safe to copy. **Never copy `lms.key`**,
+   which is the private half and belongs on the server only.
 2. **The name has to resolve.** Add this line to
    `C:\Windows\System32\drivers\etc\hosts`, editing it as Administrator:
 
