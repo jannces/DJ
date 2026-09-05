@@ -104,20 +104,44 @@ if not exist "deploy\certs\lms.crt" (
   goto :fail
 )
 
+REM Does the NAME resolve? Checking the hosts file only proves a line was
+REM written; it does not prove Windows is using it. A stale DNS cache, or a
+REM .local name going to mDNS instead, both leave a correct hosts file and a
+REM browser that still reports DNS_PROBE_FINISHED_NXDOMAIN.
+ping -n 1 %SITE% >nul 2>&1
+if not errorlevel 1 goto :nameok
+
+REM One free thing to try before reporting failure: the resolver may simply
+REM be holding an older answer.
+ipconfig /flushdns >nul 2>&1
+ping -n 1 %SITE% >nul 2>&1
+if not errorlevel 1 (
+  echo       Name resolved after flushing the DNS cache.
+  goto :nameok
+)
+
+echo [!] "%SITE%" does not resolve on this PC, so the browser will report
+echo     DNS_PROBE_FINISHED_NXDOMAIN however well Apache is running.
+echo.
 findstr /C:"%SITE%" %SystemRoot%\System32\drivers\etc\hosts >nul 2>&1
 if errorlevel 1 (
-  echo [!] "%SITE%" is not in this PC's hosts file, so the name will not
-  echo     resolve here. Add this line to
+  echo     It is not in the hosts file. Add this line to
   echo       %SystemRoot%\System32\drivers\etc\hosts
-  echo     as Administrator:
+  echo     with Notepad opened AS ADMINISTRATOR -- saving without that fails
+  echo     silently and leaves the file unchanged:
   echo.
   echo       127.0.0.1   %SITE%
-  echo.
-  echo     On the other office PCs use the SERVER'S address instead of
-  echo     127.0.0.1 -- or add one record on the router, which is one
-  echo     edit rather than one per PC.
-  echo.
+) else (
+  echo     It IS in the hosts file, and still does not resolve. That is the
+  echo     ".local" suffix: Windows can route .local lookups to mDNS instead
+  echo     of reading the hosts file. Two ways out:
+  echo       - use https://127.0.0.1 on this PC for now, or
+  echo       - rename the site to a suffix Windows treats normally, such as
+  echo         onealicialms.lan, and run deploy\setup-https.bat again.
 )
+echo.
+
+:nameok
 
 netstat -an | findstr /C:":443 " | findstr /C:"LISTENING" >nul
 if not errorlevel 1 (
