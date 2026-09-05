@@ -120,7 +120,7 @@ class RequestDetailPageTest extends TestCase
         $this->assertStringNotContainsString('Purpose Other', $html,
             'a column name is being title-cased into a label');
         $this->assertStringContainsString('Other study purpose', $html);
-        $this->assertStringContainsString('Study leave purpose', $html);
+        $this->assertStringContainsString('Study purpose', $html);
     }
 
     /** Stored codes are translated into what the form actually asked. */

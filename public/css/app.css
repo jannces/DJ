@@ -5200,7 +5200,10 @@ span.dash-link{ justify-content:flex-start; }
    names; the value is the thing somebody came to read. */
 .dfl{
   display:grid; grid-template-columns:minmax(0,max-content) minmax(0,1fr);
-  gap:.55rem 1.5rem; margin:0;
+  /* 1rem between the columns, not 1.5. In the two-up layout there are three
+     of these gaps, so the difference is 24px of value width -- enough to move
+     the width at which the four columns stop wrapping by a whole step. */
+  gap:.55rem 1rem; margin:0;
 }
 .dfl dt{ font-weight:500; color:var(--muted); }
 .dfl dd{ margin:0; color:var(--text); font-weight:500; overflow-wrap:anywhere; }
@@ -5213,13 +5216,21 @@ span.dash-link{ justify-content:flex-start; }
    label, value, label, value. Below this the single column is correct --
    pairs side by side at 700px puts four things in the width of two.
 
-   1500, not 1200. Four columns need room for two labels AND two values: at a
-   1440 viewport the card is about 730px, which leaves each value roughly
-   200px and splits "Sep 24, 2026 - Oct 27, 2026" across two lines. At 1600 the
-   card is 840 and nothing wraps. The breakpoint sits above the tight band
-   rather than inside it, so 1366 and 1440 laptops get the single column they
-   have the width for. */
-@media (min-width:1500px){
+   1400, and the number is measured rather than chosen. Four columns need room
+   for two labels AND two values, and the widest value on this card -- an
+   office name -- is 225px. Sweeping the real page 20px at a time, the four
+   columns first fit with nothing wrapped at:
+
+       as it was (1.5rem gap, long labels) ....... 1520
+       1rem gap ................................. 1480
+       1rem gap + "Office", "Study purpose" ..... 1420
+       1rem gap + those + "Leave dates" ......... 1400
+
+   1400 is the last of those, which leaves about 25px of slack on a 1440
+   monitor once Windows has taken its scrollbar -- the others are knife-edge
+   there or worse. Below it the single column is right: it is taller, but
+   nothing wraps, so the narrow case never looks broken. */
+@media (min-width:1400px){
   .dfl-2{ grid-template-columns:repeat(2, minmax(0,max-content) minmax(0,1fr)); }
 }
 

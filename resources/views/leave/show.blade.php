@@ -28,7 +28,7 @@
         'confinement' => 'Sick leave type',
         'illness' => 'Illness',
         'surgery_details' => 'Gynaecological surgery',
-        'purpose' => 'Study leave purpose',
+        'purpose' => 'Study purpose',
         'purpose_other' => 'Other study purpose',
         'separation_type' => 'Separation',
         'reason' => 'Reason for monetization',
@@ -114,11 +114,11 @@
                      short, so one pair per row left the right half empty. --}}
                 <dl class="dfl dfl-2">
                     <dt>Applicant</dt><dd>{{ $leaveRequest->user->name }}</dd>
-                    <dt>Office / Department</dt><dd>{{ $leaveRequest->office_snapshot ?? '—' }}</dd>
+                    <dt>Office</dt><dd>{{ $leaveRequest->office_snapshot ?? '—' }}</dd>
                     <dt>Position</dt><dd>{{ $leaveRequest->position_snapshot ?? '—' }}</dd>
                     <dt>Working days</dt>
                     <dd>{{ rtrim(rtrim(number_format($leaveRequest->working_days, 1), '0'), '.') }}</dd>
-                    <dt>Inclusive dates</dt>
+                    <dt>Leave dates</dt>
                     <dd>{{ $leaveRequest->start_date->format('M d, Y') }} – {{ $leaveRequest->end_date->format('M d, Y') }}</dd>
                     <dt>Commutation</dt>
                     <dd>{{ $leaveRequest->commutation ? 'Requested' : 'Not requested' }}</dd>
