@@ -47,6 +47,63 @@ class IntrusionDetectionTest extends TestCase
         $this->assertDatabaseHas('intrusion_logs', ['category' => 'traversal']);
     }
 
+    /**
+     * Regression: ordinary prose used to trip the SQL-comment patterns. A leave
+     * reason containing "--" produced a 400, a high-severity intrusion record,
+     * and after the threshold a 24-hour IP block for a legitimate applicant.
+     *
+     * @dataProvider benignProse
+     */
+    public function test_free_text_prose_is_not_treated_as_an_attack(string $prose): void
+    {
+        $request = Request::create('/leave', 'POST', ['purpose' => $prose]);
+        $request->server->set('REMOTE_ADDR', '203.0.113.9');
+
+        $response = app(IntrusionDetectionService::class)->inspect($request);
+
+        $this->assertNull($response, "Blocked benign text: {$prose}");
+        $this->assertSame(0, IntrusionLog::count());
+    }
+
+    public static function benignProse(): array
+    {
+        return [
+            'double hyphen' => ['Family emergency -- urgent, will return Monday'],
+            'comment marks' => ['Attending my sister/*s*/ wedding'],
+            'dashes' => ['Medical check-up -- follow-up next week'],
+            'null-ish text' => ['Reason: %00 percent attendance issue'],
+        ];
+    }
+
+    /** Free-text fields are still scanned for payloads with no innocent reading. */
+    public function test_real_payloads_in_free_text_are_still_blocked(): void
+    {
+        foreach ([
+            'UNION SELECT password FROM users',
+            '<script>document.cookie</script>',
+            'read /etc/passwd please',
+            "anything OR 1=1",
+        ] as $payload) {
+            IntrusionLog::query()->delete();
+            $request = Request::create('/leave', 'POST', ['purpose' => $payload]);
+            $request->server->set('REMOTE_ADDR', '203.0.113.9');
+
+            $this->assertNotNull(
+                app(IntrusionDetectionService::class)->inspect($request),
+                "Missed payload in free text: {$payload}",
+            );
+        }
+    }
+
+    /** A payload in the URL keeps the full, stricter signature set. */
+    public function test_sql_comment_in_the_query_string_is_still_blocked(): void
+    {
+        $response = $this->scan('/employees', ['q' => "admin' --  "]);
+
+        $this->assertNotNull($response);
+        $this->assertDatabaseHas('intrusion_logs', ['category' => 'sqli']);
+    }
+
     public function test_it_ignores_benign_requests(): void
     {
         $response = $this->scan('/leave', ['status' => 'approved']);

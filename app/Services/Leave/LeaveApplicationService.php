@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Security\AuditLogger;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 /** Orchestrates filing a leave application (validation + credit guard + workflow init). */
@@ -78,14 +79,50 @@ class LeaveApplicationService
                 'position_snapshot' => $profile?->position?->title,
                 'salary_snapshot' => $profile?->salary,
                 'applicant_signature' => $data['applicant_signature'] ?? $user->name,
+                // Filled in below, once the application has an id to name its
+                // own copy of the signature by.
+                'applicant_signature_hash' => $profile?->signature_hash,
                 'status' => LeaveRequest::STATUS_PENDING,
             ]);
+
+            $this->snapshotSignature($request, $profile?->signature_path);
 
             $this->workflow->initialize($request, $type);
             $this->audit->log('leave_submitted', $request, [], ['reference_no' => $request->reference_no], $user);
 
             return $request;
         });
+    }
+
+    /**
+     * Give the application its OWN copy of the signature it was filed with.
+     *
+     * Not a reference to the profile's file. The first version of this stored
+     * the profile's path directly, which meant that replacing your signature
+     * -- which deletes the file it replaces -- would have quietly broken the
+     * signature on every application already filed, including ones already
+     * approved and printed. A record of what was signed cannot live at a path
+     * somebody else is free to overwrite.
+     *
+     * Copied under the application's own id, so the two lifetimes are
+     * independent: a profile signature can be replaced or removed and the
+     * filed applications keep theirs.
+     *
+     * A failed copy is not a failed application. Somebody filing leave should
+     * not be turned away because the disk is full; the form falls back to the
+     * typed name, exactly as it does for an applicant who has no signature.
+     */
+    private function snapshotSignature(LeaveRequest $request, ?string $source): void
+    {
+        if ($source === null || ! Storage::disk('local')->exists($source)) {
+            return;
+        }
+
+        $target = 'signatures/filed/'.$request->id.'.'.pathinfo($source, PATHINFO_EXTENSION);
+
+        if (Storage::disk('local')->copy($source, $target)) {
+            $request->update(['applicant_signature_path' => $target]);
+        }
     }
 
     public function cancel(LeaveRequest $request, User $actor): void

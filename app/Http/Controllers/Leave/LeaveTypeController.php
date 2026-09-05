@@ -17,7 +17,7 @@ class LeaveTypeController extends Controller
 
     public function index(): View
     {
-        $types = LeaveType::orderBy('name')->paginate(20);
+        $types = LeaveType::orderBy('name')->paginate(config('lists.per_page'));
 
         return view('hr.leave-types.index', compact('types'));
     }

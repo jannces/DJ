@@ -1,7 +1,8 @@
 @extends('layouts.app')
 @section('title', $type->exists ? 'Edit leave type' : 'New leave type')
 @section('content')
-<h1 class="h4 mb-3">{{ $type->exists ? 'Edit: '.$type->name : 'New custom leave type' }}</h1>
+<x-page-head class="mb-3" :title="$type->exists ? 'Edit: '.$type->name : 'New custom leave type'"
+    :back-url="route('leave-types.index')" back-label="Leave Types" />
 <form method="POST" action="{{ $type->exists ? route('leave-types.update',$type) : route('leave-types.store') }}">
     @csrf @if($type->exists) @method('PUT') @endif
     <div class="row g-3">
@@ -35,7 +36,6 @@
             <div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="annual_reset" value="1" id="ar" @checked(old('annual_reset',$type->annual_reset))><label class="form-check-label" for="ar">Resets annually</label></div>
             <div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="active" value="1" id="act" @checked(old('active',$type->active ?? true))><label class="form-check-label" for="act">Active</label></div>
             <button class="btn btn-lgu w-100">Save leave type</button>
-            <p class="text-muted small mt-2 mb-0">Detail fields, documents and workflow of the built-in CSC types are managed in code/seed; custom types use the standard Dept→HR→Mayor flow.</p>
         </div></div></div>
     </div>
 </form>

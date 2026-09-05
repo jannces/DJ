@@ -1,7 +1,7 @@
 # User Manual (Employees, Department Heads, HR)
 
 ## 1. Signing in
-1. Open `https://lms.alicia.local` on an **authorized office computer**.
+1. Open `https://onealicialms.lan` on an **authorized office computer**.
 2. Enter your email/username and password → click **Login**.
 3. Check your email for the **6-digit OTP** (valid 5 minutes) and enter it.
 4. Wrong password 3 times blocks the account for 24 hours — contact the System Administrator.

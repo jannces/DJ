@@ -17,9 +17,17 @@
 /public/hot
 /public/storage
 /storage/*.key
+# The TLS private key. Generated per install by deploy/make-cert.*, never shared.
+/deploy/certs/
+# Generated per install by deploy/setup-https.bat: it holds THIS machine's
+# project path and subnet, so it is local truth rather than shared config.
+/deploy/apache-vhost.local.conf
 /storage/pail
 /vendor
 Homestead.json
 Homestead.yaml
 Thumbs.db
 /database/database.sqlite
+
+# Claude Code: project settings are shared; the .local file is per-machine.
+/.claude/settings.local.json

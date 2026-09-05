@@ -1,74 +1,277 @@
 @extends('layouts.app')
 @section('title', 'Security Dashboard')
 @section('content')
-<h1 class="h4 mb-3">Security Dashboard</h1>
-<div class="row g-3 mb-4">
-    @foreach ([
-        ['Blocked IPs','blocked_ips','bi-slash-circle','danger'],
-        ['Intrusions (total)','intrusions_total','bi-bug','secondary'],
-        ["Today's attacks",'intrusions_today','bi-calendar-day','warning'],
-        ['This week','intrusions_week','bi-calendar-week','info'],
-        ['This month','intrusions_month','bi-calendar-month','primary'],
-        ['Failed logins today','failed_logins_today','bi-key','dark'],
-    ] as [$label,$key,$icon,$color])
-        <div class="col-6 col-lg-2">
-            <div class="card h-100"><div class="card-body text-center">
-                <i class="bi {{ $icon }} text-{{ $color }}" style="font-size:1.5rem"></i>
-                <div class="h4 mb-0 mt-1">{{ $stats[$key] }}</div>
-                <div class="text-muted small">{{ $label }}</div>
-            </div></div>
-        </div>
+
+{{--
+  The System Administrator's only dashboard.
+
+  Both sidebar entries — `Dashboard` and `Security Dashboard` — arrive here, and
+  neither was moved, renamed or repointed: /dashboard redirects for this role in
+  DashboardController. config/menu.php is untouched.
+
+  No leave figures at all. The administrator holds no leave permission and never
+  did; the plain Dashboard was showing them anyway because the analytics hung
+  off `users.manage`.
+
+  Every chart is HTML, CSS and inline SVG. The two canvases that used to be here
+  are gone, which also retires the runaway-growth bug they had: a responsive
+  canvas in a container sized by its own contents grew on every resize tick,
+  forever.
+--}}
+
+{{-- `dash-plain` opts this page out of the filled KPI tiles and the panel
+     lift that the leave dashboards use. Colour on this screen has to be free
+     to mean something -- red is an intrusion, amber a failed sign-in, green
+     quiet -- and a tile that is already solid green cannot then turn green to
+     say so. See "The security dashboard opts out" in app.css. --}}
+<div class="dash dash-plain dash-sharp">
+
+{{-- The page names itself, as every other page in the system does. The
+     window is NOT a control: each panel below counts over its own period --
+     seven days, thirty, four weeks -- and one dropdown across the top would
+     claim a scope the page does not have. --}}
+<div class="ds-head">
+    <h1>Security Dashboard</h1>
+    <p class="ds-sub">Live counts. Each panel states the period it covers.</p>
+</div>
+
+<div class="kpi-grid">
+    @foreach ($kpis as $kpi)
+        @include('dashboard._kpi', ['kpi' => $kpi])
     @endforeach
 </div>
 
-<div class="row g-3 mb-4">
-    <div class="col-lg-8"><div class="card h-100"><div class="card-header fw-semibold">Attacks (last 7 days)</div>
-        <div class="card-body"><canvas id="trend" height="90"></canvas></div></div></div>
-    <div class="col-lg-4"><div class="card h-100"><div class="card-header fw-semibold">By category</div>
-        <div class="card-body"><canvas id="cats" height="90"></canvas></div></div></div>
+{{-- Severity leads the page because it is the judgement the rest of the page
+     supports; the week's shape sits beside it, which is the pair an
+     administrator reads on arrival -- how bad, and which way it is going.
+
+     "Busiest source addresses" and "Most targeted pages" used to be here and
+     below; both are dropped. Neither told anyone what to DO: the addresses are
+     actionable on Blocked IPs and the routes are readable in Intrusion Logs,
+     and repeating them here made the page longer without making it say more. --}}
+<div class="ds-row ds-1-2">
+    {{-- ---------- How bad ---------- --}}
+    {{-- The stored severity column is not a scale: the detector records all
+         three attack types at high and nothing at low or critical, so charting
+         it would draw one bar and two empty ones. What differs between two
+         injection attempts is the pattern behind them, so that is what is
+         graded -- here, in the analytics, leaving the log a record of what was
+         seen rather than of what was later concluded. --}}
+    <div class="dash-frame">
+        <div class="dash-head">
+            <p class="dash-title">Attack severity</p>
+            {{-- The reference puts a "View All" on this card; here it goes
+                 somewhere real. The period moves into the line beneath, which
+                 already states the counts it belongs to. --}}
+            <a href="{{ route('security.intrusions') }}" class="dash-link">View all &rarr;</a>
+        </div>
+        <div class="dash-body">
+            @include('dashboard._severity', ['severity' => $severity])
+        </div>
+    </div>
+
+    {{-- ---------- Attempts per day ---------- --}}
+    {{-- Seven days, not four weeks: attacks have no weekly rhythm to read a
+         week against, and a spike matters on the day it happens. The week
+         BEFORE is drawn behind it dotted, because "eleven on Thursday" means
+         one thing after a quiet week and another after the same again.
+
+         A curve, not columns: what is scanned for is the shape of a week, and
+         a shape is what a line carries. Red because here a rise is bad news --
+         the same red as a Critical segment on the dial beside it. --}}
+    <div class="dash-frame">
+        <div class="dash-head">
+            <p class="dash-title">Intrusion attempts per day</p>
+            <a href="{{ route('security.intrusions') }}" class="dash-link">Intrusion logs &rarr;</a>
+        </div>
+        <div class="dash-body">
+            @include('dashboard._line', [
+                'series' => $trend, 'peakLabel' => 'peak', 'tone' => 'bad',
+                'endLabel' => 'This week', 'compareLabel' => 'Last week',
+            ])
+        </div>
+    </div>
+
+</div>
+{{-- What the attacks were. "Most targeted pages" used to sit beside it and is
+     dropped: which route was hit is a question Intrusion Logs answers per
+     event, and a ranking of paths never told anyone what to do about one. --}}
+<div class="ds-row ds-1-2">
+    {{-- ---------- Recent alerts ---------- --}}
+    {{--
+      What the figures beside it actually mean, said in words.
+
+      Every other panel here answers one question well, and none of them
+      answers "is anything wrong" -- an administrator had to read four charts
+      and do the comparison themselves. These do the comparison. Each card is
+      computed from figures already on this page, so the panel costs no query
+      of its own, and none appears unless it is true right now.
+
+      A standing column, not a band across the page. The alerts arrive worst
+      first and there are rarely more than three, so a narrow column reads down
+      in the order they are meant to be read; full width, a single alert left
+      half the row empty and looked like something failing to load.
+
+      Colour is the grade, not decoration: red for something that got through,
+      amber for a trend worth watching, blue for work waiting, green for a
+      clear week. Each also carries its grade as a word, because a card that
+      means something only if you can tell red from amber means nothing to a
+      reader who cannot.
+    --}}
+    <div class="dash-frame">
+        <div class="dash-head">
+            <p class="dash-title">Recent alerts</p>
+            <a href="{{ route('security.intrusions') }}" class="dash-link">Intrusion logs &rarr;</a>
+        </div>
+        <div class="dash-body">
+            <div class="al-grid">
+                @foreach ($alerts as $alert)
+                    <div class="al" data-tone="{{ $alert['tone'] }}">
+                        <div class="al-top">
+                            <i class="al-ic bi {{ [
+                                'critical' => 'bi-exclamation-octagon',
+                                'warning' => 'bi-exclamation-triangle',
+                                'info' => 'bi-info-circle',
+                                'healthy' => 'bi-check-circle',
+                            ][$alert['tone']] }}" aria-hidden="true"></i>
+                            <span class="al-tag">{{ $alert['label'] }}</span>
+                        </div>
+                        <p class="al-title">{{ $alert['title'] }}</p>
+                        <p class="al-body">{{ $alert['body'] }}</p>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+
+    {{-- The two charts stack rather than sitting side by side.
+
+         Three panels on one row meant one tall column of alerts beside two
+         short charts, and the row was mostly the empty space to the right of
+         the alerts. Stacked, the pair is about as tall as the alerts are, and
+         the row is two things instead of three. --}}
+    <div class="ds-col">
+    {{-- ---------- The three attacks ---------- --}}
+    {{-- The only chart on the system with a categorical colour scale,
+         because here the type IS the subject rather than a ranking. Three
+         hues, validated in both themes: worst adjacent colour-blind
+         separation 9.2 dE light and 9.4 dark against a target of 8.
+
+         The stored category no longer prints under each label -- dropped at
+         the LGU's request. `xss` and `traversal` are still grouped as input
+         manipulation HERE and nowhere else; the detector records them
+         separately and Intrusion Logs keeps showing which. --}}
+    <div class="dash-frame">
+        <div class="dash-head">
+            <p class="dash-title">Attempts by type</p>
+            <span class="dash-link">last 30 days</span>
+        </div>
+        <div class="dash-body">
+            @include('dashboard._hbars', ['rows' => $attacks, 'series' => true])
+        </div>
+    </div>
+
+    {{-- ---------- Failures by reason ---------- --}}
+    {{-- Thirty-two failures is one number. Twenty-three of them against
+         usernames that do not exist is a diagnosis: somebody is guessing
+         accounts, not passwords, and that is a different attack.
+
+         Paired with the attack types because both answer "what kind": one for
+         what was thrown at the application, one for what was thrown at the
+         sign-in form. --}}
+    <div class="dash-frame">
+        <div class="dash-head">
+            <p class="dash-title">Failed sign-ins by reason</p>
+            <span class="dash-link">last 7 days</span>
+        </div>
+        <div class="dash-body">
+            @include('dashboard._hbars', [
+                'rows' => $failures,
+                'empty' => 'No failed sign-ins in the last 7 days.',
+            ])
+        </div>
+    </div>
+    </div>
 </div>
 
-<div class="row g-3">
-    <div class="col-lg-4"><div class="card h-100"><div class="card-header fw-semibold">Top attackers</div>
-        <ul class="list-group list-group-flush">
-            @forelse ($topAttackers as $a)
-                <li class="list-group-item d-flex justify-content-between small"><code>{{ $a->ip }}</code><span class="badge bg-danger">{{ $a->total }}</span></li>
-            @empty <li class="list-group-item text-muted small">No events.</li> @endforelse
-        </ul></div></div>
-    <div class="col-lg-4"><div class="card h-100"><div class="card-header fw-semibold">Most targeted pages</div>
-        <ul class="list-group list-group-flush">
-            @forelse ($targetedPages as $p)
-                <li class="list-group-item d-flex justify-content-between small"><span class="text-truncate">/{{ $p->route }}</span><span class="badge bg-warning text-dark">{{ $p->total }}</span></li>
-            @empty <li class="list-group-item text-muted small">No events.</li> @endforelse
-        </ul></div></div>
-    <div class="col-lg-4"><div class="card h-100"><div class="card-header fw-semibold">Recent alerts</div>
-        <ul class="list-group list-group-flush" style="max-height:320px;overflow:auto">
-            @forelse ($recent as $r)
-                <li class="list-group-item small">
-                    <span class="badge bg-{{ ['low'=>'secondary','medium'=>'warning','high'=>'danger','critical'=>'dark'][$r->severity] ?? 'secondary' }}">{{ $r->category }}</span>
-                    <code>{{ $r->ip }}</code>
-                    <div class="text-muted">{{ $r->created_at->diffForHumans() }} · /{{ $r->route }}</div>
-                </li>
-            @empty <li class="list-group-item text-muted small">No events.</li> @endforelse
-        </ul></div></div>
+{{-- ==================================================================== --}}
+{{-- The three additions                                                  --}}
+{{-- ==================================================================== --}}
+
+<div class="ds-row ds-2-1">
+    {{-- ---------- Unreviewed events ---------- --}}
+    {{-- `intrusion_logs.handled` existed and was cleared for every row the
+         moment this page rendered, so it recorded a page view rather than a
+         decision. This is that column doing the job its name claims, and
+         reviewing is now an action.
+
+         payload_excerpt is deliberately absent. It is the most interesting
+         field in that table and it is attacker-controlled text; it belongs on
+         the detail page, escaped — not on a screen somebody glances at forty
+         times a day. --}}
+    <div class="dash-frame">
+        <div class="dash-head">
+            <p class="dash-title">
+                Unreviewed events
+                @if ($queue['total'] > 0)<span class="dash-count">{{ $queue['total'] }}</span>@endif
+            </p>
+            @if ($queue['total'] > 0)
+                <form method="POST" action="{{ route('security.intrusions.review') }}" class="d-inline">
+                    @csrf
+                    <button type="submit" class="dash-link">Mark all reviewed</button>
+                </form>
+            @endif
+        </div>
+        <div class="dash-body">
+            @forelse ($queue['rows'] as $row)
+                <div class="wl-r">
+                    <span class="wl-ref">{{ $row['when'] }}</span>
+                    <span class="wl-m">
+                        <b><i class="sev sev-{{ $row['severity'] }}"></i>{{ $row['label'] }}</b>
+                        <small>{{ $row['detail'] }}</small>
+                    </span>
+                    <span class="wl-age wl-mono">{{ $row['ip'] }}</span>
+                    <form method="POST" action="{{ route('security.intrusions.review') }}" class="wl-act">
+                        @csrf
+                        <input type="hidden" name="id" value="{{ $row['id'] }}">
+                        <button type="submit" title="Mark reviewed">&checkmark;</button>
+                    </form>
+                </div>
+            @empty
+                <p class="dash-empty">Everything has been reviewed.</p>
+            @endforelse
+            @if ($queue['total'] > count($queue['rows']))
+                <p class="dash-note">
+                    {{ $queue['total'] - count($queue['rows']) }} more outstanding &mdash;
+                    <a href="{{ route('security.intrusions') }}">open Intrusion Logs</a>.
+                </p>
+            @endif
+        </div>
+    </div>
+
+    {{-- ---------- Privilege changes ---------- --}}
+    {{-- A system whose case rests on auditability should show its own role and
+         permission edits to the person making them. Beside the queue rather
+         than under it: both are lists of things that happened, and the page
+         now ends on one row instead of two half-empty ones. --}}
+    <div class="dash-frame">
+        <div class="dash-head">
+            <p class="dash-title">Privilege changes</p>
+            <a href="{{ route('audit.index') }}" class="dash-link">Audit log &rarr;</a>
+        </div>
+        <div class="dash-body">
+            @forelse ($privileges as $row)
+                <div class="wl-r">
+                    <span class="wl-ref">{{ $row['when'] }}</span>
+                    <span class="wl-m">{{ $row['what'] }} <b>{{ $row['target'] }}</b></span>
+                    <span class="wl-age">{{ $row['who'] }}</span>
+                </div>
+            @empty
+                <p class="dash-empty">No role, permission or account changes in the last 7 days.</p>
+            @endforelse
+        </div>
+    </div>
 </div>
 
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const trend = @json($trend);
-    new Chart(document.getElementById('trend'), {
-        type: 'line',
-        data: { labels: trend.labels, datasets: [{ label: 'Events', data: trend.data, borderColor: '#be123c', backgroundColor: 'rgba(185,28,28,.12)', fill: true, tension: .3 }] },
-        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
-    });
-    const cats = @json($byCategory);
-    new Chart(document.getElementById('cats'), {
-        type: 'doughnut',
-        data: { labels: Object.keys(cats), datasets: [{ data: Object.values(cats), backgroundColor: ['#be123c','#f5c518','#6d28d9','#0ea5e9','#7c3aed','#dc2626','#059669','#475569','#d97706'] }] },
-        options: { plugins: { legend: { position: 'bottom' } } }
-    });
-});
-</script>
-@endpush
+</div>{{-- /.dash --}}
 @endsection

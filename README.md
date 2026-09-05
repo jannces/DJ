@@ -17,7 +17,8 @@ real-time intrusion detection, and full CSC Form No. 6 (Revised 2020) support.
   (Vacation, Sick, Maternity, Paternity, Solo Parent, Study, VAWC, SLBW, Calamity,
   Monetization, Terminal, Adoption, …) with JSON-configurable policies, automatic
   working-day and **leave-credit computation (never negative, concurrency-safe)**, and a
-  Department Head → HR → Mayor **approval workflow** with digital signatures.
+  **single-step approval** — any one of Mayor, Vice Mayor or HR decides — with digital
+  signatures and an employee-facing approval timeline.
 - **Security:** middleware **IDS** (SQLi/XSS/traversal signatures, rate anomaly),
   **automatic IP blocking**, security headers, **append-only audit + activity logs**,
   **security dashboard** with charts and **real-time alerts**.
@@ -41,7 +42,7 @@ php artisan db:seed --class=DemoDataSeeder      # optional demo data
 php artisan storage:link
 php artisan serve                               # http://127.0.0.1:8000
 ```
-Run the tests: `php artisan test` (**47 passing / 152 assertions**).
+Run the tests: `php artisan test`.
 
 ## Documentation (`/docs`)
 Architecture · Requirements · Database · Security · API · Roadmap · Deployment · Testing ·
