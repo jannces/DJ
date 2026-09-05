@@ -5264,3 +5264,58 @@ span.dash-link{ justify-content:flex-start; }
    sit in a column with no label above it, so it hung a label's height low. */
 .up-row{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto; gap:.75rem; align-items:end; }
 @media (max-width:767.98px){ .up-row{ grid-template-columns:minmax(0,1fr); } }
+
+/* ---- My Signature ---------------------------------------------------------
+   The view was written with these class names and the rules were never
+   added, so the page rendered as bare blocks: the preview and the upload
+   form stacked instead of sitting side by side, and the signature itself had
+   no frame around it.
+
+   The preview column is capped rather than fluid. A signature is a fixed
+   thing being checked, not content to fill a screen -- across 1000px it
+   would be shown larger than it will ever print. */
+.sig-layout{
+  display:grid; grid-template-columns:minmax(0,22rem) minmax(0,1fr);
+  gap:1.5rem 2rem; align-items:start;
+}
+@media (max-width:767.98px){ .sig-layout{ grid-template-columns:minmax(0,1fr); } }
+
+/* Both children take min-width:0. A grid item defaults to min-width:auto,
+   which refuses to shrink below its content -- so a long file name in the
+   picker, or a wide signature, would push the column out instead of fitting
+   in it. */
+.sig-preview,
+.sig-form{ min-width:0; }
+
+.sig-cap{
+  margin:0 0 .4rem; font-size:var(--fs-xs); font-weight:600;
+  letter-spacing:.04em; text-transform:uppercase; color:var(--muted);
+}
+
+/* WHITE in both themes, and that is not a theming oversight.
+
+   A signature is dark ink on paper. Dropped on the dark theme's own surface
+   it is invisible -- and this is the one box on the page whose whole job is
+   to let somebody check that the right image is on file. The printed form
+   puts it on white too, so this shows what will actually be filed. Same
+   reasoning as .csc-sheet. */
+.sig-box{
+  display:flex; align-items:center; justify-content:center; min-height:7rem;
+  padding:.75rem; border:1px solid var(--border-strong);
+  border-radius:var(--r-sm); background:#fff;
+}
+.sig-box img{ display:block; max-width:100%; max-height:9rem; object-fit:contain; }
+
+/* Doubled class, because the two rules are otherwise equal specificity and
+   the order of the file would be the only thing deciding the background. */
+.sig-box.sig-box-empty{
+  border-style:dashed; border-color:var(--border);
+  background:var(--surface-2); color:var(--muted); font-size:var(--fs-sm);
+}
+.sig-meta{ margin:.5rem 0 0; font-size:var(--fs-sm); color:var(--muted); }
+
+/* Measured, because it is prose about privacy that people actually read. */
+.sig-note{
+  max-width:70ch; margin:1.5rem 0 0; padding-top:1rem;
+  border-top:1px solid var(--border); font-size:var(--fs-sm); color:var(--muted);
+}

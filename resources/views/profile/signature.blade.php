@@ -17,9 +17,10 @@
 
 <h1 class="h4 mb-3">My Signature</h1>
 
-@if (session('status'))
-    <div class="alert alert-success">{{ session('status') }}</div>
-@endif
+{{-- No status banner here. layouts/app.blade.php already feeds
+     session('status') to the toast, so this page was announcing every save
+     twice: a green bar under the heading and a toast in the corner, both
+     carrying the same sentence. --}}
 
 <div class="card">
     <div class="card-body">
