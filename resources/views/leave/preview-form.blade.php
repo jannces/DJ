@@ -75,35 +75,62 @@
                 </button>
             </form>
         @endif
-        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
-            <i class="bi bi-printer me-1"></i>Print
-        </button>
+        {{--
+          Print opens the PDF, it does not print this page.
+
+          window.print() rendered THIS markup through the browser, which is a
+          second renderer with its own fonts, its own margins and no page
+          budget -- measured at TWO pages on long bond, against the one page
+          PaperSizeTest guarantees for the PDF on all four sizes. So the paper
+          that came out of the browser was not the paper the LGU files.
+
+          There is only one printable artefact now, and both controls lead to
+          it. The reader prints from the PDF viewer, where the size is already
+          right.
+        --}}
+        <a class="btn btn-outline-secondary btn-sm" target="_blank"
+           href="{{ route('leave.form6', $r) }}"
+           title="Opens the PDF on long bond; print it from there">
+            <i class="bi bi-printer me-1" aria-hidden="true"></i>Print
+        </a>
         <x-paper-picker :request="$r" />
     </div>
 </x-page-head>
 
 <div class="csc-viewport">
 
-    {{-- ================= PART 1 — EMPLOYEE INFORMATION ================= --}}
-    <div class="csc-partlabel no-print">Part 1 of 3 &middot; Employee information</div>
-    <div class="csc-sheet csc-sheet-wide csc-part">
+    {{--
+      ONE sheet, not three.
 
-        <div class="csc-topgrid">
+      This was split into "Part 1 of 3 / 2 of 3 / 3 of 3", each in its own
+      bordered box with a gap between them. It read as three fragments of a
+      form rather than the form: the document the LGU files is a single sheet
+      of paper, and a preview whose job is to say "this is what will be filed"
+      cannot be a different shape from the thing being filed.
+
+      The masthead is the PDF's, in the PDF's order -- seal, form number,
+      agency block, ANNEX A, One Alicia -- with the real seal and logo rather
+      than the two Bootstrap glyphs in circles that stood in for them.
+    --}}
+    <div class="csc-sheet csc-sheet-wide csc-doc">
+
+        <div class="csc-mast">
+            {{-- alt="" on both: the agency is named in words immediately
+                 beside them, so a described image would make a screen reader
+                 say it twice. --}}
+            <img class="csc-mark" src="{{ asset('img/alicia-seal.png') }}" alt="">
             <div class="csc-formno">
                 <div>Civil Service Form No. 6</div>
                 <div><em>Revised 2020</em></div>
             </div>
-            <div class="csc-head">
-                <div class="csc-seal" aria-hidden="true"><i class="bi bi-buildings"></i></div>
-                <div class="csc-head-text">
-                    <div>Republic of the Philippines</div>
-                    <div><em>Province of Isabela</em></div>
-                    <div class="csc-lgu">{{ \App\Models\SystemSetting::get('general.lgu_name', 'MUNICIPALITY OF ALICIA') }}</div>
-                    <div><em>{{ \App\Models\SystemSetting::get('general.lgu_address', 'Magsaysay, Alicia') }}</em></div>
-                </div>
-                <div class="csc-seal" aria-hidden="true"><i class="bi bi-award"></i></div>
+            <div class="csc-head-text">
+                <div>Republic of the Philippines</div>
+                <div><em>Province of Isabela</em></div>
+                <div class="csc-lgu">{{ \App\Models\SystemSetting::get('general.lgu_name', 'MUNICIPALITY OF ALICIA') }}</div>
+                <div><em>{{ \App\Models\SystemSetting::get('general.lgu_address', 'Magsaysay, Alicia') }}</em></div>
             </div>
             <div class="csc-annex">ANNEX A</div>
+            <img class="csc-mark csc-mark-wide" src="{{ asset('img/one-alicia.png') }}" alt="">
         </div>
 
         <div class="csc-title">APPLICATION FOR LEAVE</div>
@@ -151,11 +178,6 @@
             </tr>
         </table>
 
-    </div>{{-- /part 1 sheet --}}
-
-    {{-- ================= PART 2 — DETAILS OF APPLICATION ================= --}}
-    <div class="csc-partlabel no-print">Part 2 of 3 &middot; Details of application</div>
-    <div class="csc-sheet csc-sheet-wide csc-part">
         <div class="csc-section">6. DETAILS OF APPLICATION</div>
 
         {{-- Same partition as the entry form: Monetization and Terminal Leave
@@ -255,16 +277,12 @@
                     <div class="csc-daysline">
                         <span class="csc-fill-value">{{ $days }} day(s)</span>
                     </div>
+                    {{-- One line, as on the filed sheet. The From/To pair in a
+                         two-column grid was this page's own invention and it
+                         is what left the cell half empty. --}}
                     <div class="csc-case"><em>INCLUSIVE DATES</em></div>
-                    <div class="csc-grid-2">
-                        <div>
-                            <div class="csc-sublabel">From</div>
-                            <div class="csc-value">{{ $r->start_date->format('F d, Y') }}</div>
-                        </div>
-                        <div>
-                            <div class="csc-sublabel">To</div>
-                            <div class="csc-value">{{ $r->end_date->format('F d, Y') }}</div>
-                        </div>
+                    <div class="csc-value">
+                        {{ $r->start_date->format('F d, Y') }} &ndash; {{ $r->end_date->format('F d, Y') }}
                     </div>
                     <div class="csc-inline-note">
                         Counted on submission; weekends and Philippine holidays
@@ -338,11 +356,6 @@
              the attachments get their own card below, where they can also be
              downloaded and added to. --}}
 
-    </div>{{-- /part 2 sheet --}}
-
-    {{-- ================= PART 3 — ACTION ON APPLICATION ================= --}}
-    <div class="csc-partlabel no-print">Part 3 of 3 &middot; Action on application &mdash; for official use</div>
-    <div class="csc-sheet csc-sheet-wide csc-part">
         <div class="csc-section">7. DETAILS OF ACTION ON APPLICATION</div>
 
         <table class="csc-table csc-split csc-readonly">
@@ -447,7 +460,7 @@
             application; it cannot be edited here.
         </p>
 
-    </div>{{-- /part 3 sheet --}}
+    </div>{{-- /sheet --}}
 
 </div>{{-- /viewport --}}
 

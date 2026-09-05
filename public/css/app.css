@@ -390,16 +390,11 @@ footer.app-foot{ text-align:center; color:var(--muted-2); font-size:.76rem; padd
 /* Apply/preview pages: one continuous sheet filling the content container. */
 .csc-sheet-wide{ max-width:none; width:100%; margin:0; }
 .csc-sheet *{ color:#000; }
-.csc-formno{ position:absolute; top:10px; left:14px; font-size:11px; font-style:italic; }
-.csc-annex{ position:absolute; top:10px; right:14px; font-size:11px; font-weight:700; }
+.csc-formno{ font-size:11px; font-style:italic; }
+.csc-annex{ font-size:11px; font-weight:700; text-align:right; }
 
-.csc-head{ display:flex; align-items:center; justify-content:center; }
 .csc-head-text{ text-align:center; line-height:1.3; }
 .csc-lgu{ font-weight:700; font-size:14px; letter-spacing:.02em; }
-.csc-seal{
-  width:46px; height:46px; border:1px solid #000; border-radius:50%;
-  display:flex; align-items:center; justify-content:center; font-size:20px; flex:none;
-}
 .csc-title{ text-align:center; font-weight:700; font-size:15px; letter-spacing:.04em; margin:6px 0 8px; }
 
 .csc-table{ width:100%; border-collapse:collapse; table-layout:fixed; }
@@ -427,7 +422,7 @@ footer.app-foot{ text-align:center; color:var(--muted-2); font-size:.76rem; padd
 }
 .csc-input:focus,.csc-line:focus{ outline:2px solid #6d28d9; outline-offset:1px; }
 .csc-blank{ height:16px; }
-.csc-blank-short{ width:60px; }.csc-grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:6px 14px; }
+.csc-blank-short{ width:60px; }
 .csc-others{ display:flex; align-items:baseline; gap:6px; margin-top:5px; }
 
 /* Square controls matching the printed checkboxes. */
@@ -1033,16 +1028,26 @@ body{ background:var(--bg); color:var(--text); }
      on the row instead of wrapping onto its own line.
    ========================================================================== */
 
-/* ---- Header: grid, not absolute ---- */
-.csc-topgrid{
-  display:grid; grid-template-columns:1fr auto 1fr; align-items:start;
-  gap:.5rem; margin-bottom:.35rem;
+/* ---- Masthead: one row, in the printed sheet's order --------------------
+   Seal, form number, agency block, ANNEX A, One Alicia. The column widths are
+   the PDF's own (11/15/48/15/11), so the preview and the filed paper put the
+   same things in the same places rather than merely carrying the same words.
+
+   It used to be a 1fr/auto/1fr grid with the form number and ANNEX on their
+   own row above two Bootstrap glyphs standing in for the seals. */
+.csc-mast{
+  /* fr, NOT percent. The five columns are the PDF's proportions and they add
+     up to the whole width, so percentages plus a gap overflow by exactly the
+     gaps -- 25px, which cropped the right-hand mark. fr shares out what is
+     left after the gaps, so the proportions hold at any width. */
+  display:grid; grid-template-columns:11fr 15fr 48fr 15fr 11fr;
+  align-items:start; gap:.4rem; margin-bottom:.35rem;
 }
-.csc-topgrid .csc-formno,
-.csc-topgrid .csc-annex{ position:static; }
-.csc-topgrid .csc-annex{ text-align:right; align-self:start; }
-.csc-head{ padding:0; gap:14px; }
 .csc-head-text{ min-width:0; }
+/* Capped by height, with the width left to follow, so the two marks sit on
+   one baseline whatever proportions the source files happen to have. */
+.csc-mark{ height:46px; width:auto; max-width:100%; justify-self:start; }
+.csc-mark-wide{ justify-self:end; height:40px; }
 
 /* ---- Ruled rows ---- */
 .csc-rowline{ display:flex; align-items:baseline; gap:.4rem; margin:2px 0 3px; }
@@ -1089,31 +1094,47 @@ body{ background:var(--bg); color:var(--text); }
 .csc-table td{ overflow-wrap:anywhere; }
 .csc-value{ overflow-wrap:anywhere; }
 
+/* ---- The filed document, on screen ---------------------------------------
+   Set in the same face the PDF embeds, from the same files.
+
+   The preview's one job is to say "this is what will be filed". It was set in
+   Arial while the filed sheet is a Times face, which is the single loudest
+   way two renderings of one document can disagree -- before a word of it has
+   been compared. Scoped to `.csc-doc` rather than to `.csc-sheet`, because
+   the blank entry form is a form being typed into, not a document being
+   read back, and it keeps the UI face.
+
+   Liberation Serif rather than Times New Roman for the same reason the PDF
+   uses it: it is vendored here, so the preview renders identically on this
+   machine and on the XAMPP box, instead of falling back to whatever Times
+   the reader's Windows happens to have. SIL OFL 1.1. */
+@font-face{
+  font-family:'LibSerif'; font-style:normal; font-weight:400; font-display:swap;
+  src:url('/fonts/liberation-serif/LiberationSerif-Regular.ttf') format('truetype');
+}
+@font-face{
+  font-family:'LibSerif'; font-style:normal; font-weight:700; font-display:swap;
+  src:url('/fonts/liberation-serif/LiberationSerif-Bold.ttf') format('truetype');
+}
+@font-face{
+  font-family:'LibSerif'; font-style:italic; font-weight:400; font-display:swap;
+  src:url('/fonts/liberation-serif/LiberationSerif-Italic.ttf') format('truetype');
+}
+@font-face{
+  font-family:'LibSerif'; font-style:italic; font-weight:700; font-display:swap;
+  src:url('/fonts/liberation-serif/LiberationSerif-BoldItalic.ttf') format('truetype');
+}
+.csc-doc{ font-family:'LibSerif', "Times New Roman", Times, serif; }
+
 @media (max-width:767.98px){
-  /* Keep the official two-column structure; scroll rather than reflow it. */
-  .csc-topgrid{ grid-template-columns:1fr; }
-  .csc-topgrid .csc-annex{ text-align:left; }
-}
-
-/* ---- CSC form split into three parts --------------------------------------
-   Part 1 (employee information), Part 2 (details of application) and Part 3
-   (action on application) are separate sheets stacked in ONE form, so the
-   submission is unchanged — only the presentation is divided. */
-.csc-partlabel{
-  font-size:.78rem; font-weight:600; color:var(--muted);
-  letter-spacing:.02em; margin:1.1rem 0 .35rem;
-}
-.csc-partlabel:first-child{ margin-top:0; }
-.csc-part{ margin:0 0 .25rem; }
-/* Part 1 carries the printed header, so it keeps its top padding; the other
-   two open directly on their section bar. */
-.csc-part > .csc-section:first-child{ border-top:0; }
-
-@media print{
-  /* On paper the three parts read as one continuous official form. */
-  .csc-partlabel{ display:none; }
-  .csc-part{ border-top:0; margin:0; }
-  .csc-part:first-of-type{ border-top:1px solid #000; }
+  /* Keep the official structure; scroll rather than reflow it. The masthead
+     is the one part that folds, because five columns at 390px leave the
+     agency name about 180px to sit in. The marks, the form number and ANNEX
+     stay on one row and the agency block takes the row under them. */
+  .csc-mast{
+    display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+  }
+  .csc-mast .csc-head-text{ order:1; flex:1 0 100%; }
 }
 
 /* ---- KPI cards: separate frames with a gap --------------------------------
