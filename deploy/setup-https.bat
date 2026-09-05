@@ -113,7 +113,26 @@ echo [3/6] Writing %LOCALVHOST%...
 REM The subnet is read off this machine rather than guessed. The template ships
 REM 192.168.254.0/24; on any other network that value serves every client a
 REM flat 403, which looks like a broken site rather than a config line.
-for /f "usebackq delims=" %%s in (`powershell -NoProfile -Command "$a=@(Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue ^| Where-Object { $_.IPAddress -notlike '127.*' -and $_.IPAddress -notlike '169.254.*' })[0]; if ($a) { $o=$a.IPAddress.Split('.'); '{0}.{1}.{2}.0/{3}' -f $o[0],$o[1],$o[2],$a.PrefixLength }"`) do set SUBNET=%%s
+REM
+REM Via a temp file, NOT `for /f ... in (`powershell ...`)`. Inside a backtick
+REM FOR block cmd parses the command itself, so the pipe in the PowerShell
+REM pipeline has to be escaped and the whole thing is fragile -- it is why this
+REM step reported "Could not read this machine's IPv4 address" on the first
+REM real run. Outside a FOR block a pipe inside double quotes is literal, and
+REM cmd leaves it alone.
+REM
+REM .NET's DNS lookup rather than Get-NetIPAddress: no module to be missing,
+REM works on every PowerShell that ships with Windows.
+set IPFILE=%TEMP%\lms-setup-ip.txt
+del "%IPFILE%" 2>nul
+powershell -NoProfile -Command "@([System.Net.Dns]::GetHostAddresses([System.Net.Dns]::GetHostName()) | Where-Object { $_.AddressFamily -eq 'InterNetwork' } | ForEach-Object { $_.IPAddressToString } | Where-Object { $_ -notlike '127.*' -and $_ -notlike '169.254.*' })[0]" > "%IPFILE%" 2>nul
+
+set HOSTIP=
+if exist "%IPFILE%" for /f "usebackq delims=" %%s in ("%IPFILE%") do set HOSTIP=%%s
+del "%IPFILE%" 2>nul
+
+set SUBNET=
+if not "%HOSTIP%"=="" for /f "tokens=1,2,3 delims=." %%a in ("%HOSTIP%") do set SUBNET=%%a.%%b.%%c.0/24
 
 if "%SUBNET%"=="" (
   echo [!] Could not read this machine's IPv4 address.
@@ -122,7 +141,7 @@ if "%SUBNET%"=="" (
   echo     %LOCALVHOST%
   set SUBNET=127.0.0.1/32
 ) else (
-  echo       This network: %SUBNET%
+  echo       This PC: %HOSTIP%   subnet: %SUBNET%
 )
 
 set FSROOT=%ROOT:\=/%
@@ -150,11 +169,25 @@ if not errorlevel 1 (
 
 REM --- 5. Certificate ---------------------------------------------------------
 echo [5/6] Certificate...
+REM "The file exists" is not the same as "the browser will accept it". A
+REM certificate issued without a readable openssl.cnf carries no
+REM subjectAltName, and every browser refuses that outright -- so an existing
+REM certificate is CHECKED, and replaced if it is one of those.
+set CERTOK=
 if exist "%ROOT%\deploy\certs\lms.crt" (
-  echo       Already present - keeping it.
+  "%XAMPP%\apache\bin\openssl.exe" x509 -in "%ROOT%\deploy\certs\lms.crt" -noout -ext subjectAltName 2>nul | findstr /C:"%SITE%" >nul
+  if not errorlevel 1 set CERTOK=1
+)
+
+if defined CERTOK (
+  echo       Already present and covers %SITE% - keeping it.
 ) else (
-  call "%ROOT%\deploy\make-cert.bat" %SITE%
-  if not exist "%ROOT%\deploy\certs\lms.crt" ( echo [X] Certificate was not created. & goto :fail )
+  if exist "%ROOT%\deploy\certs\lms.crt" (
+    echo       Existing certificate has no subjectAltName for %SITE% - replacing it.
+    copy /Y "%ROOT%\deploy\certs\lms.crt" "%ROOT%\deploy\certs\lms.crt.backup-%STAMP%" >nul
+  )
+  call "%ROOT%\deploy\make-cert.bat" %SITE% "%XAMPP%" nopause
+  if errorlevel 1 ( echo [X] The certificate could not be created - see above. & goto :fail )
 )
 
 REM --- 6. hosts ---------------------------------------------------------------
@@ -195,7 +228,8 @@ echo   ON THE OTHER OFFICE PCs, add this line to
 echo     %%SystemRoot%%\System32\drivers\etc\hosts   (as administrator)
 echo   using THIS server's address, not 127.0.0.1:
 echo.
-for /f "usebackq delims=" %%i in (`powershell -NoProfile -Command "@(Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue ^| Where-Object { $_.IPAddress -notlike '127.*' -and $_.IPAddress -notlike '169.254.*' })[0].IPAddress"`) do echo       %%i   %SITE%
+if not "%HOSTIP%"=="" echo       %HOSTIP%   %SITE%
+if "%HOSTIP%"=="" echo       ^<this server's IP^>   %SITE%
 echo.
 echo   Better still: one DNS record on the router - one edit rather
 echo   than one per PC, and one edit when the IP changes.

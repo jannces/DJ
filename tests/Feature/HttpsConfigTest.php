@@ -111,7 +111,59 @@ class HttpsConfigTest extends TestCase
             $this->assertStringContainsString('subjectAltName', $script,
                 "{$path} issues a certificate with no subjectAltName, which modern browsers reject outright");
             $this->assertStringContainsString('DNS:localhost', $script);
+
+            // And it must CHECK, not announce. Both scripts printed
+            // "Created ..." unconditionally, so an openssl that had failed --
+            // XAMPP's looks for a config at C:\Apache24\conf, which does not
+            // exist -- still read as success while dropping the SAN.
+            $this->assertStringContainsString('-ext subjectAltName', $script,
+                "{$path} says the certificate was created without checking that it carries a SAN");
         }
+    }
+
+    /**
+     * openssl is pointed at a config file that exists.
+     *
+     * XAMPP's openssl.exe is built with a default of C:\Apache24\conf\openssl.cnf
+     * -- a path no XAMPP install has. Without a config it silently drops
+     * `-addext subjectAltName`, and the certificate it writes is one every
+     * browser refuses with ERR_CERT_COMMON_NAME_INVALID.
+     */
+    public function test_the_windows_cert_script_sets_openssl_conf(): void
+    {
+        $script = $this->file('deploy/make-cert.bat');
+
+        $this->assertStringContainsString('OPENSSL_CONF', $script,
+            'openssl is left to find its own config, which on XAMPP means not finding one');
+        $this->assertStringContainsString('apache\\conf\\openssl.cnf', $script);
+    }
+
+    /** An existing but SAN-less certificate is replaced, not trusted. */
+    public function test_setup_verifies_an_existing_certificate(): void
+    {
+        $setup = $this->file('deploy/setup-https.bat');
+
+        $this->assertStringContainsString('-ext subjectAltName', $setup,
+            'setup keeps any existing lms.crt without checking the browser would accept it');
+    }
+
+    /**
+     * No PowerShell PIPELINE inside a backtick FOR block.
+     *
+     * That is where the IP lookup broke on the first real run. cmd parses the
+     * command inside the backticks itself, so a pipe has to be written `^|`
+     * and the quoting stops behaving -- the step reported "Could not read this
+     * machine's IPv4 address" and fell back to 127.0.0.1 only. Outside a FOR
+     * block, a pipe inside double quotes is literal and cmd leaves it alone.
+     *
+     * The escaped pipe is the tell, not the backtick FOR itself: a single
+     * command with no pipe is fine in one, and the timestamp lookup is exactly
+     * that.
+     */
+    public function test_no_escaped_pipe_survives_in_the_setup_script(): void
+    {
+        $this->assertStringNotContainsString('^|', $this->file('deploy/setup-https.bat'),
+            'a pipeline is being run inside a backtick FOR block, which is what silently returned nothing');
     }
 
     /**
