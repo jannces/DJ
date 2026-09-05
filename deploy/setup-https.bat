@@ -241,14 +241,33 @@ if defined CERTOK (
 
 REM --- 6. hosts ---------------------------------------------------------------
 echo [7/7] hosts file...
-findstr /C:"%SITE%" "%HOSTSFILE%" >nul 2>&1
-if not errorlevel 1 (
+REM Is there a REAL mapping, or only the name sitting inside a comment?
+REM
+REM findstr /C:"%SITE%" matches either, and that is how a machine ended up
+REM with these two lines and no working name:
+REM
+REM   #	127.0.0.1       onealicialms.local
+REM   #	192.168.254.102 onealicialms.local
+REM
+REM Both are comments -- Windows ignores them -- but the search found the
+REM name, the script said "Already mapped", and nothing was ever added.
+REM
+REM So the line has to START with an address. A '#' is not in that character
+REM class, so a commented line cannot match.
+set HOSTMAPPED=
+powershell -NoProfile -Command "if (Select-String -Path '%HOSTSFILE%' -Pattern '^\s*[0-9A-Fa-f:.]+\s+.*%SITE%' -Quiet) { 'yes' }" > "%TEMP%\lms-h.txt" 2>nul
+if exist "%TEMP%\lms-h.txt" for /f "usebackq delims=" %%h in ("%TEMP%\lms-h.txt") do set HOSTMAPPED=%%h
+del "%TEMP%\lms-h.txt" 2>nul
+
+if defined HOSTMAPPED (
   echo       Already mapped.
 ) else (
   copy /Y "%HOSTSFILE%" "%HOSTSFILE%.backup-%STAMP%" >nul
   echo.>> "%HOSTSFILE%"
   echo 127.0.0.1       %SITE% >> "%HOSTSFILE%"
   echo       Added 127.0.0.1 %SITE%
+  findstr /C:"%SITE%" "%HOSTSFILE%" | findstr /B /C:"#" >nul 2>&1
+  if not errorlevel 1 echo       ^(there are also COMMENTED lines for %SITE% above it - those do nothing^)
 )
 
 REM --- Prove the config parses before anyone tries to start it ---------------

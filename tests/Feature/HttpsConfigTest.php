@@ -238,7 +238,36 @@ class HttpsConfigTest extends TestCase
 
         // Running it twice must not append the Include or the hosts line again.
         $this->assertStringContainsString('findstr /C:"apache-vhost.local.conf"', $setup);
-        $this->assertStringContainsString('findstr /C:"%SITE%" "%HOSTSFILE%"', $setup);
+    }
+
+    /**
+     * A commented-out hosts line does not count as a mapping.
+     *
+     * Searching the file for the hostname matches a comment just as happily
+     * as a mapping, and that is how one machine ended up with
+     *
+     *     #\t127.0.0.1       onealicialms.local
+     *     #\t192.168.254.102 onealicialms.local
+     *
+     * and no working name: both are comments, Windows ignores them, but the
+     * search found the hostname, the step reported "Already mapped", and no
+     * real entry was ever written. The browser said
+     * DNS_PROBE_FINISHED_NXDOMAIN while the file appeared to contain the
+     * answer twice.
+     *
+     * The line has to START with an address. '#' is not in that character
+     * class, so a commented line cannot match.
+     */
+    public function test_a_commented_hosts_line_is_not_mistaken_for_a_mapping(): void
+    {
+        $setup = $this->file('deploy/setup-https.bat');
+
+        $this->assertStringContainsString('[0-9A-Fa-f:.]+', $setup,
+            'the hosts check does not require the line to begin with an address, '
+            .'so a commented-out entry reads as a working mapping');
+
+        $this->assertStringNotContainsString('findstr /C:"%SITE%" "%HOSTSFILE%" >nul', $setup,
+            'the plain findstr check is back, and it matches comments');
     }
 
     /** The generated per-machine vhost is not committed either. */
