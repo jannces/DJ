@@ -291,8 +291,24 @@ class LeaveDashboardTest extends TestCase
      * query and are expanded into days in PHP. Asking the database for a count
      * per day would be thirty-one round trips to rebuild something a few dozen
      * rows already contain — and then a cache would be needed to hide it.
+     *
+     * Counted by TABLE, not as a total.
+     *
+     * This used to assert one query for the whole call, which was wrong twice
+     * over. The panel legitimately reads two tables — the applications, and
+     * then the offices the people away today belong to, which is a different
+     * fact and not one of the three windows. And the second read only happens
+     * when somebody is actually away, so the total was one or two depending on
+     * whether the fixture's dates happened to cover the day the suite ran. The
+     * fixture files leave on the 1st, 2nd, 4th, 5th, 7th, 8th, 10th, 11th,
+     * 13th, 14th, 16th and 17th, so it failed on twelve days of every month --
+     * 48 of the 120 dates it was swept over -- and passed on the rest. A test
+     * that is right two days in three is not a test.
+     *
+     * What matters is that neither read is repeated per day or per person, so
+     * that is what is asserted.
      */
-    public function test_all_three_windows_come_from_a_single_query(): void
+    public function test_the_windows_do_not_cost_a_query_per_day(): void
     {
         $employee = $this->makeUser('employee');
         foreach (range(0, 5) as $offset) {
@@ -300,16 +316,36 @@ class LeaveDashboardTest extends TestCase
             $this->file($employee, 'approved', $day->toDateString(), $day->copy()->addDay()->toDateString());
         }
 
+        // Deliberately across today, whatever today is, so the offices lookup
+        // is always part of what is being counted. Left to the fixture above
+        // it fires only in the weeks its dates happen to land on.
+        $away = $this->makeUser('employee');
+        EmployeeProfile::factory()->create([
+            'user_id' => $away->id,
+            'department_id' => Department::create(['name' => 'Municipal Assessor', 'code' => 'MASS'])->id,
+        ]);
+        $this->file($away, 'approved', now()->toDateString(), now()->addDay()->toDateString());
+
         \DB::enableQueryLog();
         $windows = app(DashboardService::class)->onLeaveWindows();
-        $queries = \DB::getQueryLog();
+        $queries = collect(\DB::getQueryLog())->pluck('query');
         \DB::disableQueryLog();
 
-        $this->assertCount(1, $queries,
-            'today, this week and this month should cost one query between them, not one per day');
+        $this->assertCount(1, $queries->filter(fn ($q) => str_contains($q, 'from "leave_requests"')),
+            'today, this week and this month should cost ONE read of the '
+            .'applications between them, not one per day');
+
+        $this->assertCount(1, $queries->filter(fn ($q) => str_contains($q, 'from "employee_profiles"')),
+            'the offices of the people away today are counted one by one');
+
+        $this->assertCount(2, $queries,
+            'the panel reads something beyond the applications and their offices');
+
         foreach (['today', 'week', 'month'] as $key) {
             $this->assertArrayHasKey($key, $windows);
         }
+        $this->assertSame(1, $windows['offices_today'],
+            'the offices figure did not survive being counted in one query');
     }
 
     public function test_employees_with_no_department_are_reported_not_dropped(): void
