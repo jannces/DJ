@@ -158,7 +158,15 @@ class LeaveCreditService
 
             $newBalance = (float) $balance->balance + $days;
             if ($newBalance < 0) {
-                throw new RuntimeException('Adjustment would make the balance negative.');
+                // With the figures in it. "Would make the balance negative"
+                // tells an officer their number is wrong but not what a right
+                // one would be, so they go and look the balance up -- which is
+                // the round trip the dialog exists to save.
+                throw new RuntimeException(sprintf(
+                    'cannot deduct %s days, only %s available.',
+                    number_format(abs($days), 2),
+                    number_format((float) $balance->balance, 2),
+                ));
             }
             $balance->earned = (float) $balance->earned + max(0, $days);
             $balance->balance = $newBalance;

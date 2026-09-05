@@ -3146,6 +3146,30 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
    mostly empty, stacked they add up to about the height of the tall one. */
 .dash.dash-sharp .ds-col{ display:flex; flex-direction:column; gap:12px; min-width:0; }
 
+/* ---- Balance adjustment rows --------------------------------------------
+   One row per leave type: the name and what it stands at now on the left, the
+   box to change it by on the right. A grid rather than a stack of labelled
+   inputs, because the officer is scanning down a column of numbers and a
+   label above every box would treble the height of the dialog. */
+.adj-rows{ display:flex; flex-direction:column; gap:8px; }
+.adj-row{
+  display:grid; grid-template-columns:minmax(0,1fr) 7.5rem;
+  align-items:center; gap:12px;
+}
+.adj-name{ margin:0; font-size:.875rem; font-weight:600; min-width:0; }
+/* The standing figure, quieter than the name it belongs to: it is context for
+   the number being typed, not a heading. */
+.adj-now{
+  display:block; font-size:.75rem; font-weight:500; color:var(--muted);
+  font-variant-numeric:tabular-nums;
+}
+.adj-days{ text-align:right; font-variant-numeric:tabular-nums; }
+.adj-hint{ margin:.5rem 0 0; }
+
+@media (max-width:420px){
+  .adj-row{ grid-template-columns:minmax(0,1fr) 6rem; gap:8px; }
+}
+
 /* One column from the width where a two-up panel stops being readable rather
    than at a device size. 900px is where the rest of this sheet already
    folds, so the page folds with it instead of inventing a breakpoint. */
