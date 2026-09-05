@@ -50,6 +50,30 @@ php artisan config:cache && php artisan route:cache && php artisan view:cache
 
 ## 3. Apache VirtualHost + HTTPS (self-signed)
 
+### The short way
+
+```
+Right-click deploy\setup-https.bat  ->  Run as administrator
+```
+
+It does everything in this section: sets `APP_URL` and `SESSION_SECURE_COOKIE`,
+clears the config cache, enables `mod_ssl`/`mod_rewrite` and the two Includes,
+generates `apache-vhost.local.conf` with **this machine's** project path and
+**this machine's** subnet, includes it, makes the certificate, adds the hosts
+entry, and finally runs `httpd -t` so a bad config is caught before anyone
+tries to start it.
+
+Every file it touches is backed up beside itself as `*.backup-<timestamp>`, and
+it can be run twice without appending anything a second time.
+
+It edits `apache-vhost.local.conf`, never the tracked `apache-vhost.conf`, so
+`git pull` keeps working and your machine's paths are not committed.
+
+The rest of this section is what it does, for when you would rather do it by
+hand or something goes wrong.
+
+### By hand
+
 **Apache, not `php artisan serve`.** The dev server speaks plain HTTP on a port
 and cannot serve TLS at all, so it can never answer on `https://onealicialms.local`
 whatever `.env` says. `start.bat` starts Apache; `stop.bat` stops it.

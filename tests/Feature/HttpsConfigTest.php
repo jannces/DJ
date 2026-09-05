@@ -129,6 +129,41 @@ class HttpsConfigTest extends TestCase
     }
 
     /**
+     * The setup script is safe to run on somebody else's Apache.
+     *
+     * It edits httpd.conf, httpd-vhosts.conf and the hosts file unattended,
+     * which is only defensible if it can be undone and cannot half-apply.
+     */
+    public function test_the_setup_script_backs_up_and_checks_for_admin(): void
+    {
+        $setup = $this->file('deploy/setup-https.bat');
+
+        $this->assertStringContainsString('net session', $setup,
+            'the script does not check for administrator, so it would fail part-way through');
+
+        foreach (['%CONF%', '%VHOSTS%', '%HOSTSFILE%'] as $target) {
+            $this->assertMatchesRegularExpression('/copy \/Y "'.preg_quote($target, '/').'"/', $setup,
+                "{$target} is edited with no backup taken first");
+        }
+
+        // %DATE% is locale-formatted and can yield a slash, which is illegal in
+        // a filename -- every backup would fail, on some machines only.
+        $this->assertStringNotContainsString('%DATE:', $setup,
+            'the backup timestamp is built from %DATE%, whose format depends on the machine locale');
+
+        // Running it twice must not append the Include or the hosts line again.
+        $this->assertStringContainsString('findstr /C:"apache-vhost.local.conf"', $setup);
+        $this->assertStringContainsString('findstr /C:"%SITE%" "%HOSTSFILE%"', $setup);
+    }
+
+    /** The generated per-machine vhost is not committed either. */
+    public function test_the_generated_vhost_is_ignored_by_git(): void
+    {
+        $this->assertStringContainsString('/deploy/apache-vhost.local.conf', $this->file('.gitignore'),
+            'the generated vhost carries one machine\'s paths and subnet and must not be shared');
+    }
+
+    /**
      * The private key is not committed.
      *
      * It is generated per installation. A key in the repository is a key on
