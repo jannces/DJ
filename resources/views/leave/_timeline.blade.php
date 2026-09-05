@@ -54,16 +54,39 @@
            should not be drawn as one. Absent when the office has no head, or
            when the applicant heads it themselves. --}}
     @if ($tlNotified)
-        <li class="tl-item tl-done">
-            <span class="tl-mark" aria-hidden="true"><i class="bi bi-check-lg"></i></span>
+        @php
+            $tlFor = $tlNotified->action === \App\Models\Approval::ACTION_RECOMMENDED;
+            $tlAgainst = $tlNotified->action === \App\Models\Approval::ACTION_NOT_RECOMMENDED;
+            $tlHeadName = $tlNotified->signature ?? $tlNotified->approver?->name
+                ?? ($mine ? 'Your department head' : 'The department head');
+        @endphp
+        <li class="tl-item {{ $tlAgainst ? 'tl-bad' : 'tl-done' }}">
+            <span class="tl-mark" aria-hidden="true">
+                <i class="bi {{ $tlAgainst ? 'bi-x-lg' : 'bi-check-lg' }}"></i>
+            </span>
             <div class="tl-body">
-                <div class="tl-title">Department Head Notified</div>
+                <div class="tl-title">
+                    @if ($tlFor) Recommended by Department Head
+                    @elseif ($tlAgainst) Not Recommended by Department Head
+                    @else Department Head Notified
+                    @endif
+                </div>
                 <div class="tl-meta">{{ optional($tlNotified->acted_at)->format('F d, Y — g:i A') }}</div>
                 <div class="tl-note">
-                    {{ $tlNotified->signature ?? $tlNotified->approver?->name
-                        ?? ($mine ? 'Your department head' : 'The department head') }}
-                    was informed of {{ $mine ? 'your' : 'this' }} absence. No approval is needed from them.
+                    @if ($tlFor)
+                        {{ $tlHeadName }} recommended {{ $mine ? 'your' : 'this' }}
+                        application for approval. HR still decides it.
+                    @elseif ($tlAgainst)
+                        {{ $tlHeadName }} did not recommend {{ $mine ? 'your' : 'this' }}
+                        application. It is still with HR, who decide it.
+                    @else
+                        {{ $tlHeadName }} was informed of {{ $mine ? 'your' : 'this' }} absence.
+                        No approval is needed from them.
+                    @endif
                 </div>
+                @if ($tlAgainst && $tlNotified->comments)
+                    <div class="tl-reason"><strong>Reason:</strong> {{ $tlNotified->comments }}</div>
+                @endif
             </div>
         </li>
     @endif

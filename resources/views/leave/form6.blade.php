@@ -50,6 +50,23 @@
     $deptHead = $blank
         ? null
         : app(\App\Services\Leave\ApprovalWorkflowService::class)->notifiedHeadName($r);
+
+    // Box 7.B. The head's row carries their recommendation, the name they
+    // signed with and -- if they had one on file when they acted -- their own
+    // copy of their signature image.
+    $headRow = $blank ? null : $r->approvals
+        ->firstWhere('role_slug', \App\Services\Leave\ApprovalWorkflowService::STEP_DEPARTMENT);
+    $headFor = $headRow?->action === \App\Models\Approval::ACTION_RECOMMENDED;
+    $headAgainst = $headRow?->action === \App\Models\Approval::ACTION_NOT_RECOMMENDED;
+
+    // Same rule as the applicant's: verified on disk here rather than trusted
+    // from the column, so a missing file prints the typed name instead of a
+    // broken image on a government form.
+    $headSigFile = null;
+    if ($headRow?->signature_path) {
+        $candidate = \Illuminate\Support\Facades\Storage::disk('local')->path($headRow->signature_path);
+        $headSigFile = is_file($candidate) ? $candidate : null;
+    }
     $isApproved = ! $blank && $r->status === \App\Models\LeaveRequest::STATUS_APPROVED;
     $isRejected = ! $blank && $r->status === \App\Models\LeaveRequest::STATUS_REJECTED;
     $days = $blank ? '' : rtrim(rtrim(number_format((float) $r->working_days, 1), '0'), '.');
@@ -401,10 +418,21 @@
              informed; the signature line beneath it is left for their pen. --}}
         <div class="sub">7.B RECOMMENDATION</div>
         <table class="rows">
-          <tr><td class="b">{!! $box(false) !!}</td><td>For approval</td></tr>
-          <tr><td class="b">{!! $box(false) !!}</td><td>For disapproval due to {!! $rule(null) !!}</td></tr>
+          <tr><td class="b">{!! $box($headFor) !!}</td><td>For approval</td></tr>
+          <tr><td class="b">{!! $box($headAgainst) !!}</td><td>For disapproval due to {!! $rule($headAgainst ? $headRow->comments : null) !!}</td></tr>
         </table>
+        {{-- The head's signature, but ONLY over a box they actually ticked.
+
+             Both boxes still print empty when nobody has recommended, and the
+             line below stays blank for their pen -- a head who has not acted
+             in the system has not recommended anything, and printing a
+             signature there would be the system signing on their behalf. The
+             name prints either way, because the form has to say which head
+             was informed. --}}
         <div class="sign">
+          @if ($headSigFile && ($headFor || $headAgainst))
+            <img class="sigimg" src="{{ $headSigFile }}" alt="">
+          @endif
           <div class="signname">{{ $deptHead ?? '' }}</div>
           <div class="signline"></div>
           <div class="lbl">Authorized Officer</div>

@@ -41,6 +41,9 @@ Route::middleware('permission:leave.view-own')->group(function () {
     // deliberately no route that takes an employee id: who may see a
     // signature follows from who may see the application it is on.
     Route::get('leave/{leaveRequest}/signature', [SignatureController::class, 'show'])->name('leave.signature');
+    // And the head's, on the same application, under the same authorisation.
+    Route::get('leave/{leaveRequest}/head-signature', [SignatureController::class, 'showHead'])
+        ->name('leave.head-signature');
 });
 
 // A person's own signature. Scoped to the signed-in user in the controller --
@@ -55,6 +58,17 @@ Route::middleware('permission:leave.view-own')->group(function () {
 Route::middleware('permission:leave.cancel')->group(function () {
     Route::post('leave/{leaveRequest}/cancel', [LeaveRequestController::class, 'cancel'])->name('leave.cancel');
 });
+// The head of an office recommends on box 7.B of their own people's forms.
+//
+// Gated on the permission here AND scoped to the office they actually head
+// inside ApprovalWorkflowService::canRecommend(): the permission says "may
+// review a department", and which one comes from who heads it, never from the
+// request. This is a recommendation, not a decision -- HR still decides.
+Route::middleware('permission:leave.review.department')->group(function () {
+    Route::post('leave/{leaveRequest}/recommend', [ApprovalController::class, 'recommend'])
+        ->name('leave.recommend');
+});
+
 Route::middleware('permission:leave.requests.view-all')->group(function () {
     Route::get('all-leave', [LeaveRequestController::class, 'all'])->name('leave.all');
 });

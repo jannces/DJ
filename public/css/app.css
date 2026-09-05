@@ -5333,3 +5333,20 @@ span.dash-link{ justify-content:flex-start; }
   max-width:70ch; margin:1.5rem 0 0; padding-top:1rem;
   border-top:1px solid var(--border); font-size:var(--fs-sm); color:var(--muted);
 }
+
+/* ---- Recommendation options (box 7.B) -------------------------------------
+   Two choices, each a whole clickable row rather than a radio with a word
+   beside it: the target is the label, so the hit area is the size of the
+   sentence instead of the size of the dot. */
+.rec-opts{ border:0; padding:0; margin:0; }
+.rec-opts legend{ float:none; width:auto; font-size:var(--fs-sm); margin-bottom:.4rem; }
+.rec-opt{
+  display:flex; align-items:center; gap:.55rem; cursor:pointer;
+  padding:.5rem .75rem; border:1px solid var(--border); border-radius:var(--r-sm);
+  margin-bottom:.4rem; max-width:26rem;
+}
+.rec-opt:hover{ background:var(--surface-hover); }
+/* :has, so the chosen row is marked without a line of script. The project
+   already uses this idiom for the stepped form's own switches. */
+.rec-opt:has(input:checked){ border-color:var(--primary); background:var(--primary-soft); }
+.rec-opt:has(input:focus-visible){ outline:2px solid var(--primary); outline-offset:1px; }

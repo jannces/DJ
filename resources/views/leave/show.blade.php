@@ -8,6 +8,19 @@
     $viewsAll = auth()->user()?->hasPermission('leave.requests.view-all');
     $mine = $leaveRequest->user_id === auth()->id();
 
+    // Box 7.B. True only for the head of the APPLICANT'S OWN office -- the
+    // service reads that from the department record, never from the request.
+    $workflow = app(\App\Services\Leave\ApprovalWorkflowService::class);
+    $canRecommend = auth()->user() !== null
+        && $workflow->canRecommend(auth()->user(), $leaveRequest)
+        && ! $leaveRequest->isFinal();
+
+    $headRow = $leaveRequest->approvals
+        ->firstWhere('role_slug', \App\Services\Leave\ApprovalWorkflowService::STEP_DEPARTMENT);
+    $recommended = $headRow?->action === \App\Models\Approval::ACTION_RECOMMENDED;
+    $notRecommended = $headRow?->action === \App\Models\Approval::ACTION_NOT_RECOMMENDED;
+    $decidedByHead = $recommended || $notRecommended;
+
     /**
      * The answers to the form's conditional questions, in words.
      *
@@ -174,6 +187,87 @@
             </div>
         </div>
     </div>
+
+    @if ($canRecommend || $decidedByHead)
+        {{--
+          Box 7.B of the printed form, filled in from here.
+
+          A RECOMMENDATION, not a decision. The application is already with HR
+          and stays there whichever way this goes, which is why the panel says
+          so twice: an officer ticking "not recommended" should not believe
+          they have stopped anything, and the applicant reading it afterwards
+          should not believe they have been refused.
+
+          It exists because the head's signature had nowhere to come from. The
+          form printed their name over a blank line and two empty boxes, and a
+          head who had uploaded a signature never saw it appear -- because
+          nothing in the system had ever asked them for one.
+        --}}
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header fw-semibold">Recommendation &middot; box 7.B</div>
+                <div class="card-body">
+                    @if ($decidedByHead)
+                        <dl class="dfl mb-0">
+                            <dt>Recommendation</dt>
+                            <dd>
+                                <span class="st {{ $recommended ? 'st-ok' : 'st-bad' }}">
+                                    <i class="bi {{ $recommended ? 'bi-check-circle' : 'bi-x-circle' }}"></i>
+                                    {{ $recommended ? 'For approval' : 'Not recommended' }}
+                                </span>
+                            </dd>
+                            <dt>By</dt>
+                            <dd>{{ $headRow->signature ?? $headRow->approver?->name ?? '—' }}</dd>
+                            <dt>Recorded</dt>
+                            <dd>{{ $headRow->acted_at?->format('M d, Y — g:i a') ?? '—' }}</dd>
+                            @if ($headRow->comments)
+                                <dt class="dfl-wide">Reason</dt>
+                                <dd class="dfl-wide">{{ $headRow->comments }}</dd>
+                            @endif
+                        </dl>
+                    @else
+                        <p class="form-text mt-0">
+                            You are the head of this employee's office. Your answer is
+                            printed in box 7.B with your signature; HR still decides the
+                            application either way.
+                        </p>
+
+                        <form method="POST" action="{{ route('leave.recommend', $leaveRequest) }}">
+                            @csrf
+                            <fieldset class="rec-opts">
+                                <legend class="form-label">Your recommendation</legend>
+                                <label class="rec-opt">
+                                    <input type="radio" name="recommendation" value="recommended"
+                                           @checked(old('recommendation') === 'recommended') required>
+                                    <span>For approval</span>
+                                </label>
+                                <label class="rec-opt">
+                                    <input type="radio" name="recommendation" value="not_recommended"
+                                           @checked(old('recommendation') === 'not_recommended')>
+                                    <span>For disapproval</span>
+                                </label>
+                            </fieldset>
+                            @error('recommendation')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+
+                            <div class="mt-3">
+                                <label class="form-label" for="rec-reason">
+                                    Reason <span class="text-muted">— required if you are not recommending it</span>
+                                </label>
+                                <textarea id="rec-reason" name="reason" rows="2" maxlength="500"
+                                          class="form-control @error('reason') is-invalid @enderror"
+                                          placeholder="e.g. The office is short-staffed on those dates.">{{ old('reason') }}</textarea>
+                                @error('reason')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
+                            </div>
+
+                            <button class="btn btn-lgu btn-sm mt-3">
+                                <i class="bi bi-pen me-1" aria-hidden="true"></i>Record recommendation
+                            </button>
+                        </form>
+                    @endif
+                </div>
+            </div>
+        </div>
+    @endif
 
     <div class="col-12">
         <div class="card">

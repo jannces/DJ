@@ -74,6 +74,48 @@ class ApprovalController extends Controller
         return back()->with('status', 'Decision recorded.');
     }
 
+    /**
+     * Box 7.B: the head of the applicant's office recommends.
+     *
+     * The route already carries the permission. This checks the SCOPE, which
+     * the permission cannot: "may review a department" does not say which one,
+     * and the answer comes from the department record naming its head, never
+     * from anything in the request. Without it a head could recommend on
+     * anybody in the LGU by posting the right reference number.
+     */
+    public function recommend(Request $request, LeaveRequest $leaveRequest): RedirectResponse
+    {
+        abort_unless($this->workflow->canRecommend($request->user(), $leaveRequest), 403);
+
+        // Nothing to recommend on once it is decided: HR has already signed
+        // 7.C or 7.D, and a recommendation added afterwards would be advice
+        // about a question that is closed.
+        abort_if($leaveRequest->isFinal(), 422,
+            'This application has already been decided.');
+
+        $data = $request->validate([
+            'recommendation' => ['required', 'in:recommended,not_recommended'],
+            // Required only when they are NOT recommending it: the printed
+            // form rules a line for "For disapproval due to" and leaves the
+            // approval box bare, because a refusal is the one that needs a
+            // reason on it.
+            'reason' => ['nullable', 'string', 'max:500', 'required_if:recommendation,not_recommended'],
+        ], [], ['reason' => 'reason']);
+
+        $favourable = $data['recommendation'] === 'recommended';
+
+        $this->workflow->recommend(
+            $leaveRequest,
+            $request->user(),
+            $favourable,
+            $favourable ? ($data['reason'] ?? null) : $data['reason'],
+        );
+
+        return back()->with('status', $favourable
+            ? 'Recommended for approval. HR still decides the application.'
+            : 'Recorded as not recommended. HR still decides the application.');
+    }
+
     private function certification(LeaveRequest $r): array
     {
         $credits = app(\App\Services\Leave\LeaveCreditService::class);

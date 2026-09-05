@@ -424,6 +424,33 @@ class SignatureController extends Controller
     }
 
     /**
+     * The DEPARTMENT HEAD'S signature on one application, for the screen.
+     *
+     * Addressed by the leave request and authorised exactly like the
+     * applicant's, because it is the same document and the same question:
+     * whoever may open the application may see the signatures on it.
+     *
+     * The snapshot taken when the head recommended, never their profile file.
+     * A head who replaces their signature has not changed what they signed on
+     * a form already filed.
+     */
+    public function showHead(Request $request, LeaveRequest $leaveRequest): StreamedResponse
+    {
+        $this->authorizeSignature($request->user(), $leaveRequest);
+
+        $path = $leaveRequest->approvals
+            ->firstWhere('role_slug', \App\Services\Leave\ApprovalWorkflowService::STEP_DEPARTMENT)
+            ?->signature_path;
+
+        abort_if($path === null || ! Storage::disk('local')->exists($path), 404);
+
+        return Storage::disk('local')->response($path, 'signature.png', [
+            'Content-Type' => 'image/png',
+            'Cache-Control' => 'private, no-store',
+        ]);
+    }
+
+    /**
      * Who may look at a signature.
      *
      * The applicant, and the officers who handle the application: HR, who

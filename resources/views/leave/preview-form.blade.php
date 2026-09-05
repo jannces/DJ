@@ -33,6 +33,13 @@
     // written when the application was filed rather than from the department
     // as it stands today. See form6.blade.php.
     $deptHead = app(\App\Services\Leave\ApprovalWorkflowService::class)->notifiedHeadName($r);
+
+    // Box 7.B, exactly as form6.blade.php reads it -- these two files render
+    // one document and must not disagree about what the head recommended.
+    $headRow = $r->approvals
+        ->firstWhere('role_slug', \App\Services\Leave\ApprovalWorkflowService::STEP_DEPARTMENT);
+    $headFor = $headRow?->action === \App\Models\Approval::ACTION_RECOMMENDED;
+    $headAgainst = $headRow?->action === \App\Models\Approval::ACTION_NOT_RECOMMENDED;
     $isApproved = $r->status === \App\Models\LeaveRequest::STATUS_APPROVED;
     $isRejected = $r->status === \App\Models\LeaveRequest::STATUS_REJECTED;
     $days = rtrim(rtrim(number_format((float) $r->working_days, 1), '0'), '.');
@@ -399,15 +406,21 @@
                          full reasoning; these two files render one document. --}}
                     <div class="csc-sub">7.B RECOMMENDATION</div>
                     <div class="csc-check csc-rowline">
-                        <span class="{{ $tick(false) }}" aria-hidden="true"></span>
+                        <span class="{{ $tick($headFor) }}" aria-hidden="true"></span>
                         <span class="csc-check-text">For approval</span>
                     </div>
                     <div class="csc-check csc-rowline">
-                        <span class="{{ $tick(false) }}" aria-hidden="true"></span>
+                        <span class="{{ $tick($headAgainst) }}" aria-hidden="true"></span>
                         <span class="csc-check-text">For disapproval due to</span>
-                        <span class="csc-fill-value"></span>
+                        <span class="csc-fill-value">{{ $headAgainst ? $headRow->comments : '' }}</span>
                     </div>
                     <div class="csc-signatory">
+                        {{-- Over a box they actually ticked, never otherwise --
+                             see form6.blade.php, which carries the reasoning. --}}
+                        @if ($headRow?->signature_path && ($headFor || $headAgainst))
+                            <img class="csc-sigimg" src="{{ route('leave.head-signature', $r) }}"
+                                 alt="Signature of {{ $deptHead }}">
+                        @endif
                         <div class="csc-signatory-name">{{ $deptHead ?? '' }}</div>
                         <div class="csc-rule"></div>
                         <div class="csc-sublabel">Authorized Officer</div>

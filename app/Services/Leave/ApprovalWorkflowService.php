@@ -10,6 +10,7 @@ use App\Notifications\DepartmentLeaveFiledNotification;
 use App\Notifications\LeaveStatusNotification;
 use App\Services\Security\AuditLogger;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -166,6 +167,107 @@ class ApprovalWorkflowService
         return $row?->signature
             ?? $row?->approver?->name
             ?? $this->departmentHeadFor($request)?->name;
+    }
+
+    /**
+     * The head of the applicant's office recommends on box 7.B.
+     *
+     * A RECOMMENDATION, not a decision. The application is already with HR and
+     * stays there whichever way this goes: a head who does not recommend it
+     * does not stop it, and HR is not bound by either answer. That is what the
+     * paper form says too -- 7.B recommends, 7.C and 7.D approve or
+     * disapprove, and they are separate boxes signed by separate people. So
+     * nothing here touches `status` or `current_step`.
+     *
+     * The signature is COPIED at the moment they act, under this approval's
+     * own id. Pointing at the head's profile file would mean that replacing
+     * their signature -- which deletes the file it replaces -- silently
+     * altered every form they had already recommended. A failed copy is not a
+     * failed recommendation: the form falls back to the typed name, exactly as
+     * it does for an applicant with no signature on file.
+     */
+    public function recommend(
+        LeaveRequest $request,
+        User $head,
+        bool $favourable,
+        ?string $reason = null,
+    ): Approval {
+        $row = $request->approvals()
+            ->where('role_slug', self::STEP_DEPARTMENT)
+            ->firstOrFail();
+
+        // Once only. A head who has recommended has signed box 7.B, and a
+        // second answer would overwrite a signature already printed on forms
+        // that have been filed.
+        if (! in_array($row->action, [Approval::ACTION_NOTIFIED, Approval::ACTION_PENDING], true)) {
+            throw ValidationException::withMessages([
+                'recommendation' => 'You have already recorded a recommendation on this application.',
+            ]);
+        }
+
+        $row->update([
+            'approver_id' => $head->id,
+            'action' => $favourable
+                ? Approval::ACTION_RECOMMENDED
+                : Approval::ACTION_NOT_RECOMMENDED,
+            'comments' => $reason,
+            // Re-snapshotted from the head who actually signed, which need not
+            // be whoever was notified: an officer-in-charge may have taken the
+            // office over since the application was filed.
+            'signature' => $head->name,
+            'signature_path' => $this->snapshotSignature($row, $head),
+            'acted_at' => now(),
+        ]);
+
+        $this->audit->log('leave_recommended', $request, [], [
+            'reference_no' => $request->reference_no,
+            'recommended' => $favourable,
+        ], $head);
+
+        $request->user->notify(new LeaveStatusNotification($request, $favourable
+            ? 'recommended'
+            : 'not_recommended'));
+
+        return $row->refresh();
+    }
+
+    /** This approval's own copy of the signature it was signed with. */
+    private function snapshotSignature(Approval $row, User $head): ?string
+    {
+        $source = $head->employeeProfile?->signature_path;
+
+        if ($source === null || ! Storage::disk('local')->exists($source)) {
+            return null;
+        }
+
+        $target = 'signatures/filed/approval-'.$row->id.'.'.pathinfo($source, PATHINFO_EXTENSION);
+
+        return Storage::disk('local')->copy($source, $target) ? $target : null;
+    }
+
+    /**
+     * Whether this person may recommend on this application.
+     *
+     * The permission says "may review a department"; WHICH department comes
+     * from who heads it, never from the request. Without that second check any
+     * head could recommend on anybody in the LGU by opening the right
+     * reference.
+     */
+    public function canRecommend(User $user, LeaveRequest $request): bool
+    {
+        if (! $user->hasPermission(self::DEPARTMENT_PERMISSION)) {
+            return false;
+        }
+
+        // Nobody recommends on their own leave.
+        if ($user->id === $request->user_id) {
+            return false;
+        }
+
+        $officeId = $request->user?->employeeProfile?->department_id;
+
+        return $officeId !== null
+            && $user->headsDepartments()->whereKey($officeId)->exists();
     }
 
     public function permissionForStep(string $roleSlug): ?string

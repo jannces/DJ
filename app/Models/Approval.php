@@ -42,10 +42,28 @@ class Approval extends Model
      */
     public const ACTION_NOTIFIED = 'notified';
 
+    /**
+     * The head of the applicant's office has read the application and made a
+     * recommendation on it -- box 7.B of CSC Form No. 6.
+     *
+     * This is a recommendation, NOT a decision: the application still goes to
+     * HR either way, and a head who does not recommend it does not stop it.
+     * That is what the printed form says too -- 7.B recommends, 7.C and 7.D
+     * approve or disapprove, and they are different boxes signed by different
+     * people.
+     *
+     * A row only reaches one of these from ACTION_NOTIFIED, and only by the
+     * head acting. Left alone it stays "notified" and the form prints an empty
+     * box over a blank line, for their pen, exactly as it always did.
+     */
+    public const ACTION_RECOMMENDED = 'recommended';
+
+    public const ACTION_NOT_RECOMMENDED = 'not_recommended';
+
     protected $fillable = [
         'leave_request_id', 'step_no', 'role_slug', 'approver_id', 'action',
         'comments', 'days_with_pay', 'days_without_pay', 'certified_balances',
-        'signature', 'acted_at',
+        'signature', 'signature_path', 'acted_at',
     ];
 
     protected $casts = [

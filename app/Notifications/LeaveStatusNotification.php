@@ -53,6 +53,10 @@ class LeaveStatusNotification extends Notification implements ShouldQueue
             'certified' => 'Certified by HR',
             'rejected' => 'Disapproved',
             'returned' => 'Returned for revision',
+            // A recommendation is not a stage the application waits at -- it
+            // is already with HR -- so neither headline says "moved on".
+            'recommended' => 'Recommended by your department head',
+            'not_recommended' => 'Not recommended by your department head',
             default => ucfirst($this->event),
         };
     }
@@ -65,6 +69,8 @@ class LeaveStatusNotification extends Notification implements ShouldQueue
             'rejected' => "Your {$this->request->leaveType->name} application was disapproved."
                 .($this->request->disapproval_reason ? " Reason: {$this->request->disapproval_reason}" : ''),
             'returned' => "Your {$this->request->leaveType->name} application was returned for revision. Please review the comments and resubmit.",
+            'recommended' => "The head of your office has recommended your {$this->request->leaveType->name} application for approval. HR still decides it.",
+            'not_recommended' => "The head of your office did not recommend your {$this->request->leaveType->name} application. It is still with HR, who decide it.",
             default => "Your {$this->request->leaveType->name} application moved to the next review stage ({$this->stepRole}).",
         };
     }
