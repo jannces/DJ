@@ -138,6 +138,39 @@ class HttpsConfigTest extends TestCase
         $this->assertStringContainsString('apache\\conf\\openssl.cnf', $script);
     }
 
+    /**
+     * XAMPP's OWN default certificate is checked, because it stops Apache dead.
+     *
+     * httpd-ssl.conf ships a <VirtualHost _default_:443> for www.example.com
+     * using XAMPP's bundled server.crt/server.key, and on at least one install
+     * those two are not a pair. mod_ssl treats that as fatal for the whole
+     * server rather than for that vhost:
+     *
+     *   AH02565: Certificate and private key www.example.com:443:0 ... do not match
+     *   AH00016: Configuration Failed
+     *
+     * Apache exits, XAMPP says "shutdown unexpectedly", and `httpd -t` reports
+     * Syntax OK -- because the syntax is fine. Two files simply are not a pair.
+     * Enabling the Include is what makes it matter, and the Include is needed
+     * for its Listen 443, so the setup has to deal with it.
+     */
+    public function test_setup_repairs_xampps_own_mismatched_certificate(): void
+    {
+        $setup = $this->file('deploy/setup-https.bat');
+
+        $this->assertStringContainsString('ssl.crt\\server.crt', $setup,
+            "setup does not look at XAMPP's own default certificate, which can stop Apache starting");
+
+        // A cert and a key are a pair only if their moduli match; comparing
+        // anything else is not a test of whether they belong together.
+        $this->assertStringContainsString('-modulus', $setup,
+            'the default pair is not compared by modulus, so a mismatch would go unnoticed');
+
+        // And the originals are kept.
+        $this->assertMatchesRegularExpression('/copy \/Y "%XCRT%"/', $setup);
+        $this->assertMatchesRegularExpression('/copy \/Y "%XKEY%"/', $setup);
+    }
+
     /** An existing but SAN-less certificate is replaced, not trusted. */
     public function test_setup_verifies_an_existing_certificate(): void
     {

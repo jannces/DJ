@@ -14,8 +14,9 @@ REM    2. httpd.conf                enables mod_ssl, mod_rewrite, the two Includ
 REM    3. httpd-vhosts.conf         includes this project's vhost
 REM    4. apache-vhost.local.conf   GENERATED from the template with your real
 REM                                 project path and your real subnet
-REM    5. deploy\certs\             the self-signed certificate, if missing
-REM    6. hosts                     onealicialms.local -> 127.0.0.1
+REM    5. XAMPP's server.crt/key    replaced IF the shipped pair is mismatched
+REM    6. deploy\certs\             this system's certificate, if missing
+REM    7. hosts                     onealicialms.local -> 127.0.0.1
 REM
 REM  Every file it edits is backed up next to itself first, with a timestamp.
 REM  It can be run twice: nothing is appended or enabled a second time.
@@ -75,7 +76,7 @@ for /f "usebackq delims=" %%t in (`powershell -NoProfile -Command "Get-Date -For
 if "%STAMP%"=="" set STAMP=backup
 
 REM --- 1. .env ---------------------------------------------------------------
-echo [1/6] Setting APP_URL and SESSION_SECURE_COOKIE in .env...
+echo [1/7] Setting APP_URL and SESSION_SECURE_COOKIE in .env...
 if not exist "%ROOT%\.env" (
   echo       No .env yet - copying .env.example.
   copy /Y "%ROOT%\.env.example" "%ROOT%\.env" >nul
@@ -95,7 +96,7 @@ php artisan config:clear >nul 2>&1
 echo       Config cache cleared.
 
 REM --- 2. httpd.conf ---------------------------------------------------------
-echo [2/6] Enabling mod_ssl, mod_rewrite and the Includes...
+echo [2/7] Enabling mod_ssl, mod_rewrite and the Includes...
 copy /Y "%CONF%" "%CONF%.backup-%STAMP%" >nul
 powershell -NoProfile -Command ^
   "$p='%CONF%'; $c=Get-Content $p;" ^
@@ -108,7 +109,7 @@ if errorlevel 1 ( echo [X] Could not edit httpd.conf & goto :fail )
 echo       Backed up to httpd.conf.backup-%STAMP%
 
 REM --- 3. The vhost, generated with YOUR paths and YOUR subnet ---------------
-echo [3/6] Writing %LOCALVHOST%...
+echo [3/7] Writing %LOCALVHOST%...
 
 REM The subnet is read off this machine rather than guessed. The template ships
 REM 192.168.254.0/24; on any other network that value serves every client a
@@ -155,7 +156,7 @@ if errorlevel 1 ( echo [X] Could not write %LOCALVHOST% & goto :fail )
 echo       DocumentRoot: %FSROOT%/public
 
 REM --- 4. Include it from httpd-vhosts.conf -----------------------------------
-echo [4/6] Including it from httpd-vhosts.conf...
+echo [4/7] Including it from httpd-vhosts.conf...
 findstr /C:"apache-vhost.local.conf" "%VHOSTS%" >nul 2>&1
 if not errorlevel 1 (
   echo       Already included.
@@ -168,7 +169,55 @@ if not errorlevel 1 (
 )
 
 REM --- 5. Certificate ---------------------------------------------------------
-echo [5/6] Certificate...
+REM --- 5a. XAMPP's OWN default SSL certificate --------------------------------
+REM
+REM Not ours, and repaired here because it stops Apache dead.
+REM
+REM httpd-ssl.conf ships a <VirtualHost _default_:443> for www.example.com
+REM using XAMPP's bundled server.crt/server.key. On this install those two do
+REM not match each other, and mod_ssl treats that as fatal for the WHOLE
+REM server, not just that vhost:
+REM
+REM   AH02565: Certificate and private key www.example.com:443:0 ... do not match
+REM   AH00016: Configuration Failed
+REM
+REM Apache exits, XAMPP reports "shutdown unexpectedly", and `httpd -t` says
+REM Syntax OK -- because the syntax IS fine; the two files simply are not a
+REM pair. Including httpd-ssl.conf is what makes it matter, and we need that
+REM file for its Listen 443.
+echo [5/7] Checking XAMPP's own default SSL certificate...
+set OPENSSL=%XAMPP%\apache\bin\openssl.exe
+set XCRT=%XAMPP%\apache\conf\ssl.crt\server.crt
+set XKEY=%XAMPP%\apache\conf\ssl.key\server.key
+
+REM Written flat, with labels rather than nested if/else blocks. A caret line
+REM continuation inside a parenthesised block is one of the ways batch quietly
+REM stops doing what it reads as doing, and the openssl call below needs one.
+if not exist "%OPENSSL%" ( echo       openssl not found - skipping this check. & goto :xamppcert_done )
+if not exist "%XCRT%"    ( echo       No default certificate to check.        & goto :xamppcert_done )
+
+REM Without a config, -addext is dropped -- the same XAMPP defect that made
+REM our own certificate come out with no subjectAltName.
+if exist "%XAMPP%\apache\conf\openssl.cnf" set OPENSSL_CONF=%XAMPP%\apache\conf\openssl.cnf
+
+REM A certificate and a key are a pair only if their moduli are equal.
+"%OPENSSL%" x509 -noout -modulus -in "%XCRT%" > "%TEMP%\lms-c.txt" 2>nul
+"%OPENSSL%" rsa  -noout -modulus -in "%XKEY%" > "%TEMP%\lms-k.txt" 2>nul
+fc /b "%TEMP%\lms-c.txt" "%TEMP%\lms-k.txt" >nul 2>&1
+set XMATCH=%ERRORLEVEL%
+del "%TEMP%\lms-c.txt" "%TEMP%\lms-k.txt" 2>nul
+
+if "%XMATCH%"=="0" ( echo       Matched pair - leaving it alone. & goto :xamppcert_done )
+
+echo       MISMATCHED. This is what stops Apache starting. Replacing it.
+copy /Y "%XCRT%" "%XCRT%.backup-%STAMP%" >nul
+copy /Y "%XKEY%" "%XKEY%.backup-%STAMP%" >nul
+"%OPENSSL%" req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout "%XKEY%" -out "%XCRT%" -subj "/C=PH/ST=Isabela/L=Alicia/O=XAMPP/CN=localhost" -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+if errorlevel 1 ( echo [X] Could not regenerate XAMPP's default pair. & goto :fail )
+echo       Replaced with a matched pair. Originals kept as *.backup-%STAMP%
+:xamppcert_done
+
+echo [6/7] This system's certificate...
 REM "The file exists" is not the same as "the browser will accept it". A
 REM certificate issued without a readable openssl.cnf carries no
 REM subjectAltName, and every browser refuses that outright -- so an existing
@@ -191,7 +240,7 @@ if defined CERTOK (
 )
 
 REM --- 6. hosts ---------------------------------------------------------------
-echo [6/6] hosts file...
+echo [7/7] hosts file...
 findstr /C:"%SITE%" "%HOSTSFILE%" >nul 2>&1
 if not errorlevel 1 (
   echo       Already mapped.
