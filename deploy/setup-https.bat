@@ -16,7 +16,8 @@ REM    4. apache-vhost.local.conf   GENERATED from the template with your real
 REM                                 project path and your real subnet
 REM    5. XAMPP's server.crt/key    replaced IF the shipped pair is mismatched
 REM    6. deploy\certs\             this system's certificate, if missing
-REM    7. hosts                     onealicialms.local -> 127.0.0.1
+REM    7. Windows Firewall          inbound 443 and 80, local subnet only
+REM    8. hosts                     onealicialms.local -> 127.0.0.1
 REM
 REM  Every file it edits is backed up next to itself first, with a timestamp.
 REM  It can be run twice: nothing is appended or enabled a second time.
@@ -76,7 +77,7 @@ for /f "usebackq delims=" %%t in (`powershell -NoProfile -Command "Get-Date -For
 if "%STAMP%"=="" set STAMP=backup
 
 REM --- 1. .env ---------------------------------------------------------------
-echo [1/7] Setting APP_URL and SESSION_SECURE_COOKIE in .env...
+echo [1/8] Setting APP_URL and SESSION_SECURE_COOKIE in .env...
 if not exist "%ROOT%\.env" (
   echo       No .env yet - copying .env.example.
   copy /Y "%ROOT%\.env.example" "%ROOT%\.env" >nul
@@ -96,7 +97,7 @@ php artisan config:clear >nul 2>&1
 echo       Config cache cleared.
 
 REM --- 2. httpd.conf ---------------------------------------------------------
-echo [2/7] Enabling mod_ssl, mod_rewrite and the Includes...
+echo [2/8] Enabling mod_ssl, mod_rewrite and the Includes...
 copy /Y "%CONF%" "%CONF%.backup-%STAMP%" >nul
 powershell -NoProfile -Command ^
   "$p='%CONF%'; $c=Get-Content $p;" ^
@@ -109,7 +110,7 @@ if errorlevel 1 ( echo [X] Could not edit httpd.conf & goto :fail )
 echo       Backed up to httpd.conf.backup-%STAMP%
 
 REM --- 3. The vhost, generated with YOUR paths and YOUR subnet ---------------
-echo [3/7] Writing %LOCALVHOST%...
+echo [3/8] Writing %LOCALVHOST%...
 
 REM The subnet is read off this machine rather than guessed. The template ships
 REM 192.168.254.0/24; on any other network that value serves every client a
@@ -156,7 +157,7 @@ if errorlevel 1 ( echo [X] Could not write %LOCALVHOST% & goto :fail )
 echo       DocumentRoot: %FSROOT%/public
 
 REM --- 4. Include it from httpd-vhosts.conf -----------------------------------
-echo [4/7] Including it from httpd-vhosts.conf...
+echo [4/8] Including it from httpd-vhosts.conf...
 findstr /C:"apache-vhost.local.conf" "%VHOSTS%" >nul 2>&1
 if not errorlevel 1 (
   echo       Already included.
@@ -185,7 +186,7 @@ REM Apache exits, XAMPP reports "shutdown unexpectedly", and `httpd -t` says
 REM Syntax OK -- because the syntax IS fine; the two files simply are not a
 REM pair. Including httpd-ssl.conf is what makes it matter, and we need that
 REM file for its Listen 443.
-echo [5/7] Checking XAMPP's own default SSL certificate...
+echo [5/8] Checking XAMPP's own default SSL certificate...
 set OPENSSL=%XAMPP%\apache\bin\openssl.exe
 set XCRT=%XAMPP%\apache\conf\ssl.crt\server.crt
 set XKEY=%XAMPP%\apache\conf\ssl.key\server.key
@@ -217,7 +218,7 @@ if errorlevel 1 ( echo [X] Could not regenerate XAMPP's default pair. & goto :fa
 echo       Replaced with a matched pair. Originals kept as *.backup-%STAMP%
 :xamppcert_done
 
-echo [6/7] This system's certificate...
+echo [6/8] This system's certificate...
 REM "The file exists" is not the same as "the browser will accept it". A
 REM certificate issued without a readable openssl.cnf carries no
 REM subjectAltName, and every browser refuses that outright -- so an existing
@@ -240,7 +241,40 @@ if defined CERTOK (
 )
 
 REM --- 6. hosts ---------------------------------------------------------------
-echo [7/7] hosts file...
+REM --- 7. Windows Firewall ----------------------------------------------------
+REM
+REM Without this the system works perfectly on the server and is invisible to
+REM every other PC in the office. Windows blocks inbound 443 by default, and it
+REM does so silently: the other machine just times out, which reads as "the
+REM server is down" rather than "this PC refused the packet".
+echo [7/8] Windows Firewall...
+
+REM Scoped deliberately. `profile=private,domain` keeps the port shut on a
+REM public network -- a laptop taken to a coffee shop should not be serving
+REM this -- and `remoteip=localsubnet` allows only machines on the same
+REM network, which is the same boundary Apache's `Require ip` enforces one
+REM layer up. Two layers saying the same thing is the point: a mistake in the
+REM vhost does not become an open port.
+netsh advfirewall firewall show rule name="LGU Alicia LMS (HTTPS)" >nul 2>&1
+if not errorlevel 1 (
+  echo       Rule already present.
+) else (
+  netsh advfirewall firewall add rule name="LGU Alicia LMS (HTTPS)" dir=in action=allow protocol=TCP localport=443 profile=private,domain remoteip=localsubnet >nul
+  if errorlevel 1 ( echo [X] Could not add the firewall rule. & goto :fail )
+  echo       Allowed inbound TCP 443 from the local subnet.
+)
+
+REM Port 80 carries nothing but the redirect to HTTPS, and it is what somebody
+REM gets when they type the name without a scheme.
+netsh advfirewall firewall show rule name="LGU Alicia LMS (HTTP redirect)" >nul 2>&1
+if not errorlevel 1 (
+  echo       Redirect rule already present.
+) else (
+  netsh advfirewall firewall add rule name="LGU Alicia LMS (HTTP redirect)" dir=in action=allow protocol=TCP localport=80 profile=private,domain remoteip=localsubnet >nul
+  echo       Allowed inbound TCP 80 for the redirect.
+)
+
+echo [8/8] hosts file...
 REM Is there a REAL mapping, or only the name sitting inside a comment?
 REM
 REM findstr /C:"%SITE%" matches either, and that is how a machine ended up

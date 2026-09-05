@@ -270,6 +270,35 @@ class HttpsConfigTest extends TestCase
             'the plain findstr check is back, and it matches comments');
     }
 
+    /**
+     * The firewall is opened, and only as far as it needs to be.
+     *
+     * Without a rule the system works perfectly on the server and is invisible
+     * to every other PC in the office -- Windows blocks inbound 443 by default
+     * and does it silently, so the other machine simply times out, which reads
+     * as "the server is down".
+     *
+     * Scoped on both axes: private and domain profiles only, so a laptop on a
+     * public network is not serving this, and the local subnet only, which is
+     * the same boundary the vhost's `Require ip` draws one layer up. Two layers
+     * saying the same thing means a mistake in one of them is not an open port.
+     */
+    public function test_the_firewall_is_opened_narrowly(): void
+    {
+        $setup = $this->file('deploy/setup-https.bat');
+
+        $this->assertStringContainsString('localport=443', $setup,
+            'nothing opens inbound 443, so no other PC on the network can reach the system');
+        $this->assertStringContainsString('profile=private,domain', $setup,
+            'the firewall rule also applies on public networks');
+        $this->assertStringContainsString('remoteip=localsubnet', $setup,
+            'the firewall rule is not limited to the local subnet');
+
+        // Adding the same rule twice leaves duplicates in the firewall list.
+        $this->assertStringContainsString('firewall show rule name="LGU Alicia LMS (HTTPS)"', $setup,
+            'the rule is added without checking whether it is already there');
+    }
+
     /** The generated per-machine vhost is not committed either. */
     public function test_the_generated_vhost_is_ignored_by_git(): void
     {
