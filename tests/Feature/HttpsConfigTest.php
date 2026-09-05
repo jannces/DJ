@@ -530,6 +530,13 @@ class HttpsConfigTest extends TestCase
         $this->assertStringContainsString('ServerAlias', $check);
         $this->assertStringContainsString('Require ip', $check);
 
+        // The PC-works-phone-does-not case. Client isolation and a wrong
+        // network look identical from the phone; ARP-without-ping separates
+        // them, and neither can be seen from the phone itself.
+        $this->assertStringContainsString('arp -a', $check,
+            'the check cannot distinguish router client isolation from a device on another network');
+        $this->assertStringContainsString('CLIENT ISOLATION', $check);
+
         // It diagnoses; it must not "helpfully" change anything.
         foreach (['netsh advfirewall firewall add', 'certutil -addstore', 'Set-Content', 'WriteAllLines'] as $mutation) {
             $this->assertStringNotContainsString($mutation, $check,
