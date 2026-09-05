@@ -41,50 +41,6 @@
     @endforeach
 </div>
 
-{{-- ---------- Recent alerts ---------- --}}
-{{--
-  What the figures below actually mean, said in words.
-
-  Every other panel here answers one question well, and none of them answers
-  "is anything wrong" -- an administrator had to read four charts and do the
-  comparison themselves. These do the comparison. Each card is computed from
-  figures already on this page, so the panel costs no query of its own, and
-  none of them appears unless it is true right now.
-
-  Colour is the grade, not the decoration: red for something that got through,
-  amber for a trend worth watching, blue for work waiting, green for a clear
-  week. Each also carries its grade as a word, because a card that means
-  something only if you can tell red from amber means nothing to a reader who
-  cannot.
---}}
-<div class="ds-row">
-    <div class="dash-frame">
-        <div class="dash-head">
-            <p class="dash-title">Recent alerts</p>
-            <a href="{{ route('security.intrusions') }}" class="dash-link">Intrusion logs &rarr;</a>
-        </div>
-        <div class="dash-body">
-            <div class="al-grid">
-                @foreach ($alerts as $alert)
-                    <div class="al" data-tone="{{ $alert['tone'] }}">
-                        <div class="al-top">
-                            <i class="al-ic bi {{ [
-                                'critical' => 'bi-exclamation-octagon',
-                                'warning' => 'bi-exclamation-triangle',
-                                'info' => 'bi-info-circle',
-                                'healthy' => 'bi-check-circle',
-                            ][$alert['tone']] }}" aria-hidden="true"></i>
-                            <span class="al-tag">{{ $alert['label'] }}</span>
-                        </div>
-                        <p class="al-title">{{ $alert['title'] }}</p>
-                        <p class="al-body">{{ $alert['body'] }}</p>
-                    </div>
-                @endforeach
-            </div>
-        </div>
-    </div>
-</div>
-
 {{-- Severity leads the page because it is the judgement the rest of the page
      supports; the week's shape sits beside it, which is the pair an
      administrator reads on arrival -- how bad, and which way it is going.
@@ -140,7 +96,61 @@
 {{-- What the attacks were. "Most targeted pages" used to sit beside it and is
      dropped: which route was hit is a question Intrusion Logs answers per
      event, and a ranking of paths never told anyone what to do about one. --}}
-<div class="ds-row ds-2">
+<div class="ds-row ds-1-2">
+    {{-- ---------- Recent alerts ---------- --}}
+    {{--
+      What the figures beside it actually mean, said in words.
+
+      Every other panel here answers one question well, and none of them
+      answers "is anything wrong" -- an administrator had to read four charts
+      and do the comparison themselves. These do the comparison. Each card is
+      computed from figures already on this page, so the panel costs no query
+      of its own, and none appears unless it is true right now.
+
+      A standing column, not a band across the page. The alerts arrive worst
+      first and there are rarely more than three, so a narrow column reads down
+      in the order they are meant to be read; full width, a single alert left
+      half the row empty and looked like something failing to load.
+
+      Colour is the grade, not decoration: red for something that got through,
+      amber for a trend worth watching, blue for work waiting, green for a
+      clear week. Each also carries its grade as a word, because a card that
+      means something only if you can tell red from amber means nothing to a
+      reader who cannot.
+    --}}
+    <div class="dash-frame">
+        <div class="dash-head">
+            <p class="dash-title">Recent alerts</p>
+            <a href="{{ route('security.intrusions') }}" class="dash-link">Intrusion logs &rarr;</a>
+        </div>
+        <div class="dash-body">
+            <div class="al-grid">
+                @foreach ($alerts as $alert)
+                    <div class="al" data-tone="{{ $alert['tone'] }}">
+                        <div class="al-top">
+                            <i class="al-ic bi {{ [
+                                'critical' => 'bi-exclamation-octagon',
+                                'warning' => 'bi-exclamation-triangle',
+                                'info' => 'bi-info-circle',
+                                'healthy' => 'bi-check-circle',
+                            ][$alert['tone']] }}" aria-hidden="true"></i>
+                            <span class="al-tag">{{ $alert['label'] }}</span>
+                        </div>
+                        <p class="al-title">{{ $alert['title'] }}</p>
+                        <p class="al-body">{{ $alert['body'] }}</p>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+
+    {{-- The two charts stack rather than sitting side by side.
+
+         Three panels on one row meant one tall column of alerts beside two
+         short charts, and the row was mostly the empty space to the right of
+         the alerts. Stacked, the pair is about as tall as the alerts are, and
+         the row is two things instead of three. --}}
+    <div class="ds-col">
     {{-- ---------- The three attacks ---------- --}}
     {{-- The only chart on the system with a categorical colour scale,
          because here the type IS the subject rather than a ranking. Three
@@ -180,6 +190,7 @@
                 'empty' => 'No failed sign-ins in the last 7 days.',
             ])
         </div>
+    </div>
     </div>
 </div>
 

@@ -3128,11 +3128,23 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 
 /* Rows. Named for the shape rather than the contents, because the contents
    are what a later change is most likely to move. */
-.dash.dash-sharp .ds-row{ display:grid; gap:12px; margin-bottom:12px; }
+/* `align-items:start`, so a card is as tall as what is in it.
+
+   Grid stretches its items to the tallest in the row by default, which on a
+   row holding a three-card alert column and a three-bar chart left the chart
+   with more empty space under its bars than bars. A short panel that ends
+   where its content ends reads as finished; the same panel padded out to
+   match its neighbour reads as broken. */
+.dash.dash-sharp .ds-row{ display:grid; gap:12px; margin-bottom:12px; align-items:start; }
 .dash.dash-sharp .ds-2{ grid-template-columns:repeat(2,minmax(0,1fr)); }
 .dash.dash-sharp .ds-3{ grid-template-columns:repeat(3,minmax(0,1fr)); }
 .dash.dash-sharp .ds-1-2{ grid-template-columns:minmax(0,1fr) minmax(0,2fr); }
 .dash.dash-sharp .ds-2-1{ grid-template-columns:minmax(0,2fr) minmax(0,1fr); }
+
+/* Two panels sharing one cell of a row, stacked. Used where a row pairs one
+   tall panel with two short ones: side by side the short pair left the row
+   mostly empty, stacked they add up to about the height of the tall one. */
+.dash.dash-sharp .ds-col{ display:flex; flex-direction:column; gap:12px; min-width:0; }
 
 /* One column from the width where a two-up panel stops being readable rather
    than at a device size. 900px is where the rest of this sheet already
@@ -3392,8 +3404,18 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
    Each tone is built from one token with color-mix, so the wash, the border
    and the ink can never drift apart, and both themes get the same treatment
    from the same rule. */
-.al-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
-@media (max-width:760px){ .al-grid{ grid-template-columns:minmax(0,1fr); } }
+/* Stacked, one per row, not two up.
+
+   The reference lays its four out as a 2x2, which works because it always has
+   four. This panel shows only the alerts that are true right now -- usually
+   one or two -- and an odd count in a two-column grid left half the row
+   visibly empty, which reads as something failing to load rather than as
+   nothing being wrong.
+
+   Stacking also puts them in an order that means something: the service
+   returns them worst first, and a column preserves that where a grid makes
+   "next" ambiguous between right and down. */
+.al-grid{ display:flex; flex-direction:column; gap:10px; }
 
 .al{
   --al:var(--muted);
@@ -3416,12 +3438,14 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 }
 .al-title{
   margin:0 0 4px; font-size:.9375rem; font-weight:700; line-height:1.3;
-  color:var(--al);
+  color:var(--al); max-width:82ch;
 }
 /* The body stays in the page's own text colour. Running the sentence in the
    tone as well would put a paragraph of low-contrast amber on the card, and
    the grade is already stated twice above it. */
-.al-body{ margin:0; font-size:.8125rem; line-height:1.45; color:var(--text-2); }
+/* Capped, because the panel is full width and an unmeasured line of 13px
+   prose across 1100px is a line nobody's eye can return from accurately. */
+.al-body{ margin:0; font-size:.8125rem; line-height:1.45; color:var(--text-2); max-width:82ch; }
 
 .kpi-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:.5rem; }
 .kpi-lb{

@@ -301,7 +301,11 @@ class AttackSeverityTest extends TestCase
                 }
                 $rows[] = ['class' => $c[1], 'declared' => $declared, 'panels' => 0];
             } elseif ($opening && $depth !== null && $level === $depth + 1
-                && str_contains($tag, 'class="dash-frame"')) {
+                && preg_match('/class="(dash-frame|ds-col)"/', $tag)) {
+                // A .ds-col is one cell holding a stack of panels, so it
+                // counts once -- the same way the old .dash-col did. Counting
+                // the frames inside it instead would report a two-column row
+                // as holding three.
                 $rows[array_key_last($rows)]['panels']++;
             }
 
