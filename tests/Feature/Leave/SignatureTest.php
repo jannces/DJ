@@ -169,6 +169,113 @@ class SignatureTest extends TestCase
     }
 
     /**
+     * The file this page actually asks for is accepted.
+     *
+     * The instructions say to photograph or scan a signed sheet. The rule
+     * said max_width=2000,max_height=1000 and max:2048 -- so a phone photo
+     * (4032x3024, three to six megabytes) and a 300dpi scan were both
+     * refused, with "invalid image dimensions", by a page telling the
+     * employee to upload exactly that.
+     */
+    public function test_a_photo_straight_from_a_phone_is_accepted(): void
+    {
+        $this->signIn($this->employee)
+            ->post(route('signature.store'), [
+                'signature' => UploadedFile::fake()->image('sig.jpg', 4032, 3024),
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+    }
+
+    /**
+     * And it is shrunk on the way in.
+     *
+     * Every byte of it would otherwise be embedded in every PDF this employee
+     * files, to be drawn 26pt tall.
+     */
+    public function test_an_oversized_signature_is_stored_scaled_down(): void
+    {
+        $this->signIn($this->employee)
+            ->post(route('signature.store'), [
+                'signature' => UploadedFile::fake()->image('sig.jpg', 4032, 3024),
+            ]);
+
+        $profile = $this->employee->employeeProfile->refresh();
+        [$width, $height] = getimagesize(Storage::disk('local')->path($profile->signature_path));
+
+        $this->assertSame(1600, $width, 'the stored signature was not scaled to the long edge');
+        $this->assertSame(1200, $height, 'the aspect ratio did not survive scaling');
+
+        // The digest has to describe what is on disk, not what was posted --
+        // it is hashed after the resize for exactly this reason.
+        $this->assertSame(
+            hash_file('sha256', Storage::disk('local')->path($profile->signature_path)),
+            $profile->signature_hash);
+    }
+
+    /** One already small enough is left alone rather than re-encoded. */
+    public function test_a_small_signature_is_stored_untouched(): void
+    {
+        $this->signIn($this->employee)
+            ->post(route('signature.store'), [
+                'signature' => UploadedFile::fake()->image('sig.png', 900, 300),
+            ]);
+
+        [$width, $height] = getimagesize(Storage::disk('local')->path(
+            $this->employee->employeeProfile->refresh()->signature_path));
+
+        $this->assertSame([900, 300], [$width, $height]);
+    }
+
+    /**
+     * A transparent PNG does not come out as a black rectangle.
+     *
+     * Ink scanned off paper is often saved with the background knocked out.
+     * GD fills a new truecolor canvas with black unless it is told otherwise,
+     * so resizing one without preserving alpha replaces the signature with a
+     * solid block -- on a government form.
+     */
+    public function test_a_transparent_png_keeps_its_transparency(): void
+    {
+        $canvas = imagecreatetruecolor(2400, 800);
+        imagealphablending($canvas, false);
+        imagesavealpha($canvas, true);
+        imagefill($canvas, 0, 0, imagecolorallocatealpha($canvas, 255, 255, 255, 127));
+        imagesetthickness($canvas, 12);
+        imageline($canvas, 200, 600, 2200, 300, imagecolorallocate($canvas, 10, 10, 40));
+
+        $source = tempnam(sys_get_temp_dir(), 'sig').'.png';
+        imagepng($canvas, $source);
+        imagedestroy($canvas);
+
+        $this->signIn($this->employee)
+            ->post(route('signature.store'), [
+                'signature' => new UploadedFile($source, 'sig.png', 'image/png', null, true),
+            ])
+            ->assertRedirect();
+
+        $stored = imagecreatefrompng(Storage::disk('local')->path(
+            $this->employee->employeeProfile->refresh()->signature_path));
+
+        // The top-left corner is background. It must still be see-through.
+        $alpha = (imagecolorat($stored, 2, 2) >> 24) & 0x7F;
+        imagedestroy($stored);
+
+        $this->assertGreaterThan(100, $alpha,
+            'the transparent background was flattened, so the form prints a filled block');
+    }
+
+    /** Something far too small to read on paper is refused at the upload. */
+    public function test_a_thumbnail_is_refused(): void
+    {
+        $this->signIn($this->employee)
+            ->post(route('signature.store'), [
+                'signature' => UploadedFile::fake()->image('sig.png', 80, 30),
+            ])
+            ->assertSessionHasErrors('signature');
+    }
+
+    /**
      * Anything that is not an image is refused by the server.
      *
      * `accept` on the input is a convenience for the file picker and no kind

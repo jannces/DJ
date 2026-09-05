@@ -63,6 +63,53 @@ class PaperSizeTest extends TestCase
         ]);
     }
 
+    /**
+     * The same request, but signed with an actual IMAGE.
+     *
+     * The fixture above sets `applicant_signature`, which is the typed name --
+     * so every size check in this file ran against a sheet with no signature
+     * drawn on it. That mattered the moment the printed signature was allowed
+     * to grow: it is capped at 44pt now, up from 26, and 44pt of picture that
+     * nothing measured is 44pt that could push the sheet onto a second page.
+     */
+    private function signIt(): void
+    {
+        $canvas = imagecreatetruecolor(1200, 300);
+        imagefill($canvas, 0, 0, imagecolorallocate($canvas, 255, 255, 255));
+        imagesetthickness($canvas, 10);
+        imageline($canvas, 60, 220, 1140, 90, imagecolorallocate($canvas, 10, 10, 40));
+
+        $file = tempnam(sys_get_temp_dir(), 'sig').'.png';
+        imagepng($canvas, $file);
+        imagedestroy($canvas);
+
+        $applicant = $this->request->user;
+        $this->actingAs($applicant);
+        session(['otp_verified' => true]);
+
+        $this->post(route('signature.store'), [
+            'signature' => new \Illuminate\Http\UploadedFile($file, 'sig.png', 'image/png', null, true),
+        ])->assertRedirect();
+
+        $this->request->update([
+            'applicant_signature_path' => $applicant->employeeProfile->refresh()->signature_path,
+        ]);
+    }
+
+    /** One page on every size, with a signature image actually on the sheet. */
+    public function test_a_signed_sheet_still_fits_one_page_on_every_size(): void
+    {
+        $this->signIt();
+
+        foreach (array_keys(self::EXPECTED) as $paper) {
+            $pdf = $this->download($paper);
+
+            $this->assertSame(1,
+                substr_count($pdf, '/Type /Page') - substr_count($pdf, '/Type /Pages'),
+                "the signed sheet runs onto a second page on {$paper}");
+        }
+    }
+
     protected function get6(?string $paper): \Illuminate\Testing\TestResponse
     {
         $this->actingAs(User::whereHas('employeeProfile')->firstOrFail());

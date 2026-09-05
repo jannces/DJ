@@ -68,11 +68,31 @@
                                class="form-control @error('signature') is-invalid @enderror" required>
                         @error('signature')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
 
+                        {{-- The numbers here have to match the rule in
+                             SignatureController. They did not: this said
+                             "photograph or scan it" over a rule that refused
+                             anything past 2000x1000, so the file the sentence
+                             asked for came back as "invalid image
+                             dimensions". --}}
                         <p class="form-text">
                             Sign a blank sheet of white paper, photograph or scan it, and
-                            upload it here. PNG or JPG, up to 2&nbsp;MB. A photo taken in
-                            good light with the paper filling the frame reads best on the
-                            printed form.
+                            upload it here. PNG or JPG, up to 8&nbsp;MB &mdash; a photo
+                            straight from a phone is fine. The blank paper around the
+                            signature is trimmed off for you, and the image is resized
+                            and turned the right way up.
+                        </p>
+                        {{-- What shape to aim for, said plainly.
+
+                             It cannot be a RULE. People photograph a sheet of paper
+                             with a phone, and refusing anything off-ratio is how this
+                             page came to answer "invalid image dimensions" to the very
+                             file it asked for. So the trimming does the work and this
+                             only says what gives the best result. --}}
+                        <p class="form-text">
+                            <i class="bi bi-lightbulb me-1" aria-hidden="true"></i>
+                            Best results: a close, level shot of the signature itself,
+                            roughly three to four times wider than it is tall. Good light,
+                            no shadow across the paper.
                         </p>
 
                         <button class="btn btn-lgu btn-sm">

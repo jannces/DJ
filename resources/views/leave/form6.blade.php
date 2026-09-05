@@ -192,8 +192,19 @@
   .signline { border-top:1px solid #000; margin:0 auto; width:80%; }
   /* Sized so a signature sits on the line rather than towering over it. The
      height is capped and the width left to follow, so a wide scan and a tall
-     one both come out the same height on the paper. */
-  .sigimg { display:block; margin:0 auto -1pt; max-height:26pt; max-width:150pt; }
+     one both come out the same height on the paper.
+
+     44pt, up from 26. Two things made a real signature print too small to
+     read, and the cap was only one of them: what it was capping was a whole
+     photographed SHEET of paper, so the ink inside it got about a fifth of
+     whatever this allowed. The upload is cropped to the writing now -- see
+     SignatureController::trim -- so every point here is spent on the
+     signature rather than on the margin around it. 44pt is roughly 15mm,
+     which is what a signature measures on the paper form.
+
+     PaperSizeTest holds the one-page guarantee on all four sizes, and the
+     cell this sits in has the room: 6.D is two checkboxes and a name. */
+  .sigimg { display:block; margin:0 auto -1pt; max-height:44pt; max-width:215pt; }
   .signname { font-weight:bold; font-size:{{ $pt(6.6) }}; }
   .foot { font-size:{{ $pt(5.2) }}; padding-top:2px; }
 </style></head>
