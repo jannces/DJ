@@ -38,7 +38,7 @@ class IntrusionAlertNotification extends Notification
             'title' => 'IP auto-blocked',
             'message' => "IP {$this->ip} blocked after {$this->events} intrusion events.",
             'ip' => $this->ip,
-            'url' => route('security.dashboard'),
+            'url' => route('security.dashboard', absolute: false),
         ];
     }
 }

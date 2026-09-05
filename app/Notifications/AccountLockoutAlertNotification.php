@@ -63,7 +63,7 @@ class AccountLockoutAlertNotification extends Notification
             'title' => 'Account locked out',
             'message' => "{$this->account} locked after {$this->attempts} failed sign-in attempts from {$this->ip}.",
             'ip' => $this->ip,
-            'url' => route('security.dashboard'),
+            'url' => route('security.dashboard', absolute: false),
         ];
     }
 }

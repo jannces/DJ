@@ -41,7 +41,7 @@ class LeaveStatusNotification extends Notification implements ShouldQueue
             'message' => $this->body(),
             'reference_no' => $this->request->reference_no,
             'status' => $this->request->status,
-            'url' => route('leave.show', $this->request),
+            'url' => route('leave.show', $this->request, absolute: false),
         ];
     }
 

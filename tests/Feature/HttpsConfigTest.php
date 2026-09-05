@@ -505,6 +505,53 @@ class HttpsConfigTest extends TestCase
     }
 
     /**
+     * Moving to another network reissues the certificate.
+     *
+     * The check used to test the SAN for the hostname alone, and the hostname
+     * never changes -- so an existing certificate was kept forever. Move the
+     * server to a different network and its address changes while its name
+     * does not: the check passed, the old certificate was kept, and it named
+     * an address the machine no longer had. https://<new ip> then failed with
+     * NAME_MISMATCH permanently, with nothing anywhere explaining it, on
+     * exactly the route phones use when the router cannot hold a DNS record.
+     */
+    public function test_a_certificate_naming_the_wrong_address_is_reissued(): void
+    {
+        $setup = $this->file('deploy/setup-https.bat');
+
+        $this->assertStringContainsString('findstr /C:"IP Address:%HOSTIP%"', $setup,
+            'the certificate is kept without checking it covers this machine\'s current address');
+
+        // And says so, because every PC that trusted the old one has to be
+        // visited again.
+        $this->assertStringContainsString('must run connect-client.bat', $setup,
+            'the certificate is reissued without warning that every client must re-trust it');
+    }
+
+    /**
+     * A Public network profile is reported, because it voids the firewall step.
+     *
+     * Windows classifies every network it has not been told about as Public,
+     * and the rules are scoped profile=private,domain. Joining a different
+     * Wi-Fi therefore undoes the whole firewall step in silence: the rules
+     * stay listed, stay enabled, and stop matching. Every other device times
+     * out, which reads as a dead server.
+     */
+    public function test_setup_warns_when_the_network_is_public(): void
+    {
+        $setup = $this->file('deploy/setup-https.bat');
+
+        $this->assertStringContainsString('Get-NetConnectionProfile', $setup,
+            'setup adds firewall rules without checking the profile they are scoped to applies');
+        $this->assertStringContainsString('classified PUBLIC', $setup);
+
+        // Reported, not changed: whether a network is trustworthy is a fact
+        // about where the machine is, which this script cannot know.
+        $this->assertStringNotContainsString('Set-NetConnectionProfile', $setup,
+            'setup silently reclassifies a network as trusted, which is not its call to make');
+    }
+
+    /**
      * There is a read-only way to find out why a device cannot connect.
      *
      * The failure modes are distinct and each points somewhere different --

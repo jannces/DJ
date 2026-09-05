@@ -54,7 +54,7 @@ class DepartmentLeaveFiledNotification extends Notification implements ShouldQue
             'message' => $this->body().' No action is required from you — HR validates and approves.',
             'reference_no' => $this->request->reference_no,
             'status' => $this->request->status,
-            'url' => route('leave.show', $this->request),
+            'url' => route('leave.show', $this->request, absolute: false),
         ];
     }
 

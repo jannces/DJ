@@ -109,7 +109,7 @@
                                 <i class="bi {{ $ref ? 'bi-file-earmark-text' : 'bi-shield-exclamation' }}"></i>
                             </span>
 
-                            <a class="nb-body" href="{{ $n->data['url'] ?? route('notifications.index') }}">
+                            <a class="nb-body" href="{{ \App\Support\NotificationUrl::path($n->data['url'] ?? null, route('notifications.index', absolute: false)) }}">
                                 <span class="nb-top">
                                     <span class="nb-subject">{{ $n->data['title'] ?? 'Notification' }}</span>
                                     @unless ($n->read_at)

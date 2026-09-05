@@ -292,16 +292,36 @@ REM certificate issued without a readable openssl.cnf carries no
 REM subjectAltName, and every browser refuses that outright -- so an existing
 REM certificate is CHECKED, and replaced if it is one of those.
 set CERTOK=
+set CERTWHY=has no subjectAltName for %SITE%
 if exist "%ROOT%\deploy\certs\lms.crt" (
   "%XAMPP%\apache\bin\openssl.exe" x509 -in "%ROOT%\deploy\certs\lms.crt" -noout -ext subjectAltName 2>nul | findstr /C:"%SITE%" >nul
   if not errorlevel 1 set CERTOK=1
+)
+
+REM AND it has to cover THIS MACHINE'S ADDRESS, not just the hostname.
+REM
+REM The hostname never changes, so checking only that meant a certificate was
+REM kept forever. Move the server to a different network -- the office rather
+REM than this router, or simply a new lease -- and the address changes while
+REM the name does not: the check passed, the old certificate was kept, and it
+REM named an address this machine no longer has. https://<new ip> then fails
+REM with NAME_MISMATCH permanently, and nothing anywhere says why. That is
+REM exactly the route phones use when the router cannot hold a DNS record.
+if defined CERTOK if not "%HOSTIP%"=="" (
+  "%XAMPP%\apache\bin\openssl.exe" x509 -in "%ROOT%\deploy\certs\lms.crt" -noout -ext subjectAltName 2>nul | findstr /C:"IP Address:%HOSTIP%" >nul
+  if errorlevel 1 (
+    set CERTOK=
+    set CERTWHY=does not cover this machine's address %HOSTIP%
+  )
 )
 
 if defined CERTOK (
   echo       Already present and covers %SITE% - keeping it.
 ) else (
   if exist "%ROOT%\deploy\certs\lms.crt" (
-    echo       Existing certificate has no subjectAltName for %SITE% - replacing it.
+    echo       Existing certificate %CERTWHY% - replacing it.
+    echo       Every PC that trusted the old one must run connect-client.bat
+    echo       again, or it will refuse this new certificate.
     copy /Y "%ROOT%\deploy\certs\lms.crt" "%ROOT%\deploy\certs\lms.crt.backup-%STAMP%" >nul
   )
   REM %HOSTIP% was detected in step 4 and goes into the certificate, so a
@@ -343,6 +363,35 @@ if not errorlevel 1 (
 ) else (
   netsh advfirewall firewall add rule name="LGU Alicia LMS (HTTP redirect)" dir=in action=allow protocol=TCP localport=80 profile=private,domain remoteip=localsubnet >nul
   echo       Allowed inbound TCP 80 for the redirect.
+)
+
+REM ...and a rule that does not apply is worth exactly nothing.
+REM
+REM Windows classifies EVERY network it has not been told about as Public, so
+REM joining a different Wi-Fi silently undoes this whole step: the rules are
+REM still listed, still enabled, and simply do not match any more. Nothing
+REM reports it. Every other device times out, which reads as a dead server.
+REM
+REM Reported, not changed. Reclassifying a network as trusted is a decision
+REM about where this machine is, and the script does not know that -- it could
+REM be someone's laptop on a public network.
+set PUBPROF=
+del "%TEMP%\lms-prof.txt" 2>nul
+powershell -NoProfile -Command "try { $pub=$false; foreach ($p in Get-NetConnectionProfile) { if ($p.NetworkCategory -eq 'Public') { $pub=$true } }; if ($pub) { 'yes' } } catch {}" > "%TEMP%\lms-prof.txt" 2>nul
+if exist "%TEMP%\lms-prof.txt" for /f "usebackq delims=" %%p in ("%TEMP%\lms-prof.txt") do set PUBPROF=%%p
+del "%TEMP%\lms-prof.txt" 2>nul
+
+if defined PUBPROF (
+  echo.
+  echo [!] A network on this PC is classified PUBLIC in Windows.
+  echo     The rules above apply only to private and domain networks, so on
+  echo     that one they do NOT apply: every other device will time out and
+  echo     nothing will say why.
+  echo.
+  echo     Set it to Private in Settings ^> Network ^& Internet ^> your Wi-Fi
+  echo     or Ethernet adapter. No restart needed.
+  echo     deploy\check-lan.bat shows which adapter is which.
+  echo.
 )
 
 echo [9/9] hosts file...

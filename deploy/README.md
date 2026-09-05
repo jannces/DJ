@@ -28,6 +28,46 @@ and a router DNS record work.
 lines and untrust the old certificate as their first step, so running them is
 the whole migration. The hosts file is backed up beside itself first.
 
+## Moving the server to a different network
+
+Another Wi-Fi, another router, or the office itself: the server's IP address
+changes, and five things are pinned to the old one.
+
+**On the server**, this is the whole migration:
+
+```
+deploy\setup-https.bat        (as administrator)
+start.bat
+```
+
+It re-detects the address and rebuilds everything from it — the vhost's
+`Require ip` subnet, the `ServerAlias`, and the certificate, which is now
+reissued when it no longer covers this machine's address rather than only when
+it no longer covers the hostname.
+
+**Then on every other PC**, because the certificate was reissued and the old
+one is no longer valid anywhere:
+
+```
+deploy\connect-client.bat <new server IP>     (as administrator)
+```
+
+Skipping this leaves that PC pointing at an address nothing answers on, and
+trusting a certificate that no longer exists.
+
+**Check the network profile.** Windows classifies every network it has not been
+told about as **Public**, and the firewall rules are scoped to private and
+domain networks — so joining a new Wi-Fi silently undoes the firewall step. The
+rules stay listed and stop matching. `setup-https.bat` now warns about this, and
+`check-lan.bat` shows which adapter is which. Set it to Private in Settings →
+Network & Internet → your adapter.
+
+**Ask for a fixed address.** A DHCP reservation on the router, binding the
+server to one address, avoids repeating all of the above every time the lease
+changes. Worth doing before the LGU rollout rather than after.
+
+**Redo the router DNS record** for phones: `onealicialms.lan` → the new IP.
+
 ## Phones and tablets
 
 A phone has no hosts file, so `connect-client.bat` cannot help it. Two things
