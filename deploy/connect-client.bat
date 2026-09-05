@@ -83,8 +83,25 @@ if not errorlevel 1 (
   goto :fail
 )
 
+REM Is the address they gave one of THIS machine's own? Then this is the
+REM server, and the certificate half of this script is still wanted -- the
+REM server is a PC somebody browses from too -- but the hosts half is not.
+REM
+REM On the server, 127.0.0.1 is the better mapping. Rewriting it to the LAN
+REM address works today and breaks the day the router hands this machine a
+REM different one, which is a failure nobody would connect to having run a
+REM script called connect-client weeks earlier.
+set SELFHOST=
+set SFILE=%TEMP%\lms-self.txt
+del "%SFILE%" 2>nul
+powershell -NoProfile -Command "foreach ($a in [System.Net.Dns]::GetHostAddresses([System.Net.Dns]::GetHostName())) { if ($a.IPAddressToString -eq '%IP%') { 'yes' } }" > "%SFILE%" 2>nul
+if exist "%SFILE%" for /f "usebackq delims=" %%z in ("%SFILE%") do set SELFHOST=%%z
+del "%SFILE%" 2>nul
+
 echo   Server : %IP%
 echo   Address: https://%SITE%
+if defined SELFHOST echo   NOTE   : that is one of THIS machine's own addresses, so this is
+if defined SELFHOST echo            the server. The hosts file will be left as it is.
 echo.
 
 REM --- Undo the previous onealicialms.local setup ----------------------------
@@ -164,10 +181,12 @@ if defined REACH (
   echo     set up, and it will work once the server does. The cause is one of:
   echo.
   echo       - The server is off, or Apache is not running ^(run start.bat there^)
-  echo       - The firewall on the server has not been opened. Run
-  echo         deploy\setup-https.bat as administrator ON THE SERVER; its
-  echo         step [7/8] adds the rule for port 443.
-  echo       - Wrong IP, or the server is on a different network
+  echo       - The firewall on the server has not been opened, OR Windows has
+  echo         the server's network classified as PUBLIC, in which case the
+  echo         rules exist and do not apply. Run deploy\check-lan.bat on the
+  echo         server; it reports which.
+  echo       - Wrong IP, or this PC is on a different network ^(a guest SSID
+  echo         is a different network^)
   echo.
 )
 
@@ -175,6 +194,13 @@ REM --- hosts -----------------------------------------------------------------
 REM onealicialms.lan is not a real domain. It resolves only because a machine
 REM has been told where to point it, and each PC has to be told separately.
 echo [3/5] Pointing %SITE% at %IP%...
+
+if defined SELFHOST (
+  echo       Skipped - this is the server, and 127.0.0.1 is the right mapping
+  echo       here. It keeps working when the router changes this machine's
+  echo       address; a hard-coded LAN address does not.
+  goto :hosts_done
+)
 
 REM What is in there NOW: no mapping, the right one, or a stale one?
 REM
@@ -209,8 +235,17 @@ REM inside the quoted argument is not what breaks -- cmd leaves a quoted pipe
 REM alone -- but escaping it "just in case" hands PowerShell a stray caret and
 REM a parse error, and that mistake has already cost this project one run.
 REM No pipe, nothing to get wrong.
-powershell -NoProfile -Command "$p='%HOSTSFILE%'; $c=@(Get-Content $p); for ($i=0; $i -lt $c.Count; $i++) { if ($c[$i] -match '^\s*[0-9A-Fa-f:.]+\s+.*%SITERX%') { $c[$i]='%IP%       %SITE%' } }; Set-Content -Path $p -Value $c"
-if errorlevel 1 ( echo [X] Could not edit the hosts file. & goto :fail )
+powershell -NoProfile -Command "try { $p='%HOSTSFILE%'; $c=[System.IO.File]::ReadAllLines($p); for ($i=0; $i -lt $c.Count; $i++) { if ($c[$i] -match '^\s*[0-9A-Fa-f:.]+\s+.*%SITERX%') { $c[$i]='%IP%       %SITE%' } }; [System.IO.File]::WriteAllLines($p, [string[]]$c); exit 0 } catch { Write-Host ('      ' + $_.Exception.Message); exit 1 }"
+if errorlevel 1 (
+  echo [X] Could not edit the hosts file.
+  echo     Add this line by hand instead, with Notepad opened AS
+  echo     ADMINISTRATOR, replacing any existing line for %SITE%:
+  echo.
+  echo       %IP%       %SITE%
+  echo.
+  echo     Your original is at hosts.backup-%STAMP%
+  goto :fail
+)
 goto :hosts_flush
 
 :hosts_add

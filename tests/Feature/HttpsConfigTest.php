@@ -355,10 +355,35 @@ class HttpsConfigTest extends TestCase
 
             $this->assertStringContainsString('[System.IO.File]::WriteAllLines', $script,
                 "{$path} does not use .NET file I/O to rewrite the hosts file");
-            $this->assertStringNotContainsString('Set-Content -Path $p -Value $k', $script,
-                "{$path} is back to Set-Content, which fails with \"Stream was not readable\" "
-                .'whenever anything holds the hosts file open');
+
+            // Every write, not just the one that was reported. Converting the
+            // instance and leaving the class behind is how the same error
+            // arrived a second time, from a different line of the same script.
+            $this->assertStringNotContainsString('Set-Content -Path', $script,
+                "{$path} still writes a file with Set-Content, which fails with "
+                .'"Stream was not readable" whenever anything holds that file open');
         }
+    }
+
+    /**
+     * Running the client script on the server does not repoint its own name.
+     *
+     * The server's hosts file says 127.0.0.1, which is correct there and keeps
+     * working whatever address the router hands it next. Rewriting that to the
+     * LAN address works today and breaks on the next DHCP lease -- a failure
+     * nobody would connect back to a script called connect-client run weeks
+     * earlier. The certificate half is still wanted: the server is a PC
+     * somebody browses from too.
+     */
+    public function test_the_client_script_leaves_the_servers_own_mapping_alone(): void
+    {
+        $client = $this->file('deploy/connect-client.bat');
+
+        $this->assertStringContainsString('GetHostAddresses', $client,
+            'the client script cannot tell it is being run on the server itself');
+        $this->assertStringContainsString('SELFHOST', $client);
+        $this->assertMatchesRegularExpression('/if defined SELFHOST \(\s*\r?\n\s*echo\s+Skipped/', $client,
+            'the hosts rewrite is not skipped when this machine is the server');
     }
 
     /**
@@ -444,6 +469,72 @@ class HttpsConfigTest extends TestCase
 
         $this->assertStringContainsString('nopause %HOSTIP%', $this->file('deploy/setup-https.bat'),
             'setup detects the server IP and then does not pass it to the certificate');
+    }
+
+    /**
+     * The vhost answers to the server's IP, not only to the name.
+     *
+     * Apache matches the request's Host header against ServerName and
+     * ServerAlias. An IP matches neither unless it is listed, so
+     * https://192.168.254.102 falls through to the FIRST <VirtualHost *:443>
+     * loaded -- XAMPP's own _default_:443 for www.example.com, because
+     * httpd.conf includes httpd-ssl.conf before httpd-vhosts.conf. The visitor
+     * gets XAMPP's dashboard under XAMPP's certificate, with nothing to
+     * suggest this system exists.
+     *
+     * It matters for phones in particular: a phone has no hosts file, so where
+     * the router cannot hold a DNS record, the IP is the only way in.
+     */
+    public function test_the_vhost_answers_to_the_servers_ip(): void
+    {
+        $template = $this->file('deploy/apache-vhost.conf');
+
+        $this->assertSame(2, substr_count($template, 'ServerAlias SERVER_IP_HERE'),
+            'both the :80 and :443 vhosts need the IP alias, or one of the two schemes '
+            .'lands on XAMPP default site');
+
+        $setup = $this->file('deploy/setup-https.bat');
+
+        $this->assertStringContainsString("'ServerAlias SERVER_IP_HERE','%ALIASREP%'", $setup,
+            'the placeholder is never substituted, so Apache would fail on the literal');
+
+        // A bare "ServerAlias" with no argument stops Apache starting, so an
+        // undetected IP has to comment the line out rather than empty it.
+        $this->assertStringContainsString('set ALIASREP=# ServerAlias', $setup,
+            'an undetected server IP would emit a bare ServerAlias, which Apache refuses to start on');
+    }
+
+    /**
+     * There is a read-only way to find out why a device cannot connect.
+     *
+     * The failure modes are distinct and each points somewhere different --
+     * a timeout is the firewall or the network profile, a 403 is the subnet,
+     * XAMPP's dashboard is the missing ServerAlias, a certificate warning is
+     * expected. Guessing between them from the far end wastes an afternoon.
+     */
+    public function test_there_is_a_lan_diagnostic_script(): void
+    {
+        $check = $this->file('deploy/check-lan.bat');
+
+        // The one that is usually the answer: rules scoped private,domain do
+        // not apply at all on a network Windows has classified as Public, and
+        // it drops the connections silently.
+        $this->assertStringContainsString('Get-NetConnectionProfile', $check,
+            'the check never looks at the firewall profile, which is the usual cause');
+
+        // Loopback-only binding is invisible from the far end and looks
+        // identical to a firewall block.
+        $this->assertStringContainsString('netstat -an', $check,
+            'the check does not show what Apache is actually listening on');
+
+        $this->assertStringContainsString('ServerAlias', $check);
+        $this->assertStringContainsString('Require ip', $check);
+
+        // It diagnoses; it must not "helpfully" change anything.
+        foreach (['netsh advfirewall firewall add', 'certutil -addstore', 'Set-Content', 'WriteAllLines'] as $mutation) {
+            $this->assertStringNotContainsString($mutation, $check,
+                "check-lan.bat writes something ({$mutation}); it is supposed to be read-only");
+        }
     }
 
     /** The private half of the certificate is never suggested for copying. */
