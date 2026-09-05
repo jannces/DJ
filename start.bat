@@ -141,11 +141,31 @@ if not errorlevel 1 goto :webready
 set /a WAITED+=1
 if !WAITED! lss 20 goto :waitweb
 echo [X] Apache did not start listening on port 443.
-echo     Usual causes, in order:
-echo       - mod_ssl is not enabled in httpd.conf
-echo       - the vhost from deploy\apache-vhost.conf is not included
-echo       - another program already holds port 443 (Skype, IIS, VMware)
-echo     Check %XAMPP%\apache\logs\error.log for the reason.
+echo.
+echo --- What Apache says about the configuration -------------------------
+REM Telling somebody to "check the log" when the script can read the log
+REM itself is not help. -t reports a bad directive with its file and line;
+REM the log reports what happened when it actually tried to run, which is
+REM where a held port or an unreadable certificate shows up instead.
+"%XAMPP%\apache\bin\httpd.exe" -t
+echo.
+echo --- Last 15 lines of the error log -----------------------------------
+powershell -NoProfile -Command "if (Test-Path '%XAMPP%\apache\logs\error.log') { Get-Content '%XAMPP%\apache\logs\error.log' -Tail 15 } else { 'No error log yet at %XAMPP%\apache\logs\error.log' }"
+echo.
+echo --- Anything already holding port 443 --------------------------------
+REM A port in use is the one cause -t cannot find: it checks the config
+REM without binding anything.
+netstat -ano | findstr /C:":443 " | findstr /C:"LISTENING"
+if errorlevel 1 (
+  echo       Nothing is holding 443, so the reason is above.
+) else (
+  echo.
+  echo       Something IS holding port 443. The number at the end of that
+  echo       line is its process id - find it in Task Manager, Details tab.
+  echo       Usual suspects: VMware, Skype, IIS, or Windows' own HTTP service.
+)
+echo.
+echo     Paste everything between the dashed lines above if you need help.
 goto :fail
 
 :webready
