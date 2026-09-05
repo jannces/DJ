@@ -404,13 +404,21 @@ class HttpsConfigTest extends TestCase
     }
 
     /**
-     * No HSTS while the certificate is self-signed.
+     * The vhost does not add HSTS on top of the application's.
      *
-     * Strict-Transport-Security makes Chrome refuse an untrusted certificate
-     * with no way to click past it. Against a self-signed certificate that
-     * turns a first-visit warning into a locked door on every office PC.
+     * Narrower than it used to claim, and the difference matters. This asserts
+     * only that the Apache config stays out of it --
+     * app/Http/Middleware/SecurityHeaders.php DOES send
+     * Strict-Transport-Security on every secure request, so the system is not
+     * HSTS-free and the old name of this test ("hsts is not enabled") said
+     * otherwise.
+     *
+     * Two layers both setting it would be worse than one: the vhost's copy
+     * would survive any change to the middleware, including deliberately
+     * turning it off, and nobody debugging a locked-out browser would think to
+     * look in the Apache config.
      */
-    public function test_hsts_is_not_enabled_against_a_self_signed_certificate(): void
+    public function test_the_vhost_does_not_add_hsts_on_top_of_the_application(): void
     {
         $this->assertStringNotContainsString('Strict-Transport-Security',
             preg_replace('/^\s*#.*$/m', '', $this->file('deploy/apache-vhost.conf')),
