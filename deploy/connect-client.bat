@@ -5,7 +5,7 @@ REM
 REM  Run this on each office PC that is NOT the server. It does the two things
 REM  a client needs, and checks that they worked:
 REM
-REM    1. hosts     onealicialms.local -> the SERVER's IP address
+REM    1. hosts     onealicialms.lan -> the SERVER's IP address
 REM    2. certutil  trusts this office's certificate, so the browser stops
 REM                 showing the red warning page
 REM
@@ -24,8 +24,8 @@ REM  beside itself before it is edited.
 REM ============================================================================
 setlocal
 
-set SITE=onealicialms.local
-set SITERX=onealicialms\.local
+set SITE=onealicialms.lan
+set SITERX=onealicialms\.lan
 set HOSTSFILE=%SystemRoot%\System32\drivers\etc\hosts
 set CRT=%~dp0certs\lms.crt
 set TRUST=%~dp0trust-cert.bat
@@ -87,13 +87,54 @@ echo   Server : %IP%
 echo   Address: https://%SITE%
 echo.
 
+REM --- Undo the previous onealicialms.local setup ----------------------------
+REM
+REM The site used to be onealicialms.local. `.local` is reserved for mDNS: iOS
+REM and macOS resolve those names through Bonjour and never ask the router, so
+REM no DNS record for a .local name can reach a phone. That is why the name
+REM changed, and why the old one is removed rather than left alongside.
+REM
+REM Both halves have to go. A stale hosts line and a stale trusted certificate
+REM each keep working on their own, so a PC set up before the rename would go
+REM on using the old name while everyone assumed it had moved.
+echo [1/5] Undoing the previous onealicialms.local setup...
+
+for /f "usebackq delims=" %%t in (`powershell -NoProfile -Command "Get-Date -Format 'yyyyMMdd-HHmmss'"`) do set STAMP=%%t
+if "%STAMP%"=="" set STAMP=backup
+
+REM certutil matches on the certificate's subject. Never trusted here means
+REM this fails, which is not an error.
+certutil -delstore Root "onealicialms.local" >nul 2>&1
+if errorlevel 1 (
+  echo       No old certificate was trusted here.
+) else (
+  echo       Removed the old certificate from the Trusted Root store.
+)
+
+REM Mappings and commented-out lines alike: this is a removal, and a comment
+REM naming a hostname that no longer exists only misleads whoever reads it next.
+set OLDFOUND=
+set OFILE=%TEMP%\lms-old.txt
+del "%OFILE%" 2>nul
+powershell -NoProfile -Command "if (Select-String -Path '%HOSTSFILE%' -Pattern 'onealicialms\.local' -Quiet) { 'yes' }" > "%OFILE%" 2>nul
+if exist "%OFILE%" for /f "usebackq delims=" %%o in ("%OFILE%") do set OLDFOUND=%%o
+del "%OFILE%" 2>nul
+
+if not defined OLDFOUND (
+  echo       No old hosts lines to remove.
+) else (
+  copy /Y "%HOSTSFILE%" "%HOSTSFILE%.backup-%STAMP%" >nul
+  powershell -NoProfile -Command "$p='%HOSTSFILE%'; $c=@(Get-Content $p); $k=New-Object System.Collections.ArrayList; foreach ($l in $c) { if ($l -notmatch 'onealicialms\.local') { [void]$k.Add($l) } }; Set-Content -Path $p -Value $k.ToArray()"
+  echo       Old hosts lines removed. Backed up to hosts.backup-%STAMP%
+)
+
 REM --- Is the server actually answering? -------------------------------------
 REM Done first so the diagnosis is available before anything is changed, and
 REM so a firewall problem on the server is not mistaken for a problem here.
 REM
 REM A raw TCP connect with a timeout, rather than ping: ping can succeed while
 REM 443 is blocked, and can fail while the site works fine.
-echo [1/4] Can this PC reach %IP% on port 443...
+echo [2/5] Can this PC reach %IP% on port 443...
 set REACH=
 set RFILE=%TEMP%\lms-reach.txt
 del "%RFILE%" 2>nul
@@ -116,9 +157,9 @@ if defined REACH (
 )
 
 REM --- hosts -----------------------------------------------------------------
-REM onealicialms.local is not a real domain. It resolves only because a machine
+REM onealicialms.lan is not a real domain. It resolves only because a machine
 REM has been told where to point it, and each PC has to be told separately.
-echo [2/4] Pointing %SITE% at %IP%...
+echo [3/5] Pointing %SITE% at %IP%...
 
 REM What is in there NOW: no mapping, the right one, or a stale one?
 REM
@@ -138,9 +179,11 @@ del "%HFILE%" 2>nul
 
 if "%CURIP%"=="%IP%" ( echo       Already mapped to %IP%. & goto :hosts_done )
 
-for /f "usebackq delims=" %%t in (`powershell -NoProfile -Command "Get-Date -Format 'yyyyMMdd-HHmmss'"`) do set STAMP=%%t
-if "%STAMP%"=="" set STAMP=backup
-copy /Y "%HOSTSFILE%" "%HOSTSFILE%.backup-%STAMP%" >nul
+REM Only if step 1 has not already taken one. Both write the same filename,
+REM and copying again here would overwrite the untouched original with the
+REM version step 1 had already edited -- leaving a "backup" that restores
+REM nothing.
+if not exist "%HOSTSFILE%.backup-%STAMP%" copy /Y "%HOSTSFILE%" "%HOSTSFILE%.backup-%STAMP%" >nul
 echo       Backed up to hosts.backup-%STAMP%
 
 if "%CURIP%"=="none" goto :hosts_add
@@ -174,7 +217,7 @@ REM Not required for the site to work -- the traffic is already encrypted --
 REM but without it every user meets a full-page red warning, every day, and
 REM teaching an office to click past certificate warnings is worse than the
 REM warning.
-echo [3/4] Trusting the certificate...
+echo [4/5] Trusting the certificate...
 if not exist "%CRT%" (
   echo [!] No certificate at
   echo       %CRT%
@@ -198,7 +241,7 @@ if errorlevel 1 (
 :cert_done
 
 REM --- Prove it, rather than announce it -------------------------------------
-echo [4/4] Checking https://%SITE% ...
+echo [5/5] Checking https://%SITE% ...
 REM The TLS 1.2 line is in its own try: on an old .NET that enum member does
 REM not exist, and an unguarded throw there would skip the check entirely and
 REM report nothing at all -- the one outcome worse than a clear failure.

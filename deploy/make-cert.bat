@@ -2,17 +2,28 @@
 REM ============================================================================
 REM  Generate a self-signed TLS certificate for LAN HTTPS (Windows/XAMPP).
 REM
-REM  Usage: deploy\make-cert.bat [hostname] [xampp-folder] [nopause]
+REM  Usage: deploy\make-cert.bat [hostname] [xampp-folder] [nopause] [server-ip]
 REM         deploy\make-cert.bat
-REM         deploy\make-cert.bat onealicialms.local D:\xampp
+REM         deploy\make-cert.bat onealicialms.lan D:\xampp
+REM         deploy\make-cert.bat onealicialms.lan C:\xampp nopause 192.168.254.102
+REM
+REM  The fourth argument puts the server's own LAN address into the
+REM  certificate. setup-https.bat has already detected it and passes it in.
+REM  It matters for phones: a phone has no hosts file, so if the router cannot
+REM  hold a DNS record the only way in is https://192.168.254.102 -- and a
+REM  certificate that does not list that IP fails with NAME_MISMATCH.
 REM ============================================================================
 setlocal
 
 set CN=%~1
-if "%CN%"=="" set CN=onealicialms.local
+if "%CN%"=="" set CN=onealicialms.lan
 
 set XAMPP=%~2
 if "%XAMPP%"=="" set XAMPP=C:\xampp
+
+set SERVERIP=%~4
+set SAN=DNS:%CN%,DNS:localhost,IP:127.0.0.1
+if not "%SERVERIP%"=="" set SAN=%SAN%,IP:%SERVERIP%
 
 set DIR=%~dp0certs
 set OPENSSL=%XAMPP%\apache\bin\openssl.exe
@@ -49,10 +60,23 @@ echo       Using config: %OPENSSL_CONF%
 
 if not exist "%DIR%" mkdir "%DIR%"
 
+REM  extendedKeyUsage and basicConstraints are both stated explicitly.
+REM
+REM  serverAuth: Apple has required it on TLS server certificates since
+REM  iOS 13. Without it a certificate can be installed and trusted on an
+REM  iPhone and the connection still fails, which is a miserable thing to
+REM  debug because every step appears to have worked.
+REM
+REM  CA:TRUE: Android's "Install a certificate -> CA certificate" screen
+REM  refuses anything without it. It was already being set, but only as a
+REM  side effect of the v3_ca section in whichever openssl.cnf was found --
+REM  an accident, on a value phones depend on.
 "%OPENSSL%" req -x509 -nodes -days 825 -newkey rsa:2048 ^
   -keyout "%DIR%\lms.key" -out "%DIR%\lms.crt" ^
   -subj "/C=PH/ST=Isabela/L=Alicia/O=LGU Alicia/CN=%CN%" ^
-  -addext "subjectAltName=DNS:%CN%,DNS:localhost,IP:127.0.0.1"
+  -addext "subjectAltName=%SAN%" ^
+  -addext "extendedKeyUsage=serverAuth" ^
+  -addext "basicConstraints=critical,CA:TRUE"
 
 if errorlevel 1 (
   echo [X] openssl failed - see the message above. No certificate was written.
@@ -71,10 +95,19 @@ if errorlevel 1 (
   goto :fail
 )
 
+REM Checked for the same reason as the SAN: an -addext that was silently
+REM dropped leaves a certificate that looks fine and fails only on iPhones.
+"%OPENSSL%" x509 -in "%DIR%\lms.crt" -noout -ext extendedKeyUsage | findstr /C:"TLS Web Server Authentication" >nul
+if errorlevel 1 (
+  echo [X] The certificate has no serverAuth extended key usage.
+  echo     Windows and Android will accept it; iPhones will not.
+  goto :fail
+)
+
 echo.
 echo       Created %DIR%\lms.crt
 echo       Created %DIR%\lms.key
-echo       Valid 825 days, covering %CN%, localhost and 127.0.0.1.
+echo       Valid 825 days, covering %SAN%
 echo.
 echo       Import lms.crt into client trust stores to avoid browser warnings.
 

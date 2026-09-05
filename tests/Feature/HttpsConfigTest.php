@@ -23,7 +23,7 @@ use Tests\TestCase;
  */
 class HttpsConfigTest extends TestCase
 {
-    private const HOST = 'onealicialms.local';
+    private const HOST = 'onealicialms.lan';
 
     private function file(string $path): string
     {
@@ -269,6 +269,131 @@ class HttpsConfigTest extends TestCase
             .'so a commented-out entry reads as a working mapping');
     }
 
+    /**
+     * The hostname does not end in .local, and nothing still points at it.
+     *
+     * `.local` is reserved for mDNS. iOS and macOS resolve those names through
+     * Bonjour and never ask the router, so a DNS record for a .local name
+     * cannot reach a phone however correctly it is entered -- and Windows can
+     * route .local to mDNS too, which is what produced a hosts file that read
+     * correctly beside a browser reporting DNS_PROBE_FINISHED_NXDOMAIN.
+     *
+     * The suffix is the whole point of the assertion: any other name would be
+     * fine, and `.local` would silently undo the phone support.
+     */
+    public function test_the_hostname_is_not_reserved_for_mdns(): void
+    {
+        $this->assertStringEndsNotWith('.local', self::HOST);
+
+        // Files with no business naming it at all.
+        foreach ([
+            '.env.example',
+            'deploy/apache-vhost.conf',
+            'deploy/make-cert.sh',
+            'deploy/make-cert.bat',
+            'deploy/trust-cert.bat',
+            'start.bat',
+        ] as $path) {
+            $this->assertStringNotContainsString('onealicialms.local', $this->file($path),
+                "{$path} still carries the old .local name, which no phone can resolve");
+        }
+
+        // The two setup scripts DO name it -- they remove it. What they must
+        // not do is serve it.
+        foreach (['deploy/setup-https.bat', 'deploy/connect-client.bat'] as $path) {
+            $script = $this->file($path);
+
+            $this->assertStringNotContainsString('set SITE=onealicialms.local', $script,
+                "{$path} still serves the old .local name");
+            $this->assertStringNotContainsString('https://onealicialms.local', $script,
+                "{$path} still sends people to the old .local address");
+        }
+    }
+
+    /**
+     * Both setup scripts clean up the name they replaced.
+     *
+     * A stale hosts line and a stale trusted certificate each keep working on
+     * their own, so a PC configured before the rename would go on using the
+     * old name while everyone assumed the system had moved.
+     */
+    public function test_the_setup_scripts_undo_the_old_local_name(): void
+    {
+        foreach (['deploy/setup-https.bat', 'deploy/connect-client.bat'] as $path) {
+            $script = $this->file($path);
+
+            // Either spelling: setup-https.bat holds the old name in
+            // %OLDSITE%, connect-client.bat writes it inline.
+            $this->assertMatchesRegularExpression(
+                '/certutil -delstore Root "(onealicialms\.local|%OLDSITE%)"/', $script,
+                "{$path} leaves the old certificate trusted");
+            $this->assertStringContainsString("-notmatch 'onealicialms\\.local'", $script,
+                "{$path} leaves the old hosts lines in place");
+        }
+    }
+
+    /**
+     * One timestamped backup is not overwritten by a second.
+     *
+     * Both the cleanup step and the hosts step write to
+     * hosts.backup-<stamp>, and the stamp is fixed for the run. Copying twice
+     * would replace the untouched original with the already-edited version and
+     * leave a backup that restores nothing -- which is worse than no backup,
+     * because it looks like one.
+     */
+    public function test_the_hosts_backup_is_not_clobbered_by_the_second_write(): void
+    {
+        foreach (['deploy/setup-https.bat', 'deploy/connect-client.bat'] as $path) {
+            $this->assertStringContainsString(
+                'if not exist "%HOSTSFILE%.backup-%STAMP%" copy /Y "%HOSTSFILE%"',
+                $this->file($path),
+                "{$path} takes a second backup over the first, destroying the original");
+        }
+    }
+
+    /**
+     * The certificate is one a phone will accept.
+     *
+     * Two extensions, both stated explicitly rather than inherited:
+     *
+     * - serverAuth, required by Apple on TLS server certificates since
+     *   iOS 13. Without it an iPhone can install and trust the certificate
+     *   and the connection still fails, with every step appearing to work.
+     * - CA:TRUE, without which Android's "Install a certificate -> CA
+     *   certificate" screen refuses the file outright. It was already being
+     *   set, but only as a side effect of the v3_ca section in whichever
+     *   openssl.cnf happened to be found.
+     */
+    public function test_the_certificate_is_acceptable_to_phones(): void
+    {
+        foreach (['deploy/make-cert.sh', 'deploy/make-cert.bat'] as $path) {
+            $script = $this->file($path);
+
+            $this->assertStringContainsString('extendedKeyUsage=serverAuth', $script,
+                "{$path} issues a certificate with no serverAuth EKU, which iOS rejects");
+            $this->assertStringContainsString('basicConstraints=critical,CA:TRUE', $script,
+                "{$path} leaves CA:TRUE to the openssl config, and Android needs it to install the file at all");
+            $this->assertStringContainsString('-ext extendedKeyUsage', $script,
+                "{$path} does not check the EKU it asked for actually landed");
+        }
+    }
+
+    /**
+     * The server's own address is in the certificate.
+     *
+     * A phone has no hosts file. Where the router cannot hold a DNS record the
+     * only way in is https://<server ip>, and a certificate that lists only
+     * the name fails that with NAME_MISMATCH.
+     */
+    public function test_the_certificate_covers_the_servers_own_address(): void
+    {
+        $this->assertStringContainsString('IP:%SERVERIP%', $this->file('deploy/make-cert.bat'),
+            'the certificate cannot cover the server IP, so a phone browsing by address gets NAME_MISMATCH');
+
+        $this->assertStringContainsString('nopause %HOSTIP%', $this->file('deploy/setup-https.bat'),
+            'setup detects the server IP and then does not pass it to the certificate');
+    }
+
     /** The private half of the certificate is never suggested for copying. */
     public function test_nothing_tells_anyone_to_copy_the_private_key(): void
     {
@@ -325,8 +450,8 @@ class HttpsConfigTest extends TestCase
      * Searching the file for the hostname matches a comment just as happily
      * as a mapping, and that is how one machine ended up with
      *
-     *     #\t127.0.0.1       onealicialms.local
-     *     #\t192.168.254.102 onealicialms.local
+     *     #\t127.0.0.1       onealicialms.lan
+     *     #\t192.168.254.102 onealicialms.lan
      *
      * and no working name: both are comments, Windows ignores them, but the
      * search found the hostname, the step reported "Already mapped", and no

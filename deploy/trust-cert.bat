@@ -16,7 +16,7 @@ REM  closing banner and the pause so it can run as one step inside that script.
 REM ============================================================================
 setlocal
 
-set SITE=onealicialms.local
+set SITE=onealicialms.lan
 set CRT=%~dp0certs\lms.crt
 
 echo.

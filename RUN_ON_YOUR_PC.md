@@ -109,7 +109,7 @@ For learning and testing, the simplest way to run it:
 Double-click **`start.bat`**. It starts MySQL, the background worker and
 Apache, then opens the browser at:
 
-**https://onealicialms.local**
+**https://onealicialms.lan**
 
 You should see the **login page**. 🎉
 
@@ -130,7 +130,7 @@ You should see the **login page**. 🎉
    `C:\Windows\System32\drivers\etc\hosts`, editing it as Administrator:
 
    ```
-   127.0.0.1   onealicialms.local
+   127.0.0.1   onealicialms.lan
    ```
 
    On other office PCs use the **server's** address instead of `127.0.0.1`.
@@ -198,7 +198,7 @@ small letter, a number, and a symbol — for example `MyStr0ng!Pass2026`).
 | "could not find driver" | In XAMPP, edit `C:\xampp\php\php.ini`, remove the `;` before `extension=pdo_mysql`, save, restart Apache. |
 | Login says database error | Make sure MySQL is **green** in XAMPP and you created the `lms_alicia` database (Part C step 5). |
 | I didn't get the OTP email | Read it from `storage\logs\laravel.log` (Part E), or turn off OTP in System Settings for testing. |
-| Page looks unstyled | Run `php artisan storage:link` and refresh; make sure you opened `https://onealicialms.local` (not the `public` folder directly). |
+| Page looks unstyled | Run `php artisan storage:link` and refresh; make sure you opened `https://onealicialms.lan` (not the `public` folder directly). |
 | Locked out (3 wrong passwords) | Wait 24 hours, or ask a Super Admin to unblock you under **Users**, or reset with the CLI (below). |
 
 ### Reset everything and start fresh

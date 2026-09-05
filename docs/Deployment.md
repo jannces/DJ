@@ -22,7 +22,7 @@ Edit `.env` (LAN values):
 ```
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=https://onealicialms.local
+APP_URL=https://onealicialms.lan
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1  DB_DATABASE=lms_alicia  DB_USERNAME=lms_app  DB_PASSWORD=<strong>
 SESSION_DRIVER=database  SESSION_SECURE_COOKIE=true
@@ -75,17 +75,17 @@ hand or something goes wrong.
 ### By hand
 
 **Apache, not `php artisan serve`.** The dev server speaks plain HTTP on a port
-and cannot serve TLS at all, so it can never answer on `https://onealicialms.local`
+and cannot serve TLS at all, so it can never answer on `https://onealicialms.lan`
 whatever `.env` says. `start.bat` starts Apache; `stop.bat` stops it.
 
 **1. Generate the certificate** (once per server). Windows: `deploy\make-cert.bat`.
 Linux: `deploy/make-cert.sh`.
 
 ```
-deploy/make-cert.sh onealicialms.local   # outputs deploy/certs/lms.crt + lms.key
+deploy/make-cert.sh onealicialms.lan   # outputs deploy/certs/lms.crt + lms.key
 ```
 
-It covers `onealicialms.local`, `localhost` and `127.0.0.1`, and is valid 825
+It covers `onealicialms.lan`, `localhost` and `127.0.0.1`, and is valid 825
 days. **The key is gitignored and must stay that way** — it is generated per
 installation, and a key in the repository is a key on every machine that clones it.
 
@@ -105,13 +105,13 @@ which is not a network this system has ever run on — every client on
 and read the IPv4 address and mask: `192.168.254.17 / 255.255.255.0` means
 `192.168.254.0/24`.
 
-**3. Make the name resolve.** Each PC must map `onealicialms.local` to the
+**3. Make the name resolve.** Each PC must map `onealicialms.lan` to the
 server's IP. One DNS record on the router is one edit, forever; a hosts-file
 line (`C:\Windows\System32\drivers\etc\hosts`, edited as Administrator) is
 one edit *per PC*, and again whenever the IP changes.
 
 ```
-192.168.254.17   onealicialms.local
+192.168.254.17   onealicialms.lan
 ```
 
 **4. The certificate warning.** Each browser warns once — the certificate is

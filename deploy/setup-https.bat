@@ -17,14 +17,14 @@ REM                                 project path and your real subnet
 REM    5. XAMPP's server.crt/key    replaced IF the shipped pair is mismatched
 REM    6. deploy\certs\             this system's certificate, if missing
 REM    7. Windows Firewall          inbound 443 and 80, local subnet only
-REM    8. hosts                     onealicialms.local -> 127.0.0.1
+REM    8. hosts                     onealicialms.lan -> 127.0.0.1
 REM
 REM  Every file it edits is backed up next to itself first, with a timestamp.
 REM  It can be run twice: nothing is appended or enabled a second time.
 REM ============================================================================
 setlocal
 
-set SITE=onealicialms.local
+set SITE=onealicialms.lan
 set XAMPP=%~1
 if "%XAMPP%"=="" set XAMPP=C:\xampp
 
@@ -76,8 +76,45 @@ REM with nothing to restore from. That would only break on some machines.
 for /f "usebackq delims=" %%t in (`powershell -NoProfile -Command "Get-Date -Format 'yyyyMMdd-HHmmss'"`) do set STAMP=%%t
 if "%STAMP%"=="" set STAMP=backup
 
-REM --- 1. .env ---------------------------------------------------------------
-echo [1/8] Setting APP_URL and SESSION_SECURE_COOKIE in .env...
+REM --- 1. Undo the previous onealicialms.local setup -------------------------
+REM
+REM The site used to be onealicialms.local. `.local` is reserved for mDNS:
+REM iOS and macOS resolve those names through Bonjour and never ask the
+REM router, so no DNS record for a .local name can ever reach a phone. That
+REM is why the name changed, and it is why the old one has to go rather than
+REM sit alongside the new one.
+REM
+REM Leaving it behind is not harmless. A stale hosts line and a stale trusted
+REM certificate both keep working, so a PC set up before the rename can go on
+REM using the old name indefinitely while everybody assumes it moved.
+echo [1/9] Undoing the previous onealicialms.local setup...
+set OLDSITE=onealicialms.local
+
+REM certutil matches the store entry by the certificate's subject. If the old
+REM certificate was never trusted on this PC this fails, which is not an error.
+certutil -delstore Root "%OLDSITE%" >nul 2>&1
+if errorlevel 1 (
+  echo       No old certificate was trusted here.
+) else (
+  echo       Removed the old certificate from the Trusted Root store.
+)
+
+REM Both the mappings and the commented-out ones: this is a removal, and a
+REM commented line for a name that no longer exists is just confusing.
+REM Rewritten as an indexed loop rather than a Where-Object pipeline for the
+REM same reason as everywhere else in these scripts -- no pipe, nothing for
+REM cmd or a stray caret to get wrong.
+copy /Y "%HOSTSFILE%" "%HOSTSFILE%.backup-%STAMP%" >nul
+powershell -NoProfile -Command "$p='%HOSTSFILE%'; $c=@(Get-Content $p); $k=New-Object System.Collections.ArrayList; foreach ($l in $c) { if ($l -notmatch 'onealicialms\.local') { [void]$k.Add($l) } }; Set-Content -Path $p -Value $k.ToArray()"
+if errorlevel 1 ( echo [X] Could not edit the hosts file. & goto :fail )
+echo       Old hosts lines removed. Backed up to hosts.backup-%STAMP%
+
+REM The old certificate file itself is not deleted here. Step 7 checks whether
+REM deploy\certs\lms.crt covers the CURRENT hostname and reissues it if not,
+REM which is the same check that catches a certificate with no SAN at all.
+
+REM --- 2. .env ---------------------------------------------------------------
+echo [2/9] Setting APP_URL and SESSION_SECURE_COOKIE in .env...
 if not exist "%ROOT%\.env" (
   echo       No .env yet - copying .env.example.
   copy /Y "%ROOT%\.env.example" "%ROOT%\.env" >nul
@@ -97,7 +134,7 @@ php artisan config:clear >nul 2>&1
 echo       Config cache cleared.
 
 REM --- 2. httpd.conf ---------------------------------------------------------
-echo [2/8] Enabling mod_ssl, mod_rewrite and the Includes...
+echo [3/9] Enabling mod_ssl, mod_rewrite and the Includes...
 copy /Y "%CONF%" "%CONF%.backup-%STAMP%" >nul
 powershell -NoProfile -Command ^
   "$p='%CONF%'; $c=Get-Content $p;" ^
@@ -110,7 +147,7 @@ if errorlevel 1 ( echo [X] Could not edit httpd.conf & goto :fail )
 echo       Backed up to httpd.conf.backup-%STAMP%
 
 REM --- 3. The vhost, generated with YOUR paths and YOUR subnet ---------------
-echo [3/8] Writing %LOCALVHOST%...
+echo [4/9] Writing %LOCALVHOST%...
 
 REM The subnet is read off this machine rather than guessed. The template ships
 REM 192.168.254.0/24; on any other network that value serves every client a
@@ -157,7 +194,7 @@ if errorlevel 1 ( echo [X] Could not write %LOCALVHOST% & goto :fail )
 echo       DocumentRoot: %FSROOT%/public
 
 REM --- 4. Include it from httpd-vhosts.conf -----------------------------------
-echo [4/8] Including it from httpd-vhosts.conf...
+echo [5/9] Including it from httpd-vhosts.conf...
 findstr /C:"apache-vhost.local.conf" "%VHOSTS%" >nul 2>&1
 if not errorlevel 1 (
   echo       Already included.
@@ -186,7 +223,7 @@ REM Apache exits, XAMPP reports "shutdown unexpectedly", and `httpd -t` says
 REM Syntax OK -- because the syntax IS fine; the two files simply are not a
 REM pair. Including httpd-ssl.conf is what makes it matter, and we need that
 REM file for its Listen 443.
-echo [5/8] Checking XAMPP's own default SSL certificate...
+echo [6/9] Checking XAMPP's own default SSL certificate...
 set OPENSSL=%XAMPP%\apache\bin\openssl.exe
 set XCRT=%XAMPP%\apache\conf\ssl.crt\server.crt
 set XKEY=%XAMPP%\apache\conf\ssl.key\server.key
@@ -218,7 +255,7 @@ if errorlevel 1 ( echo [X] Could not regenerate XAMPP's default pair. & goto :fa
 echo       Replaced with a matched pair. Originals kept as *.backup-%STAMP%
 :xamppcert_done
 
-echo [6/8] This system's certificate...
+echo [7/9] This system's certificate...
 REM "The file exists" is not the same as "the browser will accept it". A
 REM certificate issued without a readable openssl.cnf carries no
 REM subjectAltName, and every browser refuses that outright -- so an existing
@@ -236,7 +273,10 @@ if defined CERTOK (
     echo       Existing certificate has no subjectAltName for %SITE% - replacing it.
     copy /Y "%ROOT%\deploy\certs\lms.crt" "%ROOT%\deploy\certs\lms.crt.backup-%STAMP%" >nul
   )
-  call "%ROOT%\deploy\make-cert.bat" %SITE% "%XAMPP%" nopause
+  REM %HOSTIP% was detected in step 4 and goes into the certificate, so a
+  REM phone that cannot resolve the name can still reach https://%HOSTIP%
+  REM without a NAME_MISMATCH. Empty is fine; the argument is optional.
+  call "%ROOT%\deploy\make-cert.bat" %SITE% "%XAMPP%" nopause %HOSTIP%
   if errorlevel 1 ( echo [X] The certificate could not be created - see above. & goto :fail )
 )
 
@@ -247,7 +287,7 @@ REM Without this the system works perfectly on the server and is invisible to
 REM every other PC in the office. Windows blocks inbound 443 by default, and it
 REM does so silently: the other machine just times out, which reads as "the
 REM server is down" rather than "this PC refused the packet".
-echo [7/8] Windows Firewall...
+echo [8/9] Windows Firewall...
 
 REM Scoped deliberately. `profile=private,domain` keeps the port shut on a
 REM public network -- a laptop taken to a coffee shop should not be serving
@@ -274,14 +314,14 @@ if not errorlevel 1 (
   echo       Allowed inbound TCP 80 for the redirect.
 )
 
-echo [8/8] hosts file...
+echo [9/9] hosts file...
 REM Is there a REAL mapping, or only the name sitting inside a comment?
 REM
 REM findstr /C:"%SITE%" matches either, and that is how a machine ended up
 REM with these two lines and no working name:
 REM
-REM   #	127.0.0.1       onealicialms.local
-REM   #	192.168.254.102 onealicialms.local
+REM   #	127.0.0.1       onealicialms.lan
+REM   #	192.168.254.102 onealicialms.lan
 REM
 REM Both are comments -- Windows ignores them -- but the search found the
 REM name, the script said "Already mapped", and nothing was ever added.
@@ -296,7 +336,11 @@ del "%TEMP%\lms-h.txt" 2>nul
 if defined HOSTMAPPED (
   echo       Already mapped.
 ) else (
-  copy /Y "%HOSTSFILE%" "%HOSTSFILE%.backup-%STAMP%" >nul
+  REM Only if step 1 has not already taken one. Both write the same filename,
+  REM and copying again here would overwrite the untouched original with the
+  REM version step 1 had already edited -- leaving a "backup" that cannot
+  REM restore anything.
+  if not exist "%HOSTSFILE%.backup-%STAMP%" copy /Y "%HOSTSFILE%" "%HOSTSFILE%.backup-%STAMP%" >nul
   echo.>> "%HOSTSFILE%"
   echo 127.0.0.1       %SITE% >> "%HOSTSFILE%"
   echo       Added 127.0.0.1 %SITE%
@@ -338,9 +382,17 @@ echo.
 echo   Copying deploy\certs\lms.crt across is fine - it is the public
 echo   half. NEVER copy lms.key; it belongs on this machine only.
 echo.
-echo   For a whole office: one DNS record on the router replaces the
-echo   hosts half of that on every PC at once, and covers phones and
-echo   tablets, which have no hosts file to edit.
+echo   FOR PHONES AND TABLETS there is no hosts file, so add ONE DNS
+echo   record on the office router instead:
+echo.
+if not "%HOSTIP%"=="" echo       %SITE%  -^>  %HOSTIP%
+if "%HOSTIP%"=="" echo       %SITE%  -^>  ^<this server's IP^>
+echo.
+echo   That covers every device at once, PCs included. If the router
+echo   cannot hold one, phones can use the address directly - the
+echo   server's IP is now inside the certificate, so it no longer
+echo   fails with NAME_MISMATCH. See deploy\README.md for the two
+echo   certificate screens on Android and iPhone.
 echo ============================================================
 echo.
 pause

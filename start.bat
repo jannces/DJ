@@ -6,11 +6,11 @@ REM  Double-click this file, or run it from a terminal:
 REM      start.bat
 REM
 REM  It starts MySQL, the queue worker and Apache, then opens the
-REM  browser at https://onealicialms.local. Use stop.bat to finish.
+REM  browser at https://onealicialms.lan. Use stop.bat to finish.
 REM
 REM  APACHE, NOT "php artisan serve". The dev server speaks plain
 REM  HTTP on a port and cannot serve HTTPS at all, so it could never
-REM  answer on https://onealicialms.local whatever .env says.
+REM  answer on https://onealicialms.lan whatever .env says.
 REM ============================================================
 setlocal enabledelayedexpansion
 
@@ -18,7 +18,7 @@ cd /d "%~dp0"
 
 REM Change this if XAMPP is not installed in the default folder.
 set XAMPP=C:\xampp
-set SITE=onealicialms.local
+set SITE=onealicialms.lan
 
 echo.
 echo ============================================================
@@ -105,9 +105,9 @@ if not exist "deploy\certs\lms.crt" (
 )
 
 REM Does the NAME resolve? Checking the hosts file only proves a line was
-REM written; it does not prove Windows is using it. A stale DNS cache, or a
-REM .local name going to mDNS instead, both leave a correct hosts file and a
-REM browser that still reports DNS_PROBE_FINISHED_NXDOMAIN.
+REM written; it does not prove Windows is using it. A stale DNS cache leaves a
+REM correct hosts file and a browser that still reports
+REM DNS_PROBE_FINISHED_NXDOMAIN.
 ping -n 1 %SITE% >nul 2>&1
 if not errorlevel 1 goto :nameok
 
@@ -123,21 +123,29 @@ if not errorlevel 1 (
 echo [!] "%SITE%" does not resolve on this PC, so the browser will report
 echo     DNS_PROBE_FINISHED_NXDOMAIN however well Apache is running.
 echo.
-findstr /C:"%SITE%" %SystemRoot%\System32\drivers\etc\hosts >nul 2>&1
-if errorlevel 1 (
-  echo     It is not in the hosts file. Add this line to
-  echo       %SystemRoot%\System32\drivers\etc\hosts
-  echo     with Notepad opened AS ADMINISTRATOR -- saving without that fails
-  echo     silently and leaves the file unchanged:
+REM The line has to START with an address. A plain search for the hostname
+REM matches a commented-out entry just as happily, and then this reports "It
+REM IS in the hosts file" about two lines Windows is ignoring -- which is
+REM precisely the wrong diagnosis, and precisely what happened here once.
+set MAPPED=
+powershell -NoProfile -Command "if (Select-String -Path '%SystemRoot%\System32\drivers\etc\hosts' -Pattern '^\s*[0-9A-Fa-f:.]+\s+.*%SITE%' -Quiet) { 'yes' }" > "%TEMP%\lms-start-h.txt" 2>nul
+if exist "%TEMP%\lms-start-h.txt" for /f "usebackq delims=" %%h in ("%TEMP%\lms-start-h.txt") do set MAPPED=%%h
+del "%TEMP%\lms-start-h.txt" 2>nul
+
+if not defined MAPPED (
+  echo     There is no active mapping for it in the hosts file. Run, as
+  echo     administrator:
   echo.
-  echo       127.0.0.1   %SITE%
+  echo       deploy\setup-https.bat
+  echo.
+  echo     ^(If you can see the name in that file already, check for a '#' in
+  echo     front of it. A commented line is ignored by Windows, and that is
+  echo     the most common reason for this message.^)
 ) else (
-  echo     It IS in the hosts file, and still does not resolve. That is the
-  echo     ".local" suffix: Windows can route .local lookups to mDNS instead
-  echo     of reading the hosts file. Two ways out:
-  echo       - use https://127.0.0.1 on this PC for now, or
-  echo       - rename the site to a suffix Windows treats normally, such as
-  echo         onealicialms.lan, and run deploy\setup-https.bat again.
+  echo     It IS mapped and still does not resolve. Try, as administrator:
+  echo       ipconfig /flushdns
+  echo     and if that does not help, use https://127.0.0.1 on this PC while
+  echo     you look into it - the site itself is fine.
 )
 echo.
 
