@@ -4,15 +4,12 @@
 <h1 class="h4 mb-3">Intrusion Logs</h1>
 <div class="card">
     <x-list-toolbar search placeholder="Search by IP" :action="route('security.intrusions')">
-        {{-- XSS, Traversal and CSRF are deliberately not offered here.
-
-             They are still detected, still written to the log, and still shown
-             in the Category column below -- this is the dropdown only. Nothing
-             is hidden: those rows appear in the unfiltered list like any other,
-             and ?category=xss in the address still works, because this is a
-             convenience for reading the log and never a limit on it. --}}
+        {{-- Every category the system can write, so the log can be read by any
+             of them. SQLi, XSS and Traversal are the three input-manipulation
+             ones; auth_fail and rate are where brute force shows up. --}}
         <x-list-filter name="category" label="Category" :options="[
-            'sqli' => 'SQLi', 'rate' => 'Rate', 'auth_fail' => 'Auth failure',
+            'sqli' => 'SQLi', 'xss' => 'XSS', 'traversal' => 'Traversal',
+            'csrf' => 'CSRF', 'rate' => 'Rate', 'auth_fail' => 'Auth failure',
             'device' => 'Device', 'privilege' => 'Privilege', 'other' => 'Other',
         ]" />
         <x-list-filter name="severity" label="Severity" :options="[
