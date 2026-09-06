@@ -1,4 +1,5 @@
 const pptxgen = require("pptxgenjs");
+const path = require("path");
 
 const NAVY   = "1E2761";
 const DEEP   = "141B45";
@@ -248,7 +249,19 @@ footNote(s, "Figure 3 \u2014 Requests travel from authorized clients through the
 s.addNotes("Centralization simplifies administration but makes server hardening, backup, access restriction, and monitoring essential to availability and security.");
 
 // =========================================================
-// 4 — APPLICATION ARCHITECTURE (LAYERS)
+// 4 — CONSOLIDATED SYSTEM ARCHITECTURE DIAGRAM
+// =========================================================
+s = pres.addSlide();
+s.addText("SYSTEM ARCHITECTURE  \u2014  END TO END", { x:0.72, y:0.24, w:9, h:0.26, isTextBox:true, margin:0,
+  fontFace:B, fontSize:11, bold:true, color:MUTE, charSpacing:1.6 });
+s.addImage({ path: path.join(__dirname, "architecture.png"), x:0.72, y:0.60, w:11.88, h:6.50 });
+s.addNotes("One picture of the whole system: authorized clients on the LAN, the switch and firewall, "
+  + "the centralized server with its five layers, the data tier on the same host, and the intrusion "
+  + "alert path that runs back to the System Administrator. Walk it left to right along the navy "
+  + "request path, then bottom right to left along the red alert path.");
+
+// =========================================================
+// 5 — APPLICATION ARCHITECTURE (LAYERS)
 // =========================================================
 s = pres.addSlide();
 titleBar(s, "4.3  APPLICATION SYSTEM ARCHITECTURE", "Five layers, separated responsibilities");
@@ -283,7 +296,7 @@ footNote(s, "");
 s.addNotes("Figure 4: each layer can be configured, tested, and maintained independently. Business rules live in the service layer, not in controllers or views.");
 
 // =========================================================
-// 5 — SECURITY KERNEL
+// 6 — SECURITY KERNEL
 // =========================================================
 s = pres.addSlide();
 titleBar(s, "4.3.3  INTEGRATED SECURITY FRAMEWORK", "The security kernel — every request, in order");
@@ -320,7 +333,7 @@ footNote(s, "");
 s.addNotes("Presence of a control in the architecture is not proof of effectiveness — each is assessed independently during the technical testing described in Chapter III.");
 
 // =========================================================
-// 6 — REAL-TIME INTRUSION ALERT WORKFLOW
+// 7 — REAL-TIME INTRUSION ALERT WORKFLOW
 // =========================================================
 s = pres.addSlide();
 titleBar(s, "4.4.3  REAL-TIME INTRUSION ALERT WORKFLOW", "Detect, record, block, notify");
@@ -369,7 +382,7 @@ footNote(s, "");
 s.addNotes("Detection sources include failed logins, signature matches on request input, unauthorized device access, and 403 permission denials.");
 
 // =========================================================
-// 7 — LEAVE REQUEST DATA FLOW
+// 8 — LEAVE REQUEST DATA FLOW
 // =========================================================
 s = pres.addSlide();
 titleBar(s, "4.9.2  DATA FLOW", "Path of a leave application");
@@ -420,7 +433,7 @@ footNote(s, "");
 s.addNotes("Approval routing is enforced by the workflow service — a request cannot skip a stage, and balances change only at final approval.");
 
 // =========================================================
-// 8 — SECURITY CONTROL MAPPING
+// 9 — SECURITY CONTROL MAPPING
 // =========================================================
 s = pres.addSlide();
 titleBar(s, "4.3.4  SECURITY CONTROL MAPPING", "Objectives traced to implemented controls");
@@ -458,7 +471,7 @@ s.addText("Threats addressed: SQL injection · brute-force login · unauthorized
 s.addNotes("Table 5 and Table 6 of the manuscript: the mapping provides traceability between objectives, threats, and controls. It does not by itself demonstrate effectiveness.");
 
 // =========================================================
-// 9 — TECHNICAL FRAMEWORK / STACK
+// 10 — TECHNICAL FRAMEWORK / STACK
 // =========================================================
 s = pres.addSlide();
 titleBar(s, "4.9.5  TECHNICAL FRAMEWORK", "Four tiers, and the technology in each");
@@ -496,7 +509,7 @@ val.forEach((v, i) => {
 s.addNotes("The four tiers separate user access, network transport, application processing, and persistent storage so each can be configured, tested, and maintained independently.");
 
 // =========================================================
-// 10 — CLOSING
+// 11 — CLOSING
 // =========================================================
 s = pres.addSlide();
 s.background = { color: NAVY };

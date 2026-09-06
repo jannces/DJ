@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1900" height="1040" viewBox="0 0 1900 1040">
+<defs>
+<marker id="ah" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto">
+  <path d="M0,0 L9,4.5 L0,9 z" fill="#1E2761"/></marker>
+<marker id="ahr" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto">
+  <path d="M0,0 L9,4.5 L0,9 z" fill="#C43D2B"/></marker>
+<marker id="ahl" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto">
+  <path d="M0,0 L9,4.5 L0,9 z" fill="#CADCFC"/></marker>
+</defs>
+<rect x="0" y="0" width="1900" height="1040" rx="0" fill="#FFFFFF"/>
+<rect x="20" y="60" width="1860" height="940" rx="18" fill="none" stroke="#A9B7D8" stroke-width="2" stroke-dasharray="10 8"/>
+<text x="44" y="44" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="23" fill="#1E2761" font-weight="700" text-anchor="start" letter-spacing="1.6">LGU OF ALICIA  —  INTERNAL LAN</text>
+<line x1="1300" y1="37" x2="1344" y2="37" stroke="#1E2761" stroke-width="3" marker-end="url(#ah)"/>
+<text x="1354" y="43" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="21" fill="#78819A" text-anchor="start">request path</text>
+<line x1="1500" y1="37" x2="1544" y2="37" stroke="#C43D2B" stroke-width="3" stroke-dasharray="7 6"/>
+<text x="1554" y="43" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="21" fill="#78819A" text-anchor="start">blocked</text>
+<line x1="1670" y1="37" x2="1714" y2="37" stroke="#C43D2B" stroke-width="3" marker-end="url(#ahr)"/>
+<text x="1724" y="43" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="21" fill="#78819A" text-anchor="start">alert path</text>
+<rect x="44" y="112" width="292" height="720" rx="14" fill="#F7F9FD" stroke="#C9D6EE" stroke-width="1.5"/>
+<text x="68" y="154" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="22" fill="#78819A" font-weight="700" text-anchor="start" letter-spacing="1.4">AUTHORIZED CLIENTS</text>
+<text x="68" y="184" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="20" fill="#78819A" text-anchor="start">web browser only — no installed client</text>
+<rect x="64" y="208" width="252" height="74" rx="9" fill="#FFFFFF" stroke="#C9D6EE" stroke-width="1.5"/>
+<text x="82" y="240" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="26" fill="#1E2761" font-weight="700" text-anchor="start">Employee</text>
+<text x="82" y="266" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="20" fill="#78819A" text-anchor="start">files leave, tracks status</text>
+<rect x="64" y="296" width="252" height="74" rx="9" fill="#FFFFFF" stroke="#C9D6EE" stroke-width="1.5"/>
+<text x="82" y="328" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="26" fill="#1E2761" font-weight="700" text-anchor="start">Department Head</text>
+<text x="82" y="354" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="20" fill="#78819A" text-anchor="start">reviews own office</text>
+<rect x="64" y="384" width="252" height="74" rx="9" fill="#FFFFFF" stroke="#C9D6EE" stroke-width="1.5"/>
+<text x="82" y="416" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="26" fill="#1E2761" font-weight="700" text-anchor="start">HR Management</text>
+<text x="82" y="442" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="20" fill="#78819A" text-anchor="start">certifies credits</text>
+<rect x="64" y="472" width="252" height="74" rx="9" fill="#FFFFFF" stroke="#C9D6EE" stroke-width="1.5"/>
+<text x="82" y="504" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="26" fill="#1E2761" font-weight="700" text-anchor="start">Municipal Mayor</text>
+<text x="82" y="530" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="20" fill="#78819A" text-anchor="start">final approval</text>
+<rect x="64" y="560" width="252" height="74" rx="9" fill="#FFFFFF" stroke="#C43D2B" stroke-width="2.5"/>
+<text x="82" y="592" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="26" fill="#C43D2B" font-weight="700" text-anchor="start">System Admin</text>
+<text x="82" y="618" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="20" fill="#78819A" text-anchor="start">accounts, logs, monitoring</text>
+<rect x="64" y="648" width="252" height="74" rx="9" fill="#FFFFFF" stroke="#C9D6EE" stroke-width="1.5"/>
+<text x="82" y="680" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="26" fill="#1E2761" font-weight="700" text-anchor="start">Mobile (Wi-Fi)</text>
+<text x="82" y="706" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="20" fill="#78819A" text-anchor="start">same app, authorized devices</text>
+<text x="68" y="806" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="20" fill="#1E2761" font-weight="700" text-anchor="start">RBAC decides what each role sees</text>
+<rect x="380" y="400" width="176" height="120" rx="12" fill="#1E2761" stroke="#1E2761" stroke-width="1.5"/>
+<text x="468" y="448" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="26" fill="#FFFFFF" font-weight="700" text-anchor="middle">Switch</text>
+<text x="468" y="476" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="20" fill="#CADCFC" text-anchor="middle">wired LAN +</text>
+<text x="468" y="500" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="20" fill="#CADCFC" text-anchor="middle">wireless AP</text>
+<rect x="600" y="400" width="176" height="120" rx="12" fill="#1E2761" stroke="#1E2761" stroke-width="1.5"/>
+<text x="688" y="448" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="26" fill="#FFFFFF" font-weight="700" text-anchor="middle">Firewall</text>
+<text x="688" y="476" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="20" fill="#CADCFC" text-anchor="middle">boundary and</text>
+<text x="688" y="500" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="20" fill="#CADCFC" text-anchor="middle">access policy</text>
+<rect x="600" y="4" width="176" height="52" rx="10" fill="#FBEDEA" stroke="#C43D2B" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="688" y="38" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="26" fill="#C43D2B" font-weight="700" text-anchor="middle">Internet</text>
+<line x1="688" y1="58" x2="688" y2="398" stroke="#C43D2B" stroke-width="2.5" stroke-dasharray="9 8"/>
+<rect x="636" y="196" width="106" height="40" rx="8" fill="#FFFFFF" stroke="none" stroke-width="1.5"/>
+<text x="688" y="224" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="21" fill="#C43D2B" font-weight="700" text-anchor="middle">no route</text>
+<line x1="340" y1="460" x2="376" y2="460" stroke="#1E2761" stroke-width="3" marker-end="url(#ah)"/>
+<line x1="560" y1="460" x2="596" y2="460" stroke="#1E2761" stroke-width="3" marker-end="url(#ah)"/>
+<line x1="784" y1="460" x2="896" y2="460" stroke="#1E2761" stroke-width="3" marker-end="url(#ah)"/>
+<text x="838" y="438" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="20" fill="#1E2761" font-weight="700" text-anchor="middle">HTTPS / TLS</text>
+<rect x="380" y="600" width="496" height="186" rx="12" fill="#EEF3FC" stroke="#C9D6EE" stroke-width="1.5"/>
+<text x="404" y="636" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="22" fill="#78819A" font-weight="700" text-anchor="start" letter-spacing="1.4">DEPLOYMENT</text>
+<text x="404" y="674" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="21" fill="#343B4F" text-anchor="start">•   One server hosts the app and the database</text>
+<text x="404" y="708" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="21" fill="#343B4F" text-anchor="start">•   No public internet route to the system</text>
+<text x="404" y="742" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="21" fill="#343B4F" text-anchor="start">•   Data at rest not encrypted — noted limitation</text>
+<rect x="900" y="112" width="956" height="720" rx="16" fill="#1E2761" stroke="#1E2761" stroke-width="1.5"/>
+<text x="922" y="154" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="22" fill="#CADCFC" font-weight="700" text-anchor="start" letter-spacing="1.4">CENTRALIZED APPLICATION SERVER</text>
+<rect x="922" y="172" width="912" height="56" rx="10" fill="#2B3B7A" stroke="#3D50A0" stroke-width="1.5"/>
+<text x="944" y="208" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="25" fill="#FFFFFF" font-weight="700" text-anchor="start">Apache HTTP Server</text>
+<text x="1242" y="208" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="22" fill="#AFC0EA" text-anchor="start">TLS termination · HTTPS only</text>
+<rect x="922" y="242" width="912" height="116" rx="10" fill="#22307F" stroke="#3D50A0" stroke-width="1.5"/>
+<text x="940" y="272" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="21" fill="#CADCFC" font-weight="700" text-anchor="start" letter-spacing="1.1">SECURITY MIDDLEWARE KERNEL — every request, in order</text>
+<rect x="922.0" y="284" width="174.4" height="62" rx="8" fill="#CADCFC" stroke="#CADCFC" stroke-width="1.5"/>
+<text x="1009.2" y="312" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="23" fill="#1E2761" font-weight="700" text-anchor="middle">Blocked IP</text>
+<text x="1009.2" y="335" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="19" fill="#4A5680" text-anchor="middle">known bad</text>
+<rect x="1106.4" y="284" width="174.4" height="62" rx="8" fill="#CADCFC" stroke="#CADCFC" stroke-width="1.5"/>
+<text x="1193.6000000000001" y="312" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="23" fill="#1E2761" font-weight="700" text-anchor="middle">Device check</text>
+<text x="1193.6000000000001" y="335" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="19" fill="#4A5680" text-anchor="middle">allow-list</text>
+<rect x="1290.8" y="284" width="174.4" height="62" rx="8" fill="#FBEDEA" stroke="#C43D2B" stroke-width="1.5"/>
+<text x="1378.0" y="312" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="23" fill="#C43D2B" font-weight="700" text-anchor="middle">IDS scan</text>
+<text x="1378.0" y="335" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="19" fill="#C43D2B" text-anchor="middle">SQLi / XSS</text>
+<rect x="1475.2" y="284" width="174.4" height="62" rx="8" fill="#CADCFC" stroke="#CADCFC" stroke-width="1.5"/>
+<text x="1562.4" y="312" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="23" fill="#1E2761" font-weight="700" text-anchor="middle">Auth + OTP</text>
+<text x="1562.4" y="335" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="19" fill="#4A5680" text-anchor="middle">bcrypt, MFA</text>
+<rect x="1659.6" y="284" width="174.4" height="62" rx="8" fill="#CADCFC" stroke="#CADCFC" stroke-width="1.5"/>
+<text x="1746.8" y="312" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="23" fill="#1E2761" font-weight="700" text-anchor="middle">RBAC gate</text>
+<text x="1746.8" y="335" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="19" fill="#4A5680" text-anchor="middle">permissions</text>
+<rect x="922" y="372" width="912" height="56" rx="10" fill="#2B3B7A" stroke="#3D50A0" stroke-width="1.5"/>
+<text x="944" y="408" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="25" fill="#FFFFFF" font-weight="700" text-anchor="start">Routes · Controllers</text>
+<text x="1252" y="408" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="22" fill="#AFC0EA" text-anchor="start">Form Requests — server-side validation</text>
+<rect x="922" y="442" width="912" height="132" rx="10" fill="#22307F" stroke="#3D50A0" stroke-width="1.5"/>
+<text x="940" y="472" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="21" fill="#CADCFC" font-weight="700" text-anchor="start" letter-spacing="1.1">APPLICATION SERVICE LAYER — business rules live here</text>
+<rect x="922.0" y="484" width="174.4" height="76" rx="8" fill="#2B3B7A" stroke="#4E62B8" stroke-width="1.5"/>
+<text x="1009.2" y="512" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="23" fill="#FFFFFF" font-weight="700" text-anchor="middle">Leave</text>
+<text x="1009.2" y="538" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="23" fill="#FFFFFF" font-weight="700" text-anchor="middle">application</text>
+<rect x="1106.4" y="484" width="174.4" height="76" rx="8" fill="#2B3B7A" stroke="#4E62B8" stroke-width="1.5"/>
+<text x="1193.6000000000001" y="512" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="23" fill="#FFFFFF" font-weight="700" text-anchor="middle">Policy &amp;</text>
+<text x="1193.6000000000001" y="538" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="23" fill="#FFFFFF" font-weight="700" text-anchor="middle">credits</text>
+<rect x="1290.8" y="484" width="174.4" height="76" rx="8" fill="#2B3B7A" stroke="#4E62B8" stroke-width="1.5"/>
+<text x="1378.0" y="512" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="23" fill="#FFFFFF" font-weight="700" text-anchor="middle">Approval</text>
+<text x="1378.0" y="538" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="23" fill="#FFFFFF" font-weight="700" text-anchor="middle">workflow</text>
+<rect x="1475.2" y="484" width="174.4" height="76" rx="8" fill="#2B3B7A" stroke="#4E62B8" stroke-width="1.5"/>
+<text x="1562.4" y="512" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="23" fill="#FFFFFF" font-weight="700" text-anchor="middle">Login</text>
+<text x="1562.4" y="538" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="23" fill="#FFFFFF" font-weight="700" text-anchor="middle">security</text>
+<rect x="1659.6" y="484" width="174.4" height="76" rx="8" fill="#2B3B7A" stroke="#4E62B8" stroke-width="1.5"/>
+<text x="1746.8" y="512" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="23" fill="#FFFFFF" font-weight="700" text-anchor="middle">Audit, IDS</text>
+<text x="1746.8" y="538" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="23" fill="#FFFFFF" font-weight="700" text-anchor="middle">&amp; reports</text>
+<rect x="922" y="588" width="912" height="56" rx="10" fill="#2B3B7A" stroke="#3D50A0" stroke-width="1.5"/>
+<text x="944" y="624" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="25" fill="#FFFFFF" font-weight="700" text-anchor="start">Eloquent models</text>
+<text x="1182" y="624" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="22" fill="#AFC0EA" text-anchor="start">parameterized queries · locking transactions on balances</text>
+<rect x="922" y="658" width="912" height="140" rx="10" fill="#22307F" stroke="#3D50A0" stroke-width="1.5"/>
+<text x="940" y="688" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="21" fill="#CADCFC" font-weight="700" text-anchor="start" letter-spacing="1.1">DATA TIER  —  same host, database bound to localhost</text>
+<rect x="922.0" y="700" width="219.0" height="84" rx="8" fill="#CADCFC" stroke="#CADCFC" stroke-width="1.5"/>
+<text x="1031.5" y="727" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="21" fill="#1E2761" font-weight="700" text-anchor="middle">MySQL · leave data</text>
+<text x="1031.5" y="752" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="19" fill="#4A5680" text-anchor="middle">employees, leave,</text>
+<text x="1031.5" y="774" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="19" fill="#4A5680" text-anchor="middle">balances, approvals</text>
+<rect x="1153.0" y="700" width="219.0" height="84" rx="8" fill="#FBEDEA" stroke="#FBEDEA" stroke-width="1.5"/>
+<text x="1262.5" y="727" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="21" fill="#C43D2B" font-weight="700" text-anchor="middle">MySQL · security</text>
+<text x="1262.5" y="752" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="19" fill="#C43D2B" text-anchor="middle">audit, activity,</text>
+<text x="1262.5" y="774" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="19" fill="#C43D2B" text-anchor="middle">intrusion, blocks</text>
+<rect x="1384.0" y="700" width="219.0" height="84" rx="8" fill="#CADCFC" stroke="#CADCFC" stroke-width="1.5"/>
+<text x="1493.5" y="727" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="21" fill="#1E2761" font-weight="700" text-anchor="middle">File storage</text>
+<text x="1493.5" y="752" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="19" fill="#4A5680" text-anchor="middle">leave documents,</text>
+<text x="1493.5" y="774" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="19" fill="#4A5680" text-anchor="middle">exports, backups</text>
+<rect x="1615.0" y="700" width="219.0" height="84" rx="8" fill="#CADCFC" stroke="#CADCFC" stroke-width="1.5"/>
+<text x="1724.5" y="727" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="21" fill="#1E2761" font-weight="700" text-anchor="middle">Mail + scheduler</text>
+<text x="1724.5" y="752" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="19" fill="#4A5680" text-anchor="middle">OTP &amp; alert email,</text>
+<text x="1724.5" y="774" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="19" fill="#4A5680" text-anchor="middle">accrual jobs</text>
+<text x="1834" y="872" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="21" fill="#C43D2B" font-weight="700" text-anchor="end" letter-spacing="1.2">REAL-TIME INTRUSION ALERT PATH</text>
+<rect x="64.0" y="884" width="420.0" height="84" rx="10" fill="#FBEDEA" stroke="#E9BDB4" stroke-width="1.5"/>
+<text x="274.0" y="934" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="24" fill="#C43D2B" font-weight="700" text-anchor="middle">Email on high severity</text>
+<rect x="514.0" y="884" width="420.0" height="84" rx="10" fill="#FBEDEA" stroke="#E9BDB4" stroke-width="1.5"/>
+<text x="724.0" y="918" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="24" fill="#C43D2B" font-weight="700" text-anchor="middle">Admin dashboard refresh</text>
+<text x="724.0" y="946" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="21" fill="#C43D2B" text-anchor="middle">≤ 15 seconds</text>
+<rect x="964.0" y="884" width="420.0" height="84" rx="10" fill="#FBEDEA" stroke="#E9BDB4" stroke-width="1.5"/>
+<text x="1174.0" y="918" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="24" fill="#C43D2B" font-weight="700" text-anchor="middle">Logged, source blocked</text>
+<text x="1174.0" y="946" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="21" fill="#C43D2B" text-anchor="middle">intrusion + blocked IP</text>
+<rect x="1414.0" y="884" width="420.0" height="84" rx="10" fill="#FBEDEA" stroke="#E9BDB4" stroke-width="1.5"/>
+<text x="1624.0" y="918" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="24" fill="#C43D2B" font-weight="700" text-anchor="middle">Failed login / signature match</text>
+<text x="1624.0" y="946" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="21" fill="#C43D2B" text-anchor="middle">detected in the kernel</text>
+<line x1="510.0" y1="926" x2="488.0" y2="926" stroke="#C43D2B" stroke-width="3" marker-end="url(#ahr)"/>
+<line x1="960.0" y1="926" x2="938.0" y2="926" stroke="#C43D2B" stroke-width="3" marker-end="url(#ahr)"/>
+<line x1="1410.0" y1="926" x2="1388.0" y2="926" stroke="#C43D2B" stroke-width="3" marker-end="url(#ahr)"/>
+<line x1="274.0" y1="878" x2="274.0" y2="840" stroke="#C43D2B" stroke-width="3" marker-end="url(#ahr)"/>
+<text x="300.0" y="858" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="20" fill="#C43D2B" text-anchor="start">alerts reach the System Administrator</text>
+</svg>
