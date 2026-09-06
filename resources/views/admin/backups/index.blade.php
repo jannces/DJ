@@ -1,8 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Backups')
 @section('content')
-<h1 class="h4 mb-1">Backups</h1>
-<p class="text-muted mb-3">A backup holds the whole database and every uploaded document. Keep a copy somewhere other than this PC.</p>
+<h1 class="h4 mb-3">Backups</h1>
 
 @if (session('status'))
     <div class="alert alert-success">{{ session('status') }}</div>
