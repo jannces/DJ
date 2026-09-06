@@ -548,7 +548,6 @@
                 <div class="lf-f">
                     <label>Working days</label>
                     <div class="lf-fixed">Counted on submission</div>
-                    <span class="hint">Weekends and Philippine holidays are excluded.</span>
                 </div>
             </div>
 
