@@ -249,7 +249,14 @@ class SqlInjectionTest extends TestCase
                 $safe = preg_match($literal, $call[1], $m)
                     && ! str_contains($m[2], '$');
 
-                if (! $safe && ! str_contains($line, 'self::ASSIGNABLE')) {
+                // Two exemptions, both pinned by a test of their own below or
+                // above, so neither is a way to opt out of the rule:
+                //   self::ASSIGNABLE  a CASE ordering built from a constant
+                //   @sql-identifier   a table name, which SQL cannot bind
+                $exempt = str_contains($line, 'self::ASSIGNABLE')
+                    || str_contains($line, '@sql-identifier');
+
+                if (! $safe && ! $exempt) {
                     $offenders[] = basename($file).':'.($number + 1).'  '.trim($line);
                 }
             }
@@ -257,6 +264,61 @@ class SqlInjectionTest extends TestCase
 
         $this->assertSame([], $offenders,
             'these build raw SQL from a value; every value must be a binding');
+    }
+
+    /**
+     * The identifier exemption is held to its own rule.
+     *
+     * `@sql-identifier` exists because SQL genuinely cannot bind a table name
+     * -- it is part of the statement, not a value in it. That makes it a real
+     * exception and therefore an attractive place to hide a bad one, so every
+     * line carrying the marker must interpolate nothing but a variable that
+     * has been matched against a strict identifier pattern first.
+     */
+    public function test_the_identifier_exemption_is_validated_not_merely_marked(): void
+    {
+        $marked = [];
+
+        foreach ($this->phpFilesIn(app_path()) as $file) {
+            $lines = file($file);
+
+            foreach ($lines as $number => $line) {
+                if (! str_contains($line, '@sql-identifier')) {
+                    continue;
+                }
+
+                $marked[] = [$file, $number, $line, implode('', array_slice($lines, 0, $number))];
+            }
+        }
+
+        $this->assertNotEmpty($marked,
+            'the exemption is no longer used anywhere - remove it from the guard above');
+
+        foreach ($marked as [$file, $number, $line, $before]) {
+            $where = basename($file).':'.($number + 1);
+
+            // Inside the SQL string only. A variable on the left of the
+            // assignment is not going into the statement.
+            $this->assertMatchesRegularExpression('/"((?:\\\\.|[^"\\\\])*)"/', $line,
+                "{$where} carries the marker but no SQL string literal");
+            preg_match('/"((?:\\\\.|[^"\\\\])*)"/', $line, $sql);
+
+            // Exactly one interpolation, and nothing else dynamic.
+            preg_match_all('/\{?\$(\w+)/', $sql[1], $vars);
+            $this->assertCount(1, array_unique($vars[1]),
+                "{$where} interpolates more than one thing into raw SQL");
+
+            $var = $vars[1][0];
+
+            // And it was checked against an anchored identifier pattern in the
+            // same file, before this line.
+            $this->assertMatchesRegularExpression(
+                // `[^;\n]*` and not `[^)]*`: a cast such as `(string) $name`
+                // puts a bracket between the pattern and the variable.
+                '/preg_match\(\s*(self::[A-Z_]+|[\'"]\/\^\[[^\]]+\]\+\$\/[\'"])\s*,[^;\n]*\$'.$var.'/',
+                $before,
+                "{$where} interpolates \${$var} without matching it against an identifier pattern first");
+        }
     }
 
     /** Mass assignment is closed everywhere, so a stray field cannot ride in. */

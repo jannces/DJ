@@ -61,7 +61,13 @@ class BackupController extends Controller
         }
 
         if ($code !== 0) {
-            return back()->withErrors(['backup' => 'The backup command reported a failure. Check the logs.']);
+            // The command's own last line, not "check the logs". The one real
+            // failure this page has seen said exactly which table was missing,
+            // and that sentence was the whole diagnosis.
+            $said = trim((string) Artisan::output());
+            $said = $said === '' ? '' : ' '.trim((string) collect(explode("\n", $said))->last());
+
+            return back()->withErrors(['backup' => 'The backup did not complete.'.$said]);
         }
 
         $latest = $this->existing()->first();
