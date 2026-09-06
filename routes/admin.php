@@ -2,12 +2,14 @@
 
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\DeviceController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SecurityController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\MyAuditController;
 use Illuminate\Support\Facades\Route;
 
 // Notifications (any authenticated user)
@@ -83,6 +85,27 @@ Route::middleware('permission:security.intrusions')->group(function () {
 // Audit / activity logs
 Route::get('audit-logs', [AuditLogController::class, 'index'])->middleware('permission:audit.view')->name('audit.index');
 Route::get('activity-logs', [ActivityLogController::class, 'index'])->middleware('permission:activity.view')->name('activity.index');
+
+// A person's OWN audit trail: employee, HR, department head and Mayor alike.
+// Separate permission and separate controller from the whole log above -- the
+// scope comes from the session, and there is no id anywhere in this route for
+// anyone to change.
+Route::get('my-audit-log', [MyAuditController::class, 'index'])->middleware('permission:audit.view-own')->name('audit.mine');
+
+// Backups.
+//
+// The archive is a full database dump plus every uploaded document, so the
+// download route carries the same permission as creating one, and the file is
+// served from storage/ through the controller rather than from anywhere Apache
+// can reach. `{file}` is constrained here as well as validated in the
+// controller: a name that is not shaped like a backup never reaches PHP.
+Route::middleware('permission:backup.run')->group(function () {
+    Route::get('backups', [BackupController::class, 'index'])->name('backups.index');
+    Route::post('backups', [BackupController::class, 'store'])->name('backups.store');
+    Route::get('backups/{file}', [BackupController::class, 'download'])
+        ->where('file', 'lms_[0-9]{8}_[0-9]{6}\\.zip')
+        ->name('backups.download');
+});
 
 // System settings
 Route::middleware('permission:settings.manage')->group(function () {

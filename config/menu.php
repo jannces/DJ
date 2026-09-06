@@ -42,19 +42,40 @@ return [
     // thing a signature does here is go on the applicant's line of CSC Form
     // No. 6, so it belongs beside the applications it signs.
     ['label' => 'My Signature', 'icon' => 'bi-pen', 'route' => 'signature.edit', 'permission' => 'leave.view-own'],
+    // Everyone on the payroll can read their OWN audit trail -- employee, HR,
+    // department head and Mayor alike. Scoped to the signed-in user in the
+    // controller from the session, never from a parameter.
+    //
+    // Separate from the Administration entry, which is the whole log and stays
+    // behind audit.view. A system that argues for its own auditability should
+    // let the audited person see what was recorded about them; it should not
+    // let them see what was recorded about anybody else.
+    ['label' => 'My Audit Log', 'icon' => 'bi-journal-check', 'route' => 'audit.mine', 'permission' => 'audit.view-own'],
     // "My Balances" was removed: leave credits and credit history now live on the
     // employee dashboard (single location, one query path — see DashboardService).
+
+    // Everything above this line is a person's OWN leave. Everything below is
+    // somebody else's, which is why Leave Approvals and All Leave Requests
+    // moved down into HR Management: the Leave group is now what an ordinary
+    // employee sees and nothing more.
+    //
+    // One consequence worth knowing. The Mayor holds leave.requests.view-all
+    // and nothing else in this section, so the "HR Management" heading now
+    // appears in the Mayor's rail with a single entry under it. The heading
+    // loop hides a heading whose items are all invisible, so the section is
+    // never empty — but for the Mayor it is titled after HR while holding
+    // their oversight link.
+    ['heading' => 'HR Management'],
+
     // HR decides leave, and nobody else does. The Mayor oversees applications
-    // through All Leave Requests below and signs the printed form; a
-    // Department Head is notified when their staff file and reads the result
-    // on their dashboard. Neither has anything to act on, so neither gets this
+    // through All Leave Requests and signs the printed form; a Department Head
+    // is notified when their staff file and reads the result on their
+    // dashboard. Neither has anything to act on, so neither gets the approvals
     // entry — and the route behind it refuses them, so this is a tidy menu
     // rather than the security.
     ['label' => 'Leave Approvals', 'icon' => 'bi-clipboard-check', 'route' => 'review.index',
         'permission' => 'leave.approve.final'],
     ['label' => 'All Leave Requests', 'icon' => 'bi-collection', 'route' => 'leave.all', 'permission' => 'leave.requests.view-all'],
-
-    ['heading' => 'HR Management'],
     ['label' => 'Employees', 'icon' => 'bi-person-badge', 'route' => 'employees.index', 'permission' => 'employees.view'],
     ['label' => 'Departments', 'icon' => 'bi-diagram-3', 'route' => 'departments.index', 'permission' => 'departments.manage'],
     ['label' => 'Positions', 'icon' => 'bi-briefcase', 'route' => 'positions.index', 'permission' => 'positions.manage'],
@@ -77,5 +98,6 @@ return [
     ['label' => 'Intrusion Logs', 'icon' => 'bi-bug', 'route' => 'security.intrusions', 'permission' => 'security.intrusions'],
     ['label' => 'Audit Logs', 'icon' => 'bi-journal-text', 'route' => 'audit.index', 'permission' => 'audit.view'],
     ['label' => 'Activity Logs', 'icon' => 'bi-clock-history', 'route' => 'activity.index', 'permission' => 'activity.view'],
+    ['label' => 'Backups', 'icon' => 'bi-archive', 'route' => 'backups.index', 'permission' => 'backup.run'],
     ['label' => 'System Settings', 'icon' => 'bi-gear', 'route' => 'settings.index', 'permission' => 'settings.manage'],
 ];

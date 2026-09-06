@@ -31,6 +31,13 @@ class RolePermissionSeeder extends Seeder
         'security.intrusions' => ['View intrusion logs', 'security'],
         'audit.view' => ['View audit logs', 'audit'],
         'activity.view' => ['View activity logs', 'audit'],
+        // Own trail only. Deliberately a separate permission from
+        // audit.view rather than a weaker version of it: one is the whole
+        // log, the other is the holder's own rows, and a role that gains
+        // the first should not silently gain the second's scope or the
+        // reverse.
+        'audit.view-own' => ['View own audit trail', 'audit'],
+        'backup.run' => ['Create and download system backups', 'settings'],
 
         'employees.view' => ['View employee records', 'employees'],
         'employees.manage' => ['Create/update/archive employees', 'employees'],
@@ -68,6 +75,10 @@ class RolePermissionSeeder extends Seeder
      */
     private const EMPLOYEE_BASELINE = [
         'dashboard.view', 'leave.apply', 'leave.view-own', 'leave.cancel',
+        // Everyone the system audits can read their own trail. It is in the
+        // baseline rather than granted per role so that a role added later
+        // cannot end up audited but unable to see it.
+        'audit.view-own',
     ];
 
     public function run(): void
@@ -161,7 +172,7 @@ class RolePermissionSeeder extends Seeder
             'dashboard.view', 'users.manage', 'users.block', 'users.reset-password',
             'users.assign-roles', 'users.history', 'rbac.manage', 'settings.manage',
             'devices.manage', 'security.dashboard', 'security.blocked-ips',
-            'security.intrusions', 'audit.view', 'activity.view',
+            'security.intrusions', 'audit.view', 'activity.view', 'backup.run',
             'reports.generate', 'reports.security',
         ]);
 
