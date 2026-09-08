@@ -139,13 +139,21 @@ class LeaveTypeSeeder extends Seeder
             [
                 'code' => 'VAWC', 'name' => '10-Day VAWC Leave', 'category' => 'special',
                 'max_days' => 10, 'deductible' => false, 'credit_source' => null,
-                'detail_schema' => [],
+                'detail_schema' => [
+                    // RA 9262 sec. 43 grants ten days "extendible when the
+                    // necessity arises AS SPECIFIED IN THE PROTECTION ORDER".
+                    // The extension is not open-ended: it is whatever the order
+                    // says, which is why the number is asked for and the order
+                    // is already a required document.
+                    ['name' => 'extension_days', 'label' => 'Additional days specified in a protection order',
+                        'type' => 'number', 'required' => false],
+                ],
                 'required_documents' => [
                     ['type' => 'vawc_document', 'label' => 'Barangay Protection Order / Court Order / Medical Certificate / Police Report',
                         'rule' => 'always'],
                 ],
                 'approval_flow' => $hrMayorFlow, 'annual_reset' => true,
-                'description' => 'Ten (10) days per RA 9262 with any qualifying supporting document.',
+                'description' => 'Ten (10) working days per RA 9262, separate from all other leave and not deducted from credits. Extendible only by the number of days a protection order specifies.',
             ],
             [
                 'code' => 'RL', 'name' => 'Rehabilitation Privilege Leave', 'category' => 'special',

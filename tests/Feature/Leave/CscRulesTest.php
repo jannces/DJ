@@ -225,17 +225,73 @@ class CscRulesTest extends TestCase
         $this->assertSame(5.0, (float) $request->working_days);
     }
 
+    // ------------------------------------------------------------------ VAWC
+
+    /** Ten working days, with no protection order in play. */
+    public function test_vawc_leave_stops_at_ten_days_by_default(): void
+    {
+        try {
+            $this->submit($this->applicant(), 'VAWC', [
+                'start_date' => '2026-01-05',
+                'end_date' => '2026-01-19',   // 11 working days
+                'date_filed' => '2026-01-05',
+                'details' => [],
+            ]);
+            $this->fail('11 days was accepted with no protection order');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('10 day', implode(' ', $e->errors()['policy'] ?? []));
+        }
+    }
+
     /**
-     * Paternity and calamity leave are counted in WORKING days.
+     * And longer when a protection order specifies it.
      *
-     * Both circulars say so in as many words -- "seven (7) working days"
-     * (Sec. 19, CSC MC 5 s.2021) and "five straight working days" (CSC MC 2
-     * s.2012 item 2) -- and both were candidates for the calendar-day change.
-     * Pinned so that change cannot creep onto them later.
+     * RA 9262 sec. 43 makes the ten days "extendible when the necessity arises
+     * as specified in the protection order". A hard ten refused a longer leave
+     * a court had already ordered -- the same shape of error as the flat 105
+     * that refused a solo parent her fifteen days.
+     */
+    public function test_a_protection_order_extends_vawc_leave(): void
+    {
+        $request = $this->submit($this->applicant(), 'VAWC', [
+            'start_date' => '2026-01-05',
+            'end_date' => '2026-01-19',   // 11 working days
+            'date_filed' => '2026-01-05',
+            'details' => ['extension_days' => 5],
+        ]);
+
+        $this->assertSame(11.0, (float) $request->working_days);
+    }
+
+    /** The extension is the number the order gives, not an open door. */
+    public function test_the_vawc_extension_is_bounded_by_what_the_order_says(): void
+    {
+        try {
+            $this->submit($this->applicant(), 'VAWC', [
+                'start_date' => '2026-01-05',
+                'end_date' => '2026-02-02',   // 21 working days
+                'date_filed' => '2026-01-05',
+                'details' => ['extension_days' => 5],   // ceiling is 15
+            ]);
+            $this->fail('21 days was accepted against an order specifying 5 extra');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('15 day', implode(' ', $e->errors()['policy'] ?? []));
+        }
+    }
+
+    /**
+     * Paternity, calamity and VAWC leave are counted in WORKING days.
+     *
+     * All three say so -- "seven (7) working days" (Sec. 19, CSC MC 5
+     * s.2021), "five straight working days" (CSC MC 2 s.2012 item 2), and ten
+     * working days under RA 9262, which applies "only to working days,
+     * excluding weekends, regular holidays, and special non-working days".
+     * All three were candidates for the calendar-day change and all three were
+     * correctly left alone; pinned so it cannot creep onto them later.
      */
     public function test_paternity_and_calamity_leave_stay_in_working_days(): void
     {
-        foreach (['PL', 'SEL'] as $code) {
+        foreach (['PL', 'SEL', 'VAWC'] as $code) {
             $this->assertFalse(
                 (bool) LeaveType::where('code', $code)->firstOrFail()->counts_calendar_days,
                 "{$code} was switched to calendar days; both circulars say working days");

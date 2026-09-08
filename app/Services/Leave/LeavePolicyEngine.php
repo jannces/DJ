@@ -105,6 +105,24 @@ class LeavePolicyEngine
      */
     private function ceiling(LeaveType $type, array $input, ?\App\Models\User $applicant): array
     {
+        // RA 9262 sec. 43: ten days "extendible when the necessity arises as
+        // specified in the protection order". A hard ten refused a longer
+        // leave a court had already ordered -- the same shape of error as the
+        // flat 105 that refused a solo parent her fifteen days.
+        //
+        // Extendible, not unlimited: the extension is the number the order
+        // specifies, the order is a required document on this type, and HR
+        // sees both before approving.
+        if ($type->code === 'VAWC') {
+            $extra = max(0.0, (float) ($input['details']['extension_days'] ?? 0));
+            $base = $type->max_days === null ? 10.0 : (float) $type->max_days;
+
+            return $extra > 0
+                ? [$base + $extra, sprintf(' (%s plus %s specified in the protection order)',
+                    $this->plain($base), $this->plain($extra))]
+                : [$base, ''];
+        }
+
         if ($type->code !== 'ML') {
             return [$type->max_days === null ? null : (float) $type->max_days, ''];
         }

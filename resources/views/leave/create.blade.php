@@ -45,7 +45,7 @@
     // Codes the sheet prints a 6.B block for. Anything else — an admin-added
     // type — falls through to the catch-all block, so no field is ever hidden
     // with no way to reach it.
-    $known = ['VL', 'FL', 'SPL', 'SL', 'SLBW', 'STL', 'ML', 'RL', 'SEL', 'MON', 'TL'];
+    $known = ['VL', 'FL', 'SPL', 'SL', 'SLBW', 'STL', 'ML', 'RL', 'SEL', 'MON', 'TL', 'VAWC'];
     $chosen = (array) old('leave_type_id', []);
 
     /**
@@ -496,6 +496,23 @@
                         <label for="declaration_date">First day of calamity declaration <span class="req">*</span></label>
                         <input id="declaration_date" type="date" name="details[declaration_date]"
                                class="form-control" value="{{ old('details.declaration_date') }}">
+                    </div>
+                </div>
+            </div>
+
+            <div class="lf-grp lf-grp-vawc">
+                <div class="lf-g">
+                    {{-- Left blank for the ordinary ten days. RA 9262 sec. 43
+                         makes the leave "extendible when the necessity arises
+                         as specified in the protection order", so the extension
+                         is whatever that order says and not a number chosen
+                         here -- the order itself is already required below. --}}
+                    <div class="lf-f">
+                        <label for="extension_days">Additional days specified in a protection order</label>
+                        <input id="extension_days" type="number" min="0" step="1"
+                               name="details[extension_days]" class="form-control"
+                               value="{{ old('details.extension_days') }}"
+                               placeholder="Leave blank for the standard 10 days">
                     </div>
                 </div>
             </div>

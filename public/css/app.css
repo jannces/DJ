@@ -1913,6 +1913,7 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
 #lf-form:has(#lf-type option[data-code="ML"]:checked)   .lf-grp-ml,
 #lf-form:has(#lf-type option[data-code="RL"]:checked)   .lf-grp-rl,
 #lf-form:has(#lf-type option[data-code="SEL"]:checked)  .lf-grp-sel,
+#lf-form:has(#lf-type option[data-code="VAWC"]:checked) .lf-grp-vawc,
 #lf-form:has(#lf-type option[data-code="MON"]:checked)  .lf-grp-mon,
 #lf-form:has(#lf-type option[data-code="TL"]:checked)   .lf-grp-tl,
 #lf-form:has(#lf-type option[value=""]:checked)         .lf-grp-none,
