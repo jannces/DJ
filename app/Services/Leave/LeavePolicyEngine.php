@@ -16,10 +16,20 @@ class LeavePolicyEngine
     /**
      * @return array{errors: array<string>, warnings: array<string>, requires_late_reason: bool}
      */
-    public function validate(LeaveType $type, array $input, float $workingDays, Carbon $startDate, Carbon $dateFiled): array
-    {
+    public function validate(
+        LeaveType $type,
+        array $input,
+        float $workingDays,
+        Carbon $startDate,
+        Carbon $dateFiled,
+        float|int|string|null $sourceBalance = null,
+    ): array {
         $errors = [];
         $warnings = [];
+
+        foreach ($this->creditRules($type, $workingDays, $sourceBalance) as $error) {
+            $errors[] = $error;
+        }
 
         // Detail-of-leave required fields
         foreach ($type->detail_schema ?? [] as $field) {
@@ -65,6 +75,75 @@ class LeavePolicyEngine
         }
 
         return ['errors' => $errors, 'warnings' => $warnings, 'requires_late_reason' => $requiresLateReason];
+    }
+
+    /**
+     * The two Omnibus rules that depend on how many credits the employee has.
+     *
+     * Both were missing, and both are the kind a panel checks by hand because
+     * they are arithmetic on a number the screen already shows.
+     *
+     * Monetization (CSC MC 41 s.1998 as amended): at least ten days may be
+     * monetized, and at least fifteen vacation-leave days must remain
+     * afterwards. Neither was enforced -- monetization was an ordinary
+     * deductible type with no floor, so an employee could convert their whole
+     * balance down to nothing.
+     *
+     * Mandatory/Forced Leave (same circular, sec. 25): the five-day obligation
+     * applies to employees who have accumulated ten or more vacation-leave
+     * credits. Below that they are not required to go on it, and charging five
+     * days against a balance that small is how somebody ends up unable to take
+     * sick leave later in the year.
+     *
+     * Both thresholds are settings, because a circular can change them and
+     * that should not need a developer.
+     *
+     * @return list<string>
+     */
+    private function creditRules(LeaveType $type, float $days, float|int|string|null $sourceBalance): array
+    {
+        // Nothing to check when the caller could not supply a balance, which
+        // is every non-deductible type.
+        if ($sourceBalance === null) {
+            return [];
+        }
+
+        $balance = (float) $sourceBalance;
+        $errors = [];
+
+        if ($type->category === 'monetization') {
+            $minimum = (float) SystemSetting::get('leave.monetization_min_days', 10);
+            $retain = (float) SystemSetting::get('leave.monetization_retain_days', 15);
+
+            if ($days < $minimum) {
+                $errors[] = sprintf('Monetization is for at least %s day(s) at a time; you asked for %s.',
+                    $this->plain($minimum), $this->plain($days));
+            }
+
+            if ($balance - $days < $retain) {
+                $errors[] = sprintf(
+                    'At least %s vacation leave day(s) must remain after monetizing. You have %s and asked to convert %s, which would leave %s.',
+                    $this->plain($retain), $this->plain($balance), $this->plain($days), $this->plain($balance - $days));
+            }
+        }
+
+        if ($type->code === 'FL') {
+            $required = (float) SystemSetting::get('leave.forced_leave_min_vl', 10);
+
+            if ($balance < $required) {
+                $errors[] = sprintf(
+                    'Mandatory leave applies to employees with at least %s vacation leave credits; you have %s, so you are exempt from it this year.',
+                    $this->plain($required), $this->plain($balance));
+            }
+        }
+
+        return $errors;
+    }
+
+    /** 10.00 reads as 10, 2.50 as 2.5. These numbers are shown to people. */
+    private function plain(float $n): string
+    {
+        return rtrim(rtrim(number_format($n, 2, '.', ''), '0'), '.');
     }
 
     /**

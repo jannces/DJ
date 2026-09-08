@@ -65,7 +65,7 @@ class LeaveTypeSeeder extends Seeder
             ],
             [
                 'code' => 'ML', 'name' => 'Maternity Leave', 'category' => 'special',
-                'max_days' => 105, 'deductible' => false, 'credit_source' => null,
+                'max_days' => 105, 'deductible' => false, 'credit_source' => null, 'counts_calendar_days' => true,
                 'detail_schema' => [
                     ['name' => 'expected_delivery', 'label' => 'Expected/Actual date of delivery', 'type' => 'date', 'required' => true],
                     ['name' => 'extension', 'label' => 'Availing additional extension (RA 11210)', 'type' => 'checkbox', 'required' => false],
@@ -114,7 +114,7 @@ class LeaveTypeSeeder extends Seeder
             ],
             [
                 'code' => 'STL', 'name' => 'Study Leave', 'category' => 'special',
-                'max_days' => 180, 'deductible' => false, 'credit_source' => null,
+                'max_days' => 180, 'deductible' => false, 'credit_source' => null, 'counts_calendar_days' => true,
                 'detail_schema' => [
                     ['name' => 'purpose', 'label' => 'Purpose', 'type' => 'radio', 'required' => true,
                         'options' => [
@@ -144,7 +144,7 @@ class LeaveTypeSeeder extends Seeder
             ],
             [
                 'code' => 'RL', 'name' => 'Rehabilitation Privilege Leave', 'category' => 'special',
-                'max_days' => 180, 'deductible' => false, 'credit_source' => null,
+                'max_days' => 180, 'deductible' => false, 'credit_source' => null, 'counts_calendar_days' => true,
                 'detail_schema' => [
                     ['name' => 'accident_details', 'label' => 'Details of work-related accident', 'type' => 'textarea', 'required' => true],
                 ],
@@ -158,7 +158,7 @@ class LeaveTypeSeeder extends Seeder
             ],
             [
                 'code' => 'SLBW', 'name' => 'Special Leave Benefits for Women', 'category' => 'special',
-                'max_days' => 60, 'deductible' => false, 'credit_source' => null,
+                'max_days' => 60, 'deductible' => false, 'credit_source' => null, 'counts_calendar_days' => true,
                 'detail_schema' => [
                     ['name' => 'illness', 'label' => 'Gynecological illness', 'type' => 'text', 'required' => true],
                     ['name' => 'surgery_details', 'label' => 'Surgery details', 'type' => 'textarea', 'required' => true],
@@ -213,7 +213,7 @@ class LeaveTypeSeeder extends Seeder
             ],
             [
                 'code' => 'AL', 'name' => 'Adoption Leave', 'category' => 'special',
-                'max_days' => 60, 'deductible' => false, 'credit_source' => null,
+                'max_days' => 60, 'deductible' => false, 'credit_source' => null, 'counts_calendar_days' => true,
                 'detail_schema' => [],
                 'required_documents' => [
                     ['type' => 'papa_document', 'label' => 'Pre-Adoption Placement Authority (PAPA)', 'rule' => 'always'],

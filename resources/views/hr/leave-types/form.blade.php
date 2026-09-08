@@ -32,6 +32,12 @@
         </div></div></div>
         <div class="col-lg-4"><div class="card"><div class="card-body">
             <div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="deductible" value="1" id="ded" @checked(old('deductible',$type->deductible))><label class="form-check-label" for="ded">Deductible from credits</label></div>
+            {{-- Which unit the entitlement is counted in. Maternity leave is
+                 105 days under RA 11210 and those are calendar days; counting
+                 them as working days would stretch 105 into about 147. Editable
+                 here because which types are which is a question about the
+                 circulars, not about this system. --}}
+            <div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="counts_calendar_days" value="1" id="cal" @checked(old('counts_calendar_days',$type->counts_calendar_days))><label class="form-check-label" for="cal">Counted in calendar days (weekends and holidays included)</label></div>
             <div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="deadline_is_hard" value="1" id="hard" @checked(old('deadline_is_hard',$type->deadline_is_hard))><label class="form-check-label" for="hard">Filing deadline is a hard rule (blocks)</label></div>
             <div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="annual_reset" value="1" id="ar" @checked(old('annual_reset',$type->annual_reset))><label class="form-check-label" for="ar">Resets annually</label></div>
             <div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="active" value="1" id="act" @checked(old('active',$type->active ?? true))><label class="form-check-label" for="act">Active</label></div>

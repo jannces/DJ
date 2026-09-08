@@ -36,15 +36,39 @@ class LeaveApplicationService
         $start = Carbon::parse($data['start_date']);
         $end = Carbon::parse($data['end_date']);
         $dateFiled = Carbon::parse($data['date_filed'] ?? now());
-        $workingDays = $this->calculator->count($start, $end);
+        // In the unit this type is granted in: working days for Vacation, Sick,
+        // Forced and Special Privilege Leave; calendar days for the statutory
+        // entitlements written as a span of time, such as maternity's 105.
+        $workingDays = $this->calculator->countFor($type, $start, $end);
+
+        // Monetization is not an absence. What it converts is a number of
+        // credits the employee names, and the dates on the form are only the
+        // period it is claimed against -- so the day count comes from the
+        // field they filled in, not from the calendar. It used to come from
+        // the range, which meant the "Number of days to monetize" answer was
+        // collected, shown, and then ignored by the deduction.
+        if ($type->category === 'monetization') {
+            $workingDays = (float) ($data['details']['days_to_monetize'] ?? 0);
+
+            if ($workingDays <= 0) {
+                throw ValidationException::withMessages([
+                    'details.days_to_monetize' => 'Enter how many leave credits to monetize.',
+                ]);
+            }
+        }
 
         if ($workingDays <= 0) {
             throw ValidationException::withMessages([
-                'end_date' => 'The selected range contains no working days (weekends and holidays are excluded).',
+                'end_date' => $type->counts_calendar_days
+                    ? 'The selected range contains no days.'
+                    : 'The selected range contains no working days (weekends and holidays are excluded).',
             ]);
         }
 
-        $result = $this->policy->validate($type, $data, $workingDays, $start, $dateFiled);
+        $result = $this->policy->validate(
+            $type, $data, $workingDays, $start, $dateFiled,
+            $this->credits->sourceBalance($user, $type)?->balance,
+        );
         if ($result['errors']) {
             throw ValidationException::withMessages(['policy' => $result['errors']]);
         }
