@@ -72,7 +72,7 @@ class CscRulesTest extends TestCase
             'start_date' => $start->toDateString(),
             'end_date' => $start->copy()->addDays(104)->toDateString(), // 105 calendar days
             'date_filed' => $start->copy()->subMonth()->toDateString(),
-            'details' => ['expected_delivery' => $start->toDateString()],
+            'details' => ['delivery_type' => 'live', 'expected_delivery' => $start->toDateString()],
         ]);
 
         $this->assertSame(105.0, (float) $request->working_days,
@@ -91,7 +91,7 @@ class CscRulesTest extends TestCase
             'start_date' => $start->toDateString(),
             'end_date' => $start->copy()->addDays(105)->toDateString(), // 106
             'date_filed' => $start->copy()->subMonth()->toDateString(),
-            'details' => ['expected_delivery' => $start->toDateString()],
+            'details' => ['delivery_type' => 'live', 'expected_delivery' => $start->toDateString()],
         ]);
     }
 
@@ -115,6 +115,131 @@ class CscRulesTest extends TestCase
 
         $this->assertSame(6.0, (float) $request->working_days,
             'vacation leave is no longer excluding weekends');
+    }
+
+    /**
+     * A solo parent gets 120, not 105.
+     *
+     * The 15-day additional maternity benefit under the Solo Parents' Welfare
+     * Act sits on top of the 105 (Rule I item 15, CSC MC 5 s.2021). A flat 105
+     * ceiling refused the days the law gives her.
+     */
+    public function test_a_solo_parent_may_take_the_additional_fifteen_days(): void
+    {
+        $user = $this->applicant();
+        $user->employeeProfile->update(['is_solo_parent' => true]);
+        $start = Carbon::parse('2026-01-05');
+
+        $request = $this->submit($user->refresh(), 'ML', [
+            'start_date' => $start->toDateString(),
+            'end_date' => $start->copy()->addDays(119)->toDateString(), // 120
+            'date_filed' => $start->copy()->subMonth()->toDateString(),
+            'details' => ['delivery_type' => 'live', 'expected_delivery' => $start->toDateString()],
+        ]);
+
+        $this->assertSame(120.0, (float) $request->working_days);
+    }
+
+    /** And an employee who is not a solo parent still stops at 105. */
+    public function test_120_days_is_refused_without_solo_parent_status(): void
+    {
+        $start = Carbon::parse('2026-01-05');
+
+        $this->expectException(ValidationException::class);
+
+        $this->submit($this->applicant(), 'ML', [
+            'start_date' => $start->toDateString(),
+            'end_date' => $start->copy()->addDays(119)->toDateString(),
+            'date_filed' => $start->copy()->subMonth()->toDateString(),
+            'details' => ['delivery_type' => 'live', 'expected_delivery' => $start->toDateString()],
+        ]);
+    }
+
+    /**
+     * Miscarriage or emergency termination is 60 days, not 105.
+     *
+     * Sec. 11 gives the shorter entitlement for that contingency. Without the
+     * distinction a claim for it could run to 105.
+     */
+    public function test_a_miscarriage_claim_stops_at_sixty_days(): void
+    {
+        $start = Carbon::parse('2026-01-05');
+
+        try {
+            $this->submit($this->applicant(), 'ML', [
+                'start_date' => $start->toDateString(),
+                'end_date' => $start->copy()->addDays(60)->toDateString(), // 61
+                'date_filed' => $start->copy()->subMonth()->toDateString(),
+                'details' => ['delivery_type' => 'miscarriage', 'expected_delivery' => $start->toDateString()],
+            ]);
+            $this->fail('61 days was accepted for a miscarriage; the ceiling is 60');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('60 day', implode(' ', $e->errors()['policy'] ?? []));
+        }
+    }
+
+    // ----------------------------------------------- special emergency leave
+
+    /**
+     * Calamity leave must be availed within 30 days of the declaration.
+     *
+     * CSC MC 2 s.2012 item 4. Nothing enforced the window, and nothing asked
+     * for the declaration date either, so it could not have been checked by
+     * hand.
+     */
+    public function test_calamity_leave_outside_the_thirty_day_window_is_refused(): void
+    {
+        try {
+            $this->submit($this->applicant(), 'SEL', [
+                'start_date' => '2026-03-01',
+                'end_date' => '2026-03-05',
+                'date_filed' => '2026-03-01',
+                'details' => [
+                    'calamity' => 'Typhoon',
+                    'declaration_date' => '2026-01-10',   // 50 days earlier
+                    'calamity_area' => 'Alicia, Isabela',
+                ],
+            ]);
+            $this->fail('calamity leave was accepted 50 days after the declaration');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('within 30 days', implode(' ', $e->errors()['policy'] ?? []));
+        }
+    }
+
+    /** Inside the window it goes through, in working days and free of credits. */
+    public function test_calamity_leave_inside_the_window_is_accepted(): void
+    {
+        $request = $this->submit($this->applicant(), 'SEL', [
+            'start_date' => '2026-01-19',
+            'end_date' => '2026-01-23',
+            'date_filed' => '2026-01-19',
+            'details' => [
+                'calamity' => 'Typhoon',
+                'declaration_date' => '2026-01-10',
+                'calamity_area' => 'Alicia, Isabela',
+            ],
+        ]);
+
+        // Monday to Friday: five working days, which is what the circular
+        // grants -- "five straight working days or on staggered basis".
+        $this->assertSame(5.0, (float) $request->working_days);
+    }
+
+    /**
+     * Paternity and calamity leave are counted in WORKING days.
+     *
+     * Both circulars say so in as many words -- "seven (7) working days"
+     * (Sec. 19, CSC MC 5 s.2021) and "five straight working days" (CSC MC 2
+     * s.2012 item 2) -- and both were candidates for the calendar-day change.
+     * Pinned so that change cannot creep onto them later.
+     */
+    public function test_paternity_and_calamity_leave_stay_in_working_days(): void
+    {
+        foreach (['PL', 'SEL'] as $code) {
+            $this->assertFalse(
+                (bool) LeaveType::where('code', $code)->firstOrFail()->counts_calendar_days,
+                "{$code} was switched to calendar days; both circulars say working days");
+        }
     }
 
     // -------------------------------------------------------- monetization

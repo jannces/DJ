@@ -68,6 +68,7 @@ class LeaveApplicationService
         $result = $this->policy->validate(
             $type, $data, $workingDays, $start, $dateFiled,
             $this->credits->sourceBalance($user, $type)?->balance,
+            $user,
         );
         if ($result['errors']) {
             throw ValidationException::withMessages(['policy' => $result['errors']]);

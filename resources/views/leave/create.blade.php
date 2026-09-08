@@ -436,6 +436,19 @@
 
             <div class="lf-grp lf-grp-ml">
                 <div class="lf-g lf-g2">
+                    {{-- First, because it decides the ceiling for everything
+                         below it: 105 days for live childbirth (120 for a solo
+                         parent) and 60 for miscarriage or emergency
+                         termination -- Sec. 11, CSC MC 5 s.2021. --}}
+                    <div class="lf-f">
+                        <label>Contingency <span class="req">*</span></label>
+                        <div class="lf-seg">
+                            <label><input type="radio" name="details[delivery_type]" value="live"
+                                @checked(old('details.delivery_type', 'live') === 'live')>Live childbirth</label>
+                            <label><input type="radio" name="details[delivery_type]" value="miscarriage"
+                                @checked(old('details.delivery_type') === 'miscarriage')>Miscarriage / emergency termination</label>
+                        </div>
+                    </div>
                     <div class="lf-f">
                         <label for="expected_delivery">Expected / actual date of delivery <span class="req">*</span></label>
                         <input id="expected_delivery" type="date" name="details[expected_delivery]"
@@ -474,6 +487,15 @@
                         <input id="calamity_area" type="text" name="details[calamity_area]"
                                class="form-control" value="{{ old('details.calamity_area') }}"
                                placeholder="Must match your residence">
+                    </div>
+                    {{-- The leave must be availed within 30 days of this date
+                         (CSC MC 2 s.2012, item 4). Without asking for it the
+                         window could not be checked at all, by the system or
+                         by the person approving. --}}
+                    <div class="lf-f">
+                        <label for="declaration_date">First day of calamity declaration <span class="req">*</span></label>
+                        <input id="declaration_date" type="date" name="details[declaration_date]"
+                               class="form-control" value="{{ old('details.declaration_date') }}">
                     </div>
                 </div>
             </div>
