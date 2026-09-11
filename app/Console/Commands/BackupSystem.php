@@ -38,13 +38,35 @@ class BackupSystem extends Command
 
     public function handle(): int
     {
+        // Before anything else, and separately from the dump, because a
+        // database that is not running is not a dump failure -- it is the one
+        // thing this command cannot work around, and it has a one-sentence fix.
+        //
+        // Without this the run said "mysqldump failed; using the portable dump
+        // instead" (true, and misleading -- mysqldump failed because there was
+        // nothing to connect to) and then threw a QueryException with a stack
+        // trace. Two screens of Laravel internals for "MySQL is not running".
+        if (($problem = $this->databaseProblem()) !== null) {
+            $this->error($problem);
+
+            return self::FAILURE;
+        }
+
         $dir = $this->option('path') ?: storage_path('app/backups');
         File::ensureDirectoryExists($dir);
         $stamp = now()->format('Ymd_His');
         $sqlPath = "{$dir}/db_{$stamp}.sql";
 
         $this->info('Dumping database…');
-        $this->dumpDatabase($sqlPath);
+
+        try {
+            $this->dumpDatabase($sqlPath);
+        } catch (\Throwable $e) {
+            @unlink($sqlPath);
+            $this->error('The dump failed: '.$e->getMessage());
+
+            return self::FAILURE;
+        }
 
         if (! is_file($sqlPath) || filesize($sqlPath) === 0) {
             $this->error('The dump produced no data. No archive was written.');
@@ -71,6 +93,42 @@ class BackupSystem extends Command
         $this->info("Backup created: {$zipPath} (".round(filesize($zipPath) / 1024, 1).' KB)');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Why the database cannot be reached, in one line, or null if it can.
+     *
+     * One line on purpose: BackupController shows the command's last output
+     * line on the Backups page, so this has to be the whole diagnosis and the
+     * fix together, readable by whoever pressed the button.
+     */
+    private function databaseProblem(): ?string
+    {
+        try {
+            DB::connection()->getPdo();
+
+            return null;
+        } catch (\Throwable $e) {
+            $config = DB::connection()->getConfig();
+            $where = ($config['host'] ?? '?').':'.($config['port'] ?? '?');
+
+            // 2002 is "nothing answered on that socket". On a XAMPP box that
+            // is almost always MySQL simply not started, so say that rather
+            // than repeating the driver's wording back at them.
+            if (str_contains($e->getMessage(), '[2002]')) {
+                return "Cannot reach the database at {$where} - MySQL is not running. "
+                    .'Start MySQL in the XAMPP Control Panel and try again. '
+                    ."(If MySQL IS running, check that DB_PORT in .env matches the port it uses; XAMPP moves to 3307 when 3306 is taken.)";
+            }
+
+            // 1045 is the other common one: it answered and refused us.
+            if (str_contains($e->getMessage(), '[1045]')) {
+                return "The database at {$where} refused the username or password in .env "
+                    .'(DB_USERNAME / DB_PASSWORD).';
+            }
+
+            return "Cannot reach the database at {$where}: ".$e->getMessage();
+        }
     }
 
     private function dumpDatabase(string $path): void
