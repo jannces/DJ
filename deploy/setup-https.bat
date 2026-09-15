@@ -162,11 +162,11 @@ REM
 REM Three, because the reason to keep any is to undo a run that went wrong, and
 REM nobody has ever needed the twelfth-most-recent one. Sorted by write time
 REM rather than by name so a clock change cannot pick the wrong ones.
-powershell -NoProfile -Command "try { Get-ChildItem -Path '%ROOT%' -Filter '.env.backup-*' -File -Force | Sort-Object LastWriteTime -Descending | Select-Object -Skip 3 | Remove-Item -Force -ErrorAction SilentlyContinue } catch {}"
+powershell -NoProfile -Command "try { Get-ChildItem -Path '%ROOT%' -File -Force | Where-Object { $_.Name -like '.env.backup-*' } | Sort-Object LastWriteTime -Descending | Select-Object -Skip 3 | Remove-Item -Force -ErrorAction SilentlyContinue } catch {}"
 
 set OLDENV=
 del "%TEMP%\lms-envcount.txt" 2>nul
-powershell -NoProfile -Command "@(Get-ChildItem -Path '%ROOT%' -Filter '.env.backup-*' -File -Force).Count" > "%TEMP%\lms-envcount.txt" 2>nul
+powershell -NoProfile -Command "@(Get-ChildItem -Path '%ROOT%' -File -Force | Where-Object { $_.Name -like '.env.backup-*' }).Count" > "%TEMP%\lms-envcount.txt" 2>nul
 if exist "%TEMP%\lms-envcount.txt" for /f "usebackq delims=" %%n in ("%TEMP%\lms-envcount.txt") do set OLDENV=%%n
 del "%TEMP%\lms-envcount.txt" 2>nul
 if not "%OLDENV%"=="" echo       %OLDENV% .env backup(s) kept; older ones removed.

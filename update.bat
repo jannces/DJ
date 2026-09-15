@@ -38,7 +38,7 @@ REM kept: enough to undo a setup run that went wrong, and nobody has ever
 REM wanted the twelfth-most-recent.
 set PRUNED=
 del "%TEMP%\lms-envprune.txt" 2>nul
-powershell -NoProfile -Command "$f=@(Get-ChildItem -Path '%CD%' -Filter '.env.backup-*' -File -Force | Sort-Object LastWriteTime -Descending); if ($f.Count -gt 3) { $f | Select-Object -Skip 3 | Remove-Item -Force -ErrorAction SilentlyContinue; $f.Count - 3 } else { 0 }" > "%TEMP%\lms-envprune.txt" 2>nul
+powershell -NoProfile -Command "$f=@(Get-ChildItem -Path '%CD%' -File -Force | Where-Object { $_.Name -like '.env.backup-*' } | Sort-Object LastWriteTime -Descending); if ($f.Count -gt 3) { $f | Select-Object -Skip 3 | Remove-Item -Force -ErrorAction SilentlyContinue; $f.Count - 3 } else { 0 }" > "%TEMP%\lms-envprune.txt" 2>nul
 if exist "%TEMP%\lms-envprune.txt" for /f "usebackq delims=" %%n in ("%TEMP%\lms-envprune.txt") do set PRUNED=%%n
 del "%TEMP%\lms-envprune.txt" 2>nul
 if not "%PRUNED%"=="" if not "%PRUNED%"=="0" (

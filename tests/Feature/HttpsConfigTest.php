@@ -618,7 +618,12 @@ class HttpsConfigTest extends TestCase
 
             $this->assertStringContainsString('Select-Object -Skip 3', $script,
                 "{$path} does not prune old .env backups, so they accumulate unread");
-            $this->assertStringContainsString("Filter '.env.backup-*'", $script);
+            // Matched on the real filename, not with -Filter. -Filter is
+            // handed to the filesystem, which also matches 8.3 short names --
+            // doubt you do not want on a line that deletes things.
+            $this->assertStringContainsString("\$_.Name -like '.env.backup-*'", $script,
+                "{$path} selects files to DELETE with -Filter, which can match 8.3 short names too");
+            $this->assertStringNotContainsString("-Filter '.env.backup-*'", $script);
         }
     }
 
