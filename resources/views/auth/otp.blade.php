@@ -2,12 +2,32 @@
 @section('title', 'Verify OTP')
 
 @section('content')
+@php($lastOtp = app(\App\Services\Auth\OtpService::class)->lastIssued(auth()->user()))
 <div class="otp-crest" aria-hidden="true"><i class="bi bi-envelope-check"></i></div>
 <h1 class="auth-title otp-title">Verify it&rsquo;s you</h1>
-<p class="auth-sub otp-lead">
-    We emailed a 6-digit code to <b>{{ auth()->user()->email }}</b>.
-    It expires in {{ \App\Models\SystemSetting::get('auth.otp_ttl_minutes', 5) }} minutes.
-</p>
+
+{{-- What the lead paragraph says depends on what actually happened to the
+     code. Telling someone to check their inbox when the relay refused the
+     message leaves them refreshing a mailbox for five minutes and then
+     phoning anyway; better to send them to the administrator straight away. --}}
+@if ($lastOtp?->deliveryFailed())
+    <p class="auth-sub otp-lead">
+        <b>The code could not be e-mailed.</b> The mail server did not accept it, so nothing is on
+        its way to {{ auth()->user()->email }}. Try <em>Resend</em> once — if it fails again, ask the
+        System Administrator for a one-time sign-in code. They can read one out to you in person.
+    </p>
+@elseif ($lastOtp?->wasBypass())
+    <p class="auth-sub otp-lead">
+        Enter the <b>one-time code the System Administrator gave you</b>. It behaves like an
+        e-mailed code: it works once and expires in
+        {{ \App\Models\SystemSetting::get('auth.otp_ttl_minutes', 5) }} minutes.
+    </p>
+@else
+    <p class="auth-sub otp-lead">
+        We emailed a 6-digit code to <b>{{ auth()->user()->email }}</b>.
+        It expires in {{ \App\Models\SystemSetting::get('auth.otp_ttl_minutes', 5) }} minutes.
+    </p>
+@endif
 
 <form method="POST" action="{{ route('otp.verify') }}">
     @csrf

@@ -13,6 +13,7 @@ use App\Models\Position;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\Auth\LoginSecurityService;
+use App\Services\Auth\OtpService;
 use App\Services\Rbac\RbacService;
 use App\Services\Security\AuditLogger;
 use Illuminate\Http\RedirectResponse;
@@ -28,6 +29,7 @@ class UserController extends Controller
         private readonly RbacService $rbac,
         private readonly LoginSecurityService $loginSecurity,
         private readonly AuditLogger $audit,
+        private readonly OtpService $otp,
     ) {}
 
     public function index(Request $request): View
@@ -329,6 +331,26 @@ class UserController extends Controller
         $this->audit->log('password_reset_by_admin', $user);
 
         return back()->with('status', "Password reset. {$user->name} signs in with {$first} and sets their own before they can go any further.");
+    }
+
+    /**
+     * A code to read out loud, when e-mail cannot carry one.
+     *
+     * The alternative an administrator reaches for otherwise is the OTP switch
+     * in System Settings, which turns the second factor off for all 200 staff
+     * because one mailbox is unreachable. This is the narrower instrument: one
+     * code, one person, expires with everything else, and the audit trail
+     * names who issued it. It is shown on screen once — never mailed, never
+     * put in a chat message, which would defeat the point of it.
+     */
+    public function issueOtpBypass(User $user): RedirectResponse
+    {
+        $code = $this->otp->issueBypass($user, auth()->user());
+        $this->audit->log('otp_bypass_issued', $user);
+
+        return back()->with('status',
+            "One-time sign-in code for {$user->name}: {$code}. Read it to them in person — "
+            .'it works once, expires with the usual window, and this is recorded against your name.');
     }
 
     public function block(Request $request, User $user): RedirectResponse

@@ -32,6 +32,7 @@ class SystemSettingSeeder extends Seeder
             ['leave', 'leave.monetization_retain_days', '15', 'string', 'Vacation Leave days that must remain after monetizing'],
             ['leave', 'leave.forced_leave_min_vl', '10', 'string', 'Vacation Leave credits from which the 5-day mandatory leave applies'],
             ['general', 'general.lgu_name', 'Local Government Unit of Alicia', 'string', 'Organization name on forms and reports'],
+            ['general', 'general.lgu_address', 'Magsaysay, Alicia', 'string', 'Address line printed under the LGU name on forms and reports'],
             ['general', 'general.alerts_poll_seconds', '15', 'int', 'Dashboard alert polling interval'],
         ];
 

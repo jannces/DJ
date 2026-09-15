@@ -116,8 +116,28 @@ one edit *per PC*, and again whenever the IP changes.
 
 **4. The certificate warning.** Each browser warns once — the certificate is
 signed by this office rather than a public authority. Choose Advanced →
-Continue; traffic is encrypted either way. To remove the warning, import
-`lms.crt` into each client's Trusted Root store.
+Continue; traffic is encrypted either way.
+
+Leave it there and the warning becomes furniture: staff learn to click through
+a red page every morning, and the day a real warning appears — a device on the
+LAN answering to `onealicialms.lan` — they will click through that one too. So
+installing the certificate is part of setting up a workstation, alongside
+registering it under Authorized Devices. Copy `deploy/certs/lms.crt` to the PC
+once and:
+
+| Client | What to do |
+|---|---|
+| Windows — Chrome, Edge | Double-click `lms.crt` → **Install Certificate** → *Local Machine* → *Place all certificates in the following store* → **Trusted Root Certification Authorities** → Finish. Restart the browser. |
+| Windows — many PCs at once | From an elevated prompt: `certutil -addstore -f "ROOT" lms.crt`. With a domain, push the same file by Group Policy (Computer Configuration → Windows Settings → Security Settings → Public Key Policies → Trusted Root Certification Authorities). |
+| Firefox | Firefox keeps its own store: Settings → Privacy & Security → Certificates → **View Certificates** → *Authorities* → **Import** → tick *Trust this CA to identify websites*. |
+| Android tablet or phone | Settings → Security → Encryption & credentials → **Install a certificate** → *CA certificate*. |
+
+Check it took: open `https://onealicialms.lan` and look for a padlock and no
+warning. Two things to keep in mind afterwards — the certificate expires
+(`openssl x509 -enddate -noout -in deploy/certs/lms.crt`), and re-issuing it
+means distributing the new one to every client again; and a PC that is
+reimaged loses it, so it belongs on the workstation-setup checklist rather
+than in someone's memory.
 
 ### Moving to the agency
 

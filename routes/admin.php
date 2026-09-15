@@ -40,6 +40,7 @@ Route::middleware('permission:users.manage')->group(function () {
     Route::get('users/{user}/access', [UserController::class, 'access'])->name('users.access');
     Route::post('users/{user}/access', [UserController::class, 'updateAccess'])->name('users.access.update');
     Route::post('users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
+    Route::post('users/{user}/otp-bypass', [UserController::class, 'issueOtpBypass'])->name('users.otp-bypass');
     Route::post('users/{user}/block', [UserController::class, 'block'])->name('users.block');
     Route::post('users/{user}/unblock', [UserController::class, 'unblock'])->name('users.unblock');
     Route::post('users/{user}/toggle-active', [UserController::class, 'toggleActive'])->name('users.toggle-active');

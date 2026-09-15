@@ -94,6 +94,12 @@
                                             @csrf<button class="dropdown-item">Reset password</button>
                                         </form>
                                     </li>
+                                    <li>
+                                        <form method="POST" action="{{ route('users.otp-bypass', $user) }}"
+                                              data-confirm="Issue a one-time sign-in code for {{ $user->name }}? Use this only when e-mail cannot reach them. The code is shown once and recorded against your name.">
+                                            @csrf<button class="dropdown-item">One-time sign-in code</button>
+                                        </form>
+                                    </li>
                                     @if ($user->status === 'blocked')
                                         <li><form method="POST" action="{{ route('users.unblock', $user) }}"
                                                   data-confirm="Unblock {{ $user->name }}? They will be able to sign in again."
