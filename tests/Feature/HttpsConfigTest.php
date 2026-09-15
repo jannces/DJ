@@ -591,6 +591,52 @@ class HttpsConfigTest extends TestCase
         }
     }
 
+    /**
+     * Timestamped .env backups are ignored by git, and do not pile up.
+     *
+     * .gitignore carried `.env.backup` exactly, which matches nothing that
+     * setup-https.bat writes -- it writes `.env.backup-20260915-134702`. So
+     * every backup it had ever taken sat in the project root untracked but not
+     * ignored, and one `git add -A` would have committed all of them. Each is a
+     * full copy of .env: the database password, APP_KEY, the mail credentials.
+     *
+     * Twenty-five had collected on one machine, because the script is run once
+     * per attempt while a setup is being got right and kept every copy forever.
+     */
+    public function test_env_backups_are_ignored_and_pruned(): void
+    {
+        $this->assertStringContainsString('.env.backup-*', $this->file('.gitignore'),
+            'a timestamped .env backup is not gitignored, so it can be committed with the secrets in it');
+
+        $setup = $this->file('deploy/setup-https.bat');
+
+        $this->assertStringContainsString('Select-Object -Skip 3', $setup,
+            'setup keeps every .env backup it has ever taken');
+        $this->assertStringContainsString("Filter '.env.backup-*'", $setup);
+    }
+
+    /**
+     * And none is in the repository now.
+     *
+     * The assertion above is about the rule; this is about the fact, which is
+     * the part that would actually matter. Checked against the index rather
+     * than the working tree: a file already tracked stays tracked whatever
+     * .gitignore says afterwards.
+     */
+    public function test_no_env_backup_is_tracked(): void
+    {
+        exec('git -C '.escapeshellarg(base_path()).' ls-files 2>/dev/null', $tracked);
+
+        $leaked = array_values(array_filter(
+            $tracked,
+            fn ($path) => str_contains(basename($path), '.env')
+                && basename($path) !== '.env.example',
+        ));
+
+        $this->assertSame([], $leaked,
+            'an environment file is tracked in git; it holds the database password and APP_KEY');
+    }
+
     /** The private half of the certificate is never suggested for copying. */
     public function test_nothing_tells_anyone_to_copy_the_private_key(): void
     {

@@ -152,6 +152,25 @@ powershell -NoProfile -Command "try { $p='%ROOT%\.env'; $c=[System.IO.File]::Rea
 if errorlevel 1 ( echo [X] Could not edit .env & goto :fail )
 echo       Backed up to .env.backup-%STAMP%
 
+REM Keep the three newest and delete the rest.
+REM
+REM This script is run repeatedly while a setup is being got right -- once per
+REM attempt -- and every run copied .env to a new timestamped file and kept it
+REM forever. One project root had twenty-five of them. Each is a full copy of
+REM .env: the database password, APP_KEY, and the mail credentials.
+REM
+REM Three, because the reason to keep any is to undo a run that went wrong, and
+REM nobody has ever needed the twelfth-most-recent one. Sorted by write time
+REM rather than by name so a clock change cannot pick the wrong ones.
+powershell -NoProfile -Command "try { Get-ChildItem -Path '%ROOT%' -Filter '.env.backup-*' -File -Force | Sort-Object LastWriteTime -Descending | Select-Object -Skip 3 | Remove-Item -Force -ErrorAction SilentlyContinue } catch {}"
+
+set OLDENV=
+del "%TEMP%\lms-envcount.txt" 2>nul
+powershell -NoProfile -Command "@(Get-ChildItem -Path '%ROOT%' -Filter '.env.backup-*' -File -Force).Count" > "%TEMP%\lms-envcount.txt" 2>nul
+if exist "%TEMP%\lms-envcount.txt" for /f "usebackq delims=" %%n in ("%TEMP%\lms-envcount.txt") do set OLDENV=%%n
+del "%TEMP%\lms-envcount.txt" 2>nul
+if not "%OLDENV%"=="" echo       %OLDENV% .env backup(s) kept; older ones removed.
+
 REM A cached config ignores .env completely, which is how a corrected APP_URL
 REM appears to have no effect at all.
 php artisan config:clear >nul 2>&1

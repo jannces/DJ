@@ -2,6 +2,12 @@
 .DS_Store
 .env
 .env.backup
+# setup-https.bat writes .env.backup-20260915-134702 every time it runs, and
+# the bare `.env.backup` above does not match a timestamped name. Twenty-five
+# of them had collected in one project root -- each a full copy of .env, with
+# the database password, APP_KEY and mail credentials in it, untracked but NOT
+# ignored, one `git add -A` away from being published.
+.env.backup-*
 .env.production
 .phpactor.json
 .phpunit.result.cache
