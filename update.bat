@@ -50,7 +50,10 @@ if exist "vendor\autoload.php" (
   if errorlevel 1 (
     echo.
     echo [X] The update cannot continue without the database.
-    echo     Nothing has been changed. Start MySQL and run this again.
+    echo     Nothing has been changed.
+    echo.
+    echo     Run start.bat first - it starts MySQL and Apache - then run
+    echo     update.bat again. The XAMPP Control Panel works too.
     goto :fail
   )
   echo.
@@ -166,7 +169,7 @@ if errorlevel 1 (
   php artisan lms:db-check
   echo.
   echo [X] The database update cannot run. The new code is already in place,
-  echo     so once MySQL is running just run update.bat again.
+  echo     so run start.bat to bring MySQL up, then update.bat again.
   goto :fail
 )
 
