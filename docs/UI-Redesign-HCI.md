@@ -7,25 +7,28 @@ This document records the design decisions and maps them to established HCI prin
 ## 1. Design system
 - **Design tokens** (`public/css/app.css`): a single source of colors, typography scale,
   spacing, radius, shadows and motion — guarantees visual **consistency** everywhere.
-- **Palette:** deep government green (`#14532d`) with a gold accent (`#ca8a04`); refined,
-  accessible light and dark themes.
+- **Palette:** deep royal indigo-violet (`--brand-600 #3f2f83`) with a muted gold accent
+  (`--gold-500 #dca82a`) on white; accessible light and dark themes. (An earlier revision
+  used a green/gold palette; the violet identity replaced it.)
 - **Typography:** clear hierarchy (page titles → section headers → body → captions).
 - **Components:** cards, stat cards, buttons, inputs, tables, badges, dropdowns, modals,
-  timeline, skeleton loaders, breadcrumbs — all uniform.
+  approval timeline, skeleton loaders — all uniform.
+- **Structure over shadow:** 1px borders carry grouping; shadows are reserved for
+  genuinely floating surfaces (dropdowns, modals). One radius pair, not four.
 
 ## 2. HCI principles applied
 
 | Principle (Nielsen / Shneiderman / WCAG) | How the redesign applies it |
 |---|---|
-| **Visibility of system status** (N1) | Loading spinner overlay, skeleton loaders, hover/active/focus states, live intrusion badge, toast feedback on every action |
+| **Visibility of system status** (N1) | Loading spinner overlay, skeleton loaders, hover/active/focus states, live intrusion badge, toast feedback on every action, working-day count computed on demand before submission, employee-facing approval timeline |
 | **Match between system & real world** (N2) | Plain government language, CSC Form 6 layout mirrors the paper form, familiar icons |
-| **User control & freedom** (N3) | Cancel buttons, "return for revision", theme toggle, collapsible sidebar, breadcrumbs to go back |
+| **User control & freedom** (N3) | Cancel buttons, "return for revision", theme toggle, collapsible sidebar, "Count working days" before committing to a submission |
 | **Consistency & standards** (N4) | One design-token system; identical components and spacing across all pages |
 | **Error prevention** (N5) | Distinct danger styling, confirmation dialogs on destructive actions, inline validation, disabled states |
-| **Recognition rather than recall** (N6) | Persistent labelled sidebar (icon **+** text), breadcrumbs, pre-filled forms, visible search |
-| **Flexibility & efficiency** (N7) | Global search, keyboard-focusable controls, remembered theme, shortcuts to common actions |
-| **Aesthetic & minimalist design** (N8) | Generous whitespace, restrained palette, only essential information per screen |
-| **Help users recover from errors** (N9) | Friendly error pages (403/404/blocked), clear validation messages with guidance |
+| **Recognition rather than recall** (N6) | Persistent labelled sidebar (icon **+** text), pre-filled employee information, leave credits shown on the dashboard and beside section 7 of the form |
+| **Flexibility & efficiency** (N7) | Global search for back-office roles (employees are scoped out by RBAC), keyboard-focusable controls, remembered theme, form zoom 50–200% |
+| **Aesthetic & minimalist design** (N8) | Generous whitespace, restrained palette, only essential information per screen. Section 7 of the application form is summarised on the entry screen — the applicant cannot fill it, so drawing all four empty sub-blocks there was noise; it renders in full on the preview and the PDF |
+| **Help users recover from errors** (N9) | Friendly error pages (403/404/blocked); validation messages render beside the section that caused them rather than only at the top of a long form |
 | **Help & documentation** (N10) | Contextual hints, form help text, in-app manuals |
 | **Offer informative feedback** (Shneiderman) | Toasts, status badges, progress indicators |
 | **Design dialogs to yield closure** (Shneiderman) | Multi-step approval workflow shows a clear completed state + notification |

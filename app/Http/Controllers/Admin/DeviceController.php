@@ -18,15 +18,43 @@ class DeviceController extends Controller
 
     public function index(Request $request): View
     {
+        return view('admin.devices.index', $this->listing($request));
+    }
+
+    /**
+     * The list, with the Register panel open.
+     *
+     * A real URL behind the button, so the page works with the script and
+     * without it: with it, Bootstrap opens the panel and cancels the
+     * navigation; without it, this renders the list with the panel already up.
+     */
+    public function create(Request $request): View
+    {
+        return view('admin.devices.index', $this->listing($request) + ['opening' => true]);
+    }
+
+    /**
+     * One query shape, so index and create cannot show different lists.
+     *
+     * @return array{devices:mixed, enforcement:mixed}
+     */
+    private function listing(Request $request): array
+    {
         $devices = AuthorizedDevice::with('registrar')
             ->when($request->string('q')->toString(), fn ($q, $s) => $q->where(fn ($w) =>
                 $w->where('ip_address', 'like', "%{$s}%")->orWhere('hostname', 'like', "%{$s}%")))
-            ->when(! $request->boolean('archived'), fn ($q) => $q->whereNull('archived_at'))
-            ->orderBy('hostname')->paginate(15)->withQueryString();
+            ->when($request->string('status')->toString(), fn ($q, $s) => $q->where('status', $s))
+            // Archived was a link that could only be on or off; "all" is how
+            // you compare what is retired against what is running.
+            ->when($request->string('show')->toString() !== 'all', fn ($q) => $request->string('show')->toString() === 'archived'
+                ? $q->whereNotNull('archived_at')
+                : $q->whereNull('archived_at'))
+            ->orderBy('hostname')->paginate(config('lists.per_page'))->withQueryString();
 
-        $enforcement = \App\Models\SystemSetting::get('security.device_enforcement', false);
-
-        return view('admin.devices.index', compact('devices', 'enforcement'));
+        return [
+            'devices' => $devices,
+            'enforcement' => \App\Models\SystemSetting::get('security.device_enforcement', false),
+        ];
     }
 
     public function store(Request $request): RedirectResponse

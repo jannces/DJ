@@ -29,7 +29,8 @@ class LeaveRequest extends Model
         'late_filing_reason', 'filing_warnings', 'hr_override', 'hr_override_reason',
         'days_with_pay', 'days_without_pay', 'disapproval_reason',
         'office_snapshot', 'position_snapshot', 'salary_snapshot',
-        'applicant_signature', 'decided_at',
+        'applicant_signature', 'applicant_signature_path', 'applicant_signature_hash',
+        'decided_at',
     ];
 
     protected $casts = [

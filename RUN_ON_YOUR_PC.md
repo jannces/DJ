@@ -106,17 +106,38 @@ Run these commands **one line at a time** inside `C:\xampp\htdocs\lms`:
 
 For learning and testing, the simplest way to run it:
 
-```
-php artisan serve
-```
+Double-click **`start.bat`**. It starts MySQL, the background worker and
+Apache, then opens the browser at:
 
-Leave that window open. Now open your browser and go to:
-
-**http://127.0.0.1:8000**
+**https://onealicialms.lan**
 
 You should see the **login page**. 🎉
 
-> To stop the system, click the Command Prompt window and press **Ctrl + C**.
+> To stop the system, run **`stop.bat`**.
+
+**Two things the first time:**
+
+1. **The browser warns about the certificate.** Expected — it is signed by this
+   office, not bought from a public authority. Choose *Advanced* → *Continue*.
+   The connection is encrypted either way.
+
+   To stop it warning, right-click **`deploy\trust-cert.bat`** → *Run as
+   administrator*, then close and reopen the browser. Do that on each PC that
+   uses the system. Copy `deploy\certs\lms.crt` to the other PCs to run it
+   there — the `.crt` is public and safe to copy. **Never copy `lms.key`**,
+   which is the private half and belongs on the server only.
+2. **The name has to resolve.** Add this line to
+   `C:\Windows\System32\drivers\etc\hosts`, editing it as Administrator:
+
+   ```
+   127.0.0.1   onealicialms.lan
+   ```
+
+   On other office PCs use the **server's** address instead of `127.0.0.1`.
+   `start.bat` checks for this and tells you if it is missing.
+
+> **Why not `php artisan serve`?** It only speaks plain HTTP, so it can never
+> answer on an `https://` address. Apache does the serving now.
 
 ---
 
@@ -177,7 +198,7 @@ small letter, a number, and a symbol — for example `MyStr0ng!Pass2026`).
 | "could not find driver" | In XAMPP, edit `C:\xampp\php\php.ini`, remove the `;` before `extension=pdo_mysql`, save, restart Apache. |
 | Login says database error | Make sure MySQL is **green** in XAMPP and you created the `lms_alicia` database (Part C step 5). |
 | I didn't get the OTP email | Read it from `storage\logs\laravel.log` (Part E), or turn off OTP in System Settings for testing. |
-| Page looks unstyled | Run `php artisan storage:link` and refresh; make sure you opened `http://127.0.0.1:8000` (not the `public` folder directly). |
+| Page looks unstyled | Run `php artisan storage:link` and refresh; make sure you opened `https://onealicialms.lan` (not the `public` folder directly). |
 | Locked out (3 wrong passwords) | Wait 24 hours, or ask a Super Admin to unblock you under **Users**, or reset with the CLI (below). |
 
 ### Reset everything and start fresh
@@ -188,14 +209,73 @@ php artisan db:seed --class=DemoDataSeeder
 
 ### Useful commands
 ```
-php artisan test            # run the automated tests (should say "47 passed")
+php artisan test            # run the automated tests (49 tests)
 php artisan lms:backup      # make a backup zip in storage/app/backups
 php artisan leave:accrue    # add this month's 1.25 VL + 1.25 SL credits to everyone
 ```
 
 ---
 
-## Part H — Running it for the whole office (real LAN deployment)
+## Part H — Getting the latest updates onto your PC
+
+When someone changes the code on GitHub, your PC does **not** update by itself. You pull
+the changes down when you want them.
+
+### The easy way — double-click `update.bat`
+
+`update.bat` sits in the project folder next to `artisan`. Double-click it and it will:
+
+| Step | What it does | Why |
+|------|--------------|-----|
+| 1 | Backs up your database | So you can go back if an update goes wrong |
+| 2 | Downloads the newest code (`git pull`) | Brings in the changes |
+| 3 | Installs new PHP libraries (`composer install`) | In case an update needs a new library |
+| 4 | Applies database changes (`php artisan migrate`) | Adds new tables or columns |
+| 5 | Checks the storage link | Keeps uploaded documents reachable |
+| 6 | Clears the caches | So the new code and pages actually show |
+
+It stops safely at the first sign of trouble and tells you what happened. At the end it
+prints the list of changes you just received.
+
+To update from a branch other than `main`:
+```
+update.bat name-of-branch
+```
+
+### Things worth knowing
+
+- **Your settings are safe.** `.env` holds your database password and configuration. Git
+  never touches it, so an update cannot overwrite it.
+- **Your data is safe.** Updates change *code*, not your leave records. Migrations only
+  add or alter table structure, and you get a backup first.
+- **If you edited files yourself**, the script refuses to run rather than overwrite your
+  work. Commit your changes, or undo them with `git checkout .`, then run it again.
+- **No `npm` needed.** The stylesheet and JavaScript are committed to the repository, so
+  `git pull` brings the design along with the code.
+- **Only run it when nobody is using the system**, because step 4 changes the database.
+
+### The manual way
+
+If you prefer typing commands, `update.bat` is just this sequence:
+```
+php artisan lms:backup
+git pull origin main
+composer install
+php artisan migrate --force
+php artisan optimize:clear
+```
+
+### If an update breaks something
+```
+git log --oneline -5          # see what you just received
+git checkout <older-commit>   # temporarily go back to an earlier version
+```
+Your backup zip is in `storage\app\backups`. To restore it: unzip it, open phpMyAdmin,
+select the `lms_alicia` database, go to **Import**, and choose the `.sql` file inside.
+
+---
+
+## Part I — Running it for the whole office (real LAN deployment)
 
 When you're ready to let other office computers use it over the network with proper
 HTTPS and Apache (not `php artisan serve`), follow **`docs/Deployment.md`** — it has the

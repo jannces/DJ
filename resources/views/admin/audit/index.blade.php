@@ -2,28 +2,62 @@
 @section('title', 'Audit Logs')
 @section('content')
 <h1 class="h4 mb-3">Audit Logs</h1>
-<form class="card card-body mb-3" method="GET" data-no-loader>
-    <div class="row g-2 align-items-end">
-        <div class="col-md-3"><label class="form-label small">Action</label><input name="action" value="{{ request('action') }}" class="form-control form-control-sm"></div>
-        <div class="col-md-3"><label class="form-label small">User</label><input name="user" value="{{ request('user') }}" class="form-control form-control-sm"></div>
-        <div class="col-md-2"><button class="btn btn-sm btn-lgu w-100">Filter</button></div>
-    </div>
-</form>
-<div class="card"><div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0">
+<div class="card">
+    <x-list-toolbar search placeholder="Search by user"
+        :action="route('audit.index')">
+        <x-list-filter name="action" label="Action" :options="$actions" />
+    </x-list-toolbar>
+
+    <div data-list>
+    <div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0">
     <thead><tr><th>Time</th><th>User</th><th>Role</th><th>Action</th><th>Target</th><th>IP</th><th>Changes</th></tr></thead>
     <tbody>
     @forelse ($logs as $l)
         <tr>
             <td class="small">{{ $l->created_at->format('M d, H:i:s') }}</td>
             <td class="small">{{ $l->user?->name ?? 'system' }}</td>
-            <td class="small">{{ $l->role_snapshot }}</td>
-            <td><span class="badge bg-light text-dark">{{ $l->action }}</span></td>
-            <td class="small">{{ class_basename($l->auditable_type) }} {{ $l->auditable_id }}</td>
+            <td class="small">{{ $l->role_label ?? '—' }}</td>
+            <td><span class="badge bg-light text-dark">{{ $l->action_label }}</span></td>
+            <td class="small">{{ $l->target_label ?? '—' }}</td>
             <td class="small">{{ $l->ip }}</td>
-            <td class="small" style="max-width:280px">
-                @if ($l->new_values)<details><summary class="text-muted">view</summary><pre class="small mb-0">{{ json_encode(['old'=>$l->old_values,'new'=>$l->new_values], JSON_PRETTY_PRINT) }}</pre></details>@endif
+            {{-- What changed, in words, and what it did.
+
+                 The trail stores the row as it was and the row as it is; the
+                 difference between them is the part anyone reads. But a field
+                 and its new value only say what was written — "Status: active
+                 → blocked" is a fact about a column. Why somebody opened this
+                 page is the sentence underneath it: they cannot sign in until
+                 an administrator lifts it. --}}
+            <td class="small audit-changes">
+                @php $changes = $l->change_list; @endphp
+                @if ($l->meaning)
+                    <p class="audit-meaning">{{ $l->meaning }}</p>
+                @endif
+                @forelse ($changes as $i => $c)
+                    @if ($i === 3 && count($changes) > 4)
+                        <details class="audit-more">
+                            <summary>{{ count($changes) - 3 }} more</summary>
+                    @endif
+                    <div class="audit-change">
+                        <span class="audit-field">{{ $c['label'] }}</span>
+                        @if ($c['from'] !== null)
+                            <span class="audit-was">{{ $c['from'] }}</span>
+                            <i class="bi bi-arrow-right audit-arrow" aria-hidden="true"></i>
+                            <span class="visually-hidden">changed to</span>
+                        @endif
+                        <span class="audit-now">{{ $c['to'] }}</span>
+                        @if ($c['note'])
+                            <span class="audit-note">{{ $c['note'] }}</span>
+                        @endif
+                    </div>
+                    @if ($loop->last && $i >= 3 && count($changes) > 4)
+                        </details>
+                    @endif
+                @empty
+                    @unless ($l->meaning)<span class="text-muted">—</span>@endunless
+                @endforelse
             </td>
         </tr>
     @empty <tr><td colspan="7" class="text-center text-muted py-4">No audit entries.</td></tr> @endforelse
-    </tbody></table></div><div class="card-body">{{ $logs->links() }}</div></div>
+    </tbody></table></div><div class="card-body">{{ $logs->links() }}</div></div></div>
 @endsection
