@@ -616,7 +616,11 @@ class HttpsConfigTest extends TestCase
         foreach (['deploy/setup-https.bat', 'update.bat'] as $path) {
             $script = $this->file($path);
 
-            $this->assertStringContainsString('Select-Object -Skip 3', $script,
+            // Skip 1: the newest survives, every older one goes. The reason to
+            // keep any is to undo the run that just happened, and the copy
+            // taken moments ago is the only one that can do that -- every older
+            // one is another copy of the database password in the project root.
+            $this->assertStringContainsString('Select-Object -Skip 1', $script,
                 "{$path} does not prune old .env backups, so they accumulate unread");
             // Matched on the real filename, not with -Filter. -Filter is
             // handed to the filesystem, which also matches 8.3 short names --

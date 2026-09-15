@@ -152,17 +152,19 @@ powershell -NoProfile -Command "try { $p='%ROOT%\.env'; $c=[System.IO.File]::Rea
 if errorlevel 1 ( echo [X] Could not edit .env & goto :fail )
 echo       Backed up to .env.backup-%STAMP%
 
-REM Keep the three newest and delete the rest.
+REM Keep the newest and delete the rest.
 REM
 REM This script is run repeatedly while a setup is being got right -- once per
 REM attempt -- and every run copied .env to a new timestamped file and kept it
 REM forever. One project root had twenty-five of them. Each is a full copy of
 REM .env: the database password, APP_KEY, and the mail credentials.
 REM
-REM Three, because the reason to keep any is to undo a run that went wrong, and
-REM nobody has ever needed the twelfth-most-recent one. Sorted by write time
-REM rather than by name so a clock change cannot pick the wrong ones.
-powershell -NoProfile -Command "try { Get-ChildItem -Path '%ROOT%' -File -Force | Where-Object { $_.Name -like '.env.backup-*' } | Sort-Object LastWriteTime -Descending | Select-Object -Skip 3 | Remove-Item -Force -ErrorAction SilentlyContinue } catch {}"
+REM One, because the reason to keep any is to undo the run that just happened,
+REM and the copy taken moments ago is the only one that can do that. Every
+REM older one is another copy of the database password sitting in the project
+REM root. Sorted by write time rather than by name so a clock change cannot
+REM pick the wrong one to keep.
+powershell -NoProfile -Command "try { Get-ChildItem -Path '%ROOT%' -File -Force | Where-Object { $_.Name -like '.env.backup-*' } | Sort-Object LastWriteTime -Descending | Select-Object -Skip 1 | Remove-Item -Force -ErrorAction SilentlyContinue } catch {}"
 
 set OLDENV=
 del "%TEMP%\lms-envcount.txt" 2>nul
