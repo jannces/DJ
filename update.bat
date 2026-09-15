@@ -36,6 +36,26 @@ if not exist "artisan" (
   goto :fail
 )
 
+REM --- Check the database is up ------------------------------------------
+REM
+REM Before the branch, the pull or composer. An update that cannot migrate has
+REM nothing to offer, and finding that out at step 5 means the code on disk has
+REM already moved while the database has not -- after which "Nothing further
+REM was changed" is not true.
+REM
+REM Only when the libraries are installed, because artisan cannot run without
+REM them. The fresh-install path is covered by the same check at step 5.
+if exist "vendor\autoload.php" (
+  php artisan lms:db-check
+  if errorlevel 1 (
+    echo.
+    echo [X] The update cannot continue without the database.
+    echo     Nothing has been changed. Start MySQL and run this again.
+    goto :fail
+  )
+  echo.
+)
+
 REM --- Work out which branch to update -----------------------------------
 REM Default to the branch already checked out, so you never have to remember
 REM its name. Pass one as an argument only when you want to switch.
@@ -71,9 +91,21 @@ REM --- Remember the current version so we can report what changed ---------
 for /f "delims=" %%i in ('git rev-parse HEAD') do set BEFORE=%%i
 
 REM --- Step 1: back up the database before changing anything --------------
+set HAVEBACKUP=
 if exist "vendor\autoload.php" (
   echo [1/7] Backing up the database...
   php artisan lms:backup
+  REM The exit code was never read. With MySQL down the backup failed, the
+  REM script carried on, and step 5 then told the operator their backup zip was
+  REM in storage\app\backups -- a file that had never been written. Pointing
+  REM somebody at a safety net that does not exist is worse than having none.
+  if errorlevel 1 (
+    echo.
+    echo [X] The backup failed, so the update stops here.
+    echo     Migrating without one is how a bad update becomes unrecoverable.
+    goto :fail
+  )
+  set HAVEBACKUP=1
 ) else (
   echo [1/7] Skipping backup - libraries are not installed yet.
 )
@@ -125,14 +157,34 @@ if errorlevel 1 (
 REM --- Step 5: apply new database changes ---------------------------------
 echo.
 echo [5/7] Updating the database...
+
+REM Again, because the pre-flight above is skipped on a first install and
+REM because MySQL can stop between then and now.
+php artisan lms:db-check >nul 2>&1
+if errorlevel 1 (
+  echo.
+  php artisan lms:db-check
+  echo.
+  echo [X] The database update cannot run. The new code is already in place,
+  echo     so once MySQL is running just run update.bat again.
+  goto :fail
+)
+
 php artisan migrate --force
 if errorlevel 1 (
   echo.
   echo [X] The database update failed.
   echo.
-  echo     Your backup zip is in storage\app\backups.
-  echo     To go back: unzip it, open phpMyAdmin, select the lms_alicia
-  echo     database, use the Import tab and choose the .sql file inside.
+  REM Say it only if it is there. This told people about a zip that was never
+  REM written whenever the backup step had failed.
+  if defined HAVEBACKUP (
+    echo     Your backup zip is in storage\app\backups.
+    echo     To go back: unzip it, open phpMyAdmin, select the lms_alicia
+    echo     database, use the Import tab and choose the .sql file inside.
+  ) else (
+    echo     NO BACKUP WAS TAKEN this run, so there is nothing to restore
+    echo     from. The database is as the failed migration left it.
+  )
   goto :fail
 )
 

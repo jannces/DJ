@@ -637,6 +637,58 @@ class HttpsConfigTest extends TestCase
             'an environment file is tracked in git; it holds the database password and APP_KEY');
     }
 
+    /**
+     * update.bat stops before it changes anything when the database is down.
+     *
+     * A real run with MySQL stopped: the backup failed silently, the branch was
+     * switched, the code was pulled, composer ran, and THEN `php artisan
+     * migrate` threw eight frames of Laravel internals. The script closed with
+     * "Update stopped. Nothing further was changed", which by that point was
+     * not true -- the working tree had already moved while the database had
+     * not.
+     */
+    public function test_the_updater_checks_the_database_before_changing_anything(): void
+    {
+        $update = $this->file('update.bat');
+
+        $this->assertStringContainsString('lms:db-check', $update,
+            'update.bat runs migrate without first asking whether the database is reachable');
+
+        // Before the branch switch, not after it.
+        $this->assertLessThan(
+            strpos($update, '[2/7] Selecting the branch'),
+            strpos($update, 'lms:db-check'),
+            'the database check runs after the code has already been changed');
+    }
+
+    /**
+     * And it does not promise a backup that was never written.
+     *
+     * `php artisan lms:backup` ran with its exit code ignored, so a failed
+     * backup was indistinguishable from a good one -- and the migrate-failure
+     * message then told the operator their backup zip was in
+     * storage\app\backups. Pointing somebody at a safety net that does not
+     * exist is worse than having none.
+     */
+    public function test_the_updater_stops_when_the_backup_fails(): void
+    {
+        $update = $this->file('update.bat');
+
+        $backupStep = substr(
+            $update,
+            (int) strpos($update, '[1/7] Backing up'),
+            (int) strpos($update, '[2/7] Selecting the branch') - (int) strpos($update, '[1/7] Backing up'),
+        );
+
+        $this->assertStringContainsString('goto :fail', $backupStep,
+            'a failed backup does not stop the update, so the migration runs with no way back');
+
+        // The restore advice is conditional on a backup having been taken.
+        $this->assertStringContainsString('if defined HAVEBACKUP', $update,
+            'the restore instructions are printed whether or not a backup exists');
+        $this->assertStringContainsString('NO BACKUP WAS TAKEN', $update);
+    }
+
     /** The private half of the certificate is never suggested for copying. */
     public function test_nothing_tells_anyone_to_copy_the_private_key(): void
     {

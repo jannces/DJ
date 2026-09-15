@@ -98,37 +98,13 @@ class BackupSystem extends Command
     /**
      * Why the database cannot be reached, in one line, or null if it can.
      *
-     * One line on purpose: BackupController shows the command's last output
-     * line on the Backups page, so this has to be the whole diagnosis and the
-     * fix together, readable by whoever pressed the button.
+     * The wording lives in App\Support\DatabaseReachability because update.bat
+     * needs the same answer before it migrates, and a second copy of this
+     * reasoning would drift from the first.
      */
     private function databaseProblem(): ?string
     {
-        try {
-            DB::connection()->getPdo();
-
-            return null;
-        } catch (\Throwable $e) {
-            $config = DB::connection()->getConfig();
-            $where = ($config['host'] ?? '?').':'.($config['port'] ?? '?');
-
-            // 2002 is "nothing answered on that socket". On a XAMPP box that
-            // is almost always MySQL simply not started, so say that rather
-            // than repeating the driver's wording back at them.
-            if (str_contains($e->getMessage(), '[2002]')) {
-                return "Cannot reach the database at {$where} - MySQL is not running. "
-                    .'Start MySQL in the XAMPP Control Panel and try again. '
-                    ."(If MySQL IS running, check that DB_PORT in .env matches the port it uses; XAMPP moves to 3307 when 3306 is taken.)";
-            }
-
-            // 1045 is the other common one: it answered and refused us.
-            if (str_contains($e->getMessage(), '[1045]')) {
-                return "The database at {$where} refused the username or password in .env "
-                    .'(DB_USERNAME / DB_PASSWORD).';
-            }
-
-            return "Cannot reach the database at {$where}: ".$e->getMessage();
-        }
+        return \App\Support\DatabaseReachability::problem();
     }
 
     private function dumpDatabase(string $path): void
