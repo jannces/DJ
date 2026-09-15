@@ -608,11 +608,18 @@ class HttpsConfigTest extends TestCase
         $this->assertStringContainsString('.env.backup-*', $this->file('.gitignore'),
             'a timestamped .env backup is not gitignored, so it can be committed with the secrets in it');
 
-        $setup = $this->file('deploy/setup-https.bat');
+        // Pruned in BOTH scripts, and that is the point rather than
+        // duplication. setup-https.bat creates them but is run once and then
+        // not again for weeks, so its own prune may not run for weeks either;
+        // update.bat is the script that gets run regularly. Housekeeping
+        // belongs where the traffic is.
+        foreach (['deploy/setup-https.bat', 'update.bat'] as $path) {
+            $script = $this->file($path);
 
-        $this->assertStringContainsString('Select-Object -Skip 3', $setup,
-            'setup keeps every .env backup it has ever taken');
-        $this->assertStringContainsString("Filter '.env.backup-*'", $setup);
+            $this->assertStringContainsString('Select-Object -Skip 3', $script,
+                "{$path} does not prune old .env backups, so they accumulate unread");
+            $this->assertStringContainsString("Filter '.env.backup-*'", $script);
+        }
     }
 
     /**

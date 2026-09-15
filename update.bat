@@ -21,6 +21,31 @@ echo   Folder: %CD%
 echo ============================================================
 echo.
 
+REM --- Tidy up old .env backups ------------------------------------------
+REM
+REM setup-https.bat copies .env every time it runs and it prunes its own
+REM copies, but it is run once and then not again for weeks -- so on a machine
+REM where the HTTPS setup took a few attempts, two dozen of them sit in the
+REM project root until the next run that may never come. Twenty-five had
+REM collected on one.
+REM
+REM They are pruned here as well because THIS is the script that gets run
+REM regularly. Housekeeping belongs where the traffic is.
+REM
+REM Each one is a full copy of .env -- database password, APP_KEY, mail
+REM credentials -- so this is tidiness and exposure at the same time. Three are
+REM kept: enough to undo a setup run that went wrong, and nobody has ever
+REM wanted the twelfth-most-recent.
+set PRUNED=
+del "%TEMP%\lms-envprune.txt" 2>nul
+powershell -NoProfile -Command "$f=@(Get-ChildItem -Path '%CD%' -Filter '.env.backup-*' -File -Force | Sort-Object LastWriteTime -Descending); if ($f.Count -gt 3) { $f | Select-Object -Skip 3 | Remove-Item -Force -ErrorAction SilentlyContinue; $f.Count - 3 } else { 0 }" > "%TEMP%\lms-envprune.txt" 2>nul
+if exist "%TEMP%\lms-envprune.txt" for /f "usebackq delims=" %%n in ("%TEMP%\lms-envprune.txt") do set PRUNED=%%n
+del "%TEMP%\lms-envprune.txt" 2>nul
+if not "%PRUNED%"=="" if not "%PRUNED%"=="0" (
+  echo   Tidied %PRUNED% old .env backup^(s^) - the 3 newest are kept.
+  echo.
+)
+
 REM --- Check Git is installed -------------------------------------------
 where git >nul 2>&1
 if errorlevel 1 (
