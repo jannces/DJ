@@ -348,11 +348,19 @@
                                 @checked(old('details.location')==='abroad')>Abroad</label>
                         </div>
                     </div>
+                    {{-- The CSC form asks where the leave will be spent in both
+                         cases -- 6.B has a blank after "Within the Philippines"
+                         as well as after "Abroad" -- and the leave type marks
+                         this field required to match. Labelling it "If abroad,
+                         specify" told everyone taking leave inside the country
+                         to leave it empty, and the refusal that followed named
+                         a field ("Specify location") that was nowhere on the
+                         screen. --}}
                     <div class="lf-f">
-                        <label for="location_specify">If abroad, specify</label>
+                        <label for="location_specify">Specify location <span class="req">*</span></label>
                         <input id="location_specify" type="text" name="details[location_specify]"
                                class="form-control" value="{{ old('details.location_specify') }}"
-                               placeholder="Country or city">
+                               placeholder="City or municipality; country if abroad">
                     </div>
                     <div class="lf-f">
                         <label for="travel_details">Purpose / travel details</label>
