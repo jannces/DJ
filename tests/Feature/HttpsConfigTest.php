@@ -705,6 +705,56 @@ class HttpsConfigTest extends TestCase
         $this->assertStringContainsString('NO BACKUP WAS TAKEN', $update);
     }
 
+    /**
+     * debug.bat reports; it does not repair.
+     *
+     * Its whole job is to run when something is already wrong, which is the
+     * worst moment to have a script make its own decisions. Restoring a file
+     * discards whatever is in it now -- including the half-finished edit that
+     * was about to be saved -- so every repair it finds is printed as a command
+     * for a person to run, never executed.
+     */
+    public function test_the_debug_script_changes_nothing(): void
+    {
+        $debug = $this->file('debug.bat');
+
+        // The restore commands appear only as text to be read. `echo` in front
+        // of each is the difference between advice and an action.
+        foreach (['git checkout --', 'git checkout %UPSTREAM%', 'git restore --staged'] as $command) {
+            $this->assertStringNotContainsString("\n".$command, $debug,
+                "debug.bat runs `{$command}` itself; it is supposed to suggest it");
+        }
+
+        foreach (['git reset', 'git clean', 'git stash', 'git revert'] as $destructive) {
+            $this->assertStringNotContainsString($destructive, $debug,
+                "debug.bat runs `{$destructive}`, which can destroy work while diagnosing");
+        }
+    }
+
+    /**
+     * And it asks the three questions a clean `git status` would hide.
+     *
+     * Uncommitted removals are the common case and the easy one. A removal that
+     * has been staged is invisible to `git diff`, and one that has been
+     * committed is invisible to both -- the working tree reads as clean while
+     * the code is still missing. Each needs its own comparison.
+     */
+    public function test_the_debug_script_looks_past_the_working_tree(): void
+    {
+        $debug = $this->file('debug.bat');
+
+        $this->assertStringContainsString('git diff --numstat', $debug,
+            'debug.bat does not look for uncommitted removals');
+        $this->assertStringContainsString('git diff --cached --numstat', $debug,
+            'a staged removal is invisible to git diff, so it would be reported as nothing removed');
+        $this->assertStringContainsString('%UPSTREAM%..HEAD', $debug,
+            'a committed removal leaves a clean working tree; nothing compares against the published branch');
+
+        // The suite is what actually answers "does it behave as before".
+        $this->assertStringContainsString('php artisan test', $debug,
+            'debug.bat finds what changed but never checks what broke');
+    }
+
     /** The private half of the certificate is never suggested for copying. */
     public function test_nothing_tells_anyone_to_copy_the_private_key(): void
     {
