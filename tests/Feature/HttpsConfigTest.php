@@ -755,6 +755,39 @@ class HttpsConfigTest extends TestCase
             'debug.bat finds what changed but never checks what broke');
     }
 
+    /**
+     * debug.bat runs offline, which is when it is most likely to be needed.
+     *
+     * It is a diagnostic for a machine that is misbehaving -- often a LAN
+     * server with no internet, or a laptop being demonstrated from. Git reads
+     * this PC's own copy of the history and the suite runs on an in-memory
+     * database, so nothing here requires a connection or even MySQL.
+     *
+     * The one exception is the optional `git fetch` in step 3, and an
+     * unreachable host is NOT a fast failure: git waits on DNS and then on the
+     * connection, with its output redirected, for the better part of a minute.
+     * That reads as a frozen script. It is probed with a two-second timeout
+     * first, and skipped.
+     */
+    public function test_the_debug_script_does_not_hang_without_a_connection(): void
+    {
+        $debug = $this->file('debug.bat');
+
+        // Exactly one network call, and it is guarded.
+        $this->assertSame(1, substr_count($debug, 'git fetch'),
+            'debug.bat makes more than one network call; each is a place it can hang offline');
+
+        $this->assertStringContainsString('WaitOne(2000)', $debug,
+            'the fetch is not behind a bounded reachability probe, so offline it hangs on DNS');
+        $this->assertStringContainsString('if defined ONLINE', $debug);
+
+        // And nothing else that needs the network.
+        foreach (['composer install', 'composer update', 'git pull', 'git clone', 'curl '] as $networked) {
+            $this->assertStringNotContainsString($networked, $debug,
+                "debug.bat runs `{$networked}`, which cannot work on an offline machine");
+        }
+    }
+
     /** The private half of the certificate is never suggested for copying. */
     public function test_nothing_tells_anyone_to_copy_the_private_key(): void
     {

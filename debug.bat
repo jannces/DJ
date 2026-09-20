@@ -27,6 +27,11 @@ REM
 REM  IT CHANGES NOTHING. Every repair is printed as a command for you to run
 REM  yourself -- restoring a file throws away whatever is in it now, and only
 REM  you know whether that was wanted.
+REM
+REM  IT WORKS OFFLINE. Nothing here needs the internet: git reads this PC's own
+REM  copy of the history, and the test suite runs on an in-memory database, so
+REM  it does not need MySQL running either. Step 3 tries one optional refresh
+REM  from GitHub and skips it after two seconds if there is no connection.
 REM ============================================================================
 setlocal
 
@@ -148,7 +153,23 @@ for /f "delims=" %%u in ('git rev-parse --abbrev-ref --symbolic-full-name @{u} 2
 if "%UPSTREAM%"=="" (
   echo       This branch has no published copy to compare against - skipped.
 ) else (
-  git fetch --quiet origin %BRANCH% >nul 2>&1
+  REM The ONLY thing in this script that touches the network, and it is
+  REM optional. The comparison below reads origin/<branch> from this PC's own
+  REM copy of the repository; the fetch merely refreshes that copy. Offline,
+  REM the comparison is still correct -- it just answers "against the last
+  REM version this PC downloaded", which is the right question anyway.
+  REM
+  REM Probed first because an unreachable host is not a fast failure: git waits
+  REM on DNS and then on the connection, output redirected, for the better part
+  REM of a minute. On a machine with no internet that reads as a frozen script,
+  REM which is the worst thing this could do in front of an audience.
+  set ONLINE=
+  del "%T%\lms-dbg-net.txt" 2>nul
+  powershell -NoProfile -Command "$c=New-Object Net.Sockets.TcpClient; try { $r=$c.BeginConnect('github.com',443,$null,$null); if ($r.AsyncWaitHandle.WaitOne(2000)) { $c.EndConnect($r); 'yes' } } catch {} finally { $c.Close() }" > "%T%\lms-dbg-net.txt" 2>nul
+  if exist "%T%\lms-dbg-net.txt" for /f "usebackq delims=" %%o in ("%T%\lms-dbg-net.txt") do set ONLINE=%%o
+  del "%T%\lms-dbg-net.txt" 2>nul
+  call :maybefetch
+
   set LOC=0
   git diff --numstat %UPSTREAM%..HEAD > "%T%\lms-dbg-3.txt" 2>nul
   powershell -NoProfile -Command "@(Get-Content '%T%\lms-dbg-3.txt' -ErrorAction SilentlyContinue | Where-Object { $_ -match '^\d+\s+[1-9]' }).Count" > "%T%\lms-dbg-3c.txt" 2>nul
@@ -156,6 +177,15 @@ if "%UPSTREAM%"=="" (
   call :report3
 )
 goto :tests
+
+:maybefetch
+if defined ONLINE (
+  git fetch --quiet origin %BRANCH% >nul 2>&1
+  goto :eof
+)
+echo       Offline - comparing against the last published version this PC
+echo       downloaded. Removals are still found; only "published" is older.
+goto :eof
 
 :report3
 if "%LOC%"=="0" (
