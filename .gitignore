@@ -9,10 +9,10 @@
 # ignored, one `git add -A` away from being published.
 .env.backup-*
 .env.production
-# debug.bat writes this: the full diff of everything removed, plus the
+# test.bat writes this: the full diff of everything removed, plus the
 # test run. It is a snapshot of one machine at one moment, and it can
 # quote any line of any file -- including one holding a credential.
-debug-report.txt
+test-report.txt
 .phpactor.json
 .phpunit.result.cache
 /.fleet

@@ -706,7 +706,7 @@ class HttpsConfigTest extends TestCase
     }
 
     /**
-     * debug.bat reports; it does not repair.
+     * test.bat reports; it does not repair.
      *
      * Its whole job is to run when something is already wrong, which is the
      * worst moment to have a script make its own decisions. Restoring a file
@@ -714,20 +714,20 @@ class HttpsConfigTest extends TestCase
      * was about to be saved -- so every repair it finds is printed as a command
      * for a person to run, never executed.
      */
-    public function test_the_debug_script_changes_nothing(): void
+    public function test_the_test_script_changes_nothing(): void
     {
-        $debug = $this->file('debug.bat');
+        $debug = $this->file('test.bat');
 
         // The restore commands appear only as text to be read. `echo` in front
         // of each is the difference between advice and an action.
         foreach (['git checkout --', 'git checkout %UPSTREAM%', 'git restore --staged'] as $command) {
             $this->assertStringNotContainsString("\n".$command, $debug,
-                "debug.bat runs `{$command}` itself; it is supposed to suggest it");
+                "test.bat runs `{$command}` itself; it is supposed to suggest it");
         }
 
         foreach (['git reset', 'git clean', 'git stash', 'git revert'] as $destructive) {
             $this->assertStringNotContainsString($destructive, $debug,
-                "debug.bat runs `{$destructive}`, which can destroy work while diagnosing");
+                "test.bat runs `{$destructive}`, which can destroy work while diagnosing");
         }
     }
 
@@ -739,12 +739,12 @@ class HttpsConfigTest extends TestCase
      * committed is invisible to both -- the working tree reads as clean while
      * the code is still missing. Each needs its own comparison.
      */
-    public function test_the_debug_script_looks_past_the_working_tree(): void
+    public function test_the_test_script_looks_past_the_working_tree(): void
     {
-        $debug = $this->file('debug.bat');
+        $debug = $this->file('test.bat');
 
         $this->assertStringContainsString('git diff --numstat', $debug,
-            'debug.bat does not look for uncommitted removals');
+            'test.bat does not look for uncommitted removals');
         $this->assertStringContainsString('git diff --cached --numstat', $debug,
             'a staged removal is invisible to git diff, so it would be reported as nothing removed');
         $this->assertStringContainsString('%UPSTREAM%..HEAD', $debug,
@@ -752,11 +752,11 @@ class HttpsConfigTest extends TestCase
 
         // The suite is what actually answers "does it behave as before".
         $this->assertStringContainsString('php artisan test', $debug,
-            'debug.bat finds what changed but never checks what broke');
+            'test.bat finds what changed but never checks what broke');
     }
 
     /**
-     * debug.bat runs offline, which is when it is most likely to be needed.
+     * test.bat runs offline, which is when it is most likely to be needed.
      *
      * It is a diagnostic for a machine that is misbehaving -- often a LAN
      * server with no internet, or a laptop being demonstrated from. Git reads
@@ -769,13 +769,13 @@ class HttpsConfigTest extends TestCase
      * That reads as a frozen script. It is probed with a two-second timeout
      * first, and skipped.
      */
-    public function test_the_debug_script_does_not_hang_without_a_connection(): void
+    public function test_the_test_script_does_not_hang_without_a_connection(): void
     {
-        $debug = $this->file('debug.bat');
+        $debug = $this->file('test.bat');
 
         // Exactly one network call, and it is guarded.
         $this->assertSame(1, substr_count($debug, 'git fetch'),
-            'debug.bat makes more than one network call; each is a place it can hang offline');
+            'test.bat makes more than one network call; each is a place it can hang offline');
 
         $this->assertStringContainsString('WaitOne(2000)', $debug,
             'the fetch is not behind a bounded reachability probe, so offline it hangs on DNS');
@@ -784,7 +784,7 @@ class HttpsConfigTest extends TestCase
         // And nothing else that needs the network.
         foreach (['composer install', 'composer update', 'git pull', 'git clone', 'curl '] as $networked) {
             $this->assertStringNotContainsString($networked, $debug,
-                "debug.bat runs `{$networked}`, which cannot work on an offline machine");
+                "test.bat runs `{$networked}`, which cannot work on an offline machine");
         }
     }
 
