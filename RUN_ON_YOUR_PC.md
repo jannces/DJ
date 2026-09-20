@@ -27,6 +27,38 @@ You need three things: **PHP + MySQL (XAMPP)**, **Composer**, and **Git**.
 ### 3. Install Git (to download the project)
 1. Go to https://git-scm.com/download/win and install Git (default options).
 
+### 4. Turn on the PHP extensions the system needs (do this before `composer install`)
+Fresh XAMPP ships with some extensions switched off. If you skip this step,
+`composer install` stops with an error such as
+*"phpoffice/phpspreadsheet 1.30.5 requires ext-gd \* -> it is missing from your system"*.
+
+1. Open `C:\xampp\php\php.ini` in **Notepad** (right-click Notepad →
+   **Run as administrator**, then File → Open, so you are allowed to save).
+2. Press `Ctrl + F` and look for each line below. Remove the semicolon `;` in front
+   of it so the line starts with the word `extension`:
+   ```
+   extension=gd          ; images in Excel/PDF exports  — usually OFF by default
+   extension=zip         ; needed to write .xlsx files
+   extension=fileinfo    ; file uploads (supporting documents)
+   extension=mbstring
+   extension=openssl
+   extension=curl
+   extension=pdo_mysql   ; database
+   ```
+3. **Save** the file, then in the XAMPP Control Panel click **Stop** and **Start**
+   on Apache.
+4. Close Command Prompt, open a new one, and check:
+   ```
+   php -m
+   ```
+   The list that prints must include `gd`, `zip`, `fileinfo` and `pdo_mysql`.
+
+> ⚠️ If `composer install` ever says *"Please run composer update"*, **do not run it.**
+> That message is misleading — the real reason is printed a few lines lower
+> ("… is missing from your system. Install or enable PHP's gd extension").
+> Fix the extension above and run `composer install` again. `composer update` would
+> upgrade every library and can break the project.
+
 > ✅ To check they installed: open **Command Prompt** (press the Windows key,
 > type `cmd`, press Enter) and run these one at a time — each should print a version:
 > ```
@@ -175,6 +207,9 @@ small letter, a number, and a symbol — for example `MyStr0ng!Pass2026`).
 | `php` is not recognized | Add `C:\xampp\php` to Windows PATH, or run commands from inside `C:\xampp\htdocs\lms` after restarting Command Prompt. |
 | MySQL won't start in XAMPP | Another program is using port 3306. Stop it, or change the port in XAMPP config. |
 | "could not find driver" | In XAMPP, edit `C:\xampp\php\php.ini`, remove the `;` before `extension=pdo_mysql`, save, restart Apache. |
+| `composer install` says a package "requires ext-gd" / "requires ext-zip" | The extension is off. Do **Part A step 4** above, then run `composer install` again. Do *not* run `composer update`. |
+| `Command "intall" is not defined` | Typo — the command is `composer install` (two L's). |
+| `composer install` says "Your lock file does not contain a compatible set of packages" | Same cause: read the "Problem 1 / Problem 2" lines underneath — they name the missing PHP extension. Enable it (Part A step 4). |
 | Login says database error | Make sure MySQL is **green** in XAMPP and you created the `lms_alicia` database (Part C step 5). |
 | I didn't get the OTP email | Read it from `storage\logs\laravel.log` (Part E), or turn off OTP in System Settings for testing. |
 | Page looks unstyled | Run `php artisan storage:link` and refresh; make sure you opened `http://127.0.0.1:8000` (not the `public` folder directly). |

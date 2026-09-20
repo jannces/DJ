@@ -33,6 +33,10 @@ Laravel 12 · PHP 8.3+ · MySQL/MariaDB · Redis (optional) · Blade · Bootstra
 Chart.js · SweetAlert2 · Sanctum · dompdf · maatwebsite/excel · Apache/XAMPP.
 
 ## Quick start (development)
+Required PHP extensions: `gd`, `zip`, `fileinfo`, `mbstring`, `openssl`, `curl`, `pdo_mysql`
+(on XAMPP, un-comment them in `php.ini` first — `gd` and `zip` are off by default and
+`composer install` will fail without them).
+
 ```bash
 composer install
 cp .env.example .env && php artisan key:generate
