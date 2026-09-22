@@ -34,8 +34,16 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  */
 class BackupController extends Controller
 {
-    /** What lms:backup names its archives: lms_20260906_141230.zip */
-    private const NAME = '/^lms_\d{8}_\d{6}\.zip$/';
+    /**
+     * What lms:backup names its archives: lms_20260906_141230.zip, or
+     * lms_partial_20260906_141230.zip when a table could not be read.
+     *
+     * A partial archive has to be listed and downloadable -- it is written
+     * precisely when the database is failing, so it is the copy that matters
+     * most -- but it must never be mistaken for a whole one. Hence the name,
+     * and the badge the listing puts beside it.
+     */
+    private const NAME = '/^lms_(partial_)?\d{8}_\d{6}\.zip$/';
 
     public function __construct(private readonly AuditLogger $audit) {}
 
@@ -101,7 +109,7 @@ class BackupController extends Controller
         return storage_path('app/backups');
     }
 
-    /** @return \Illuminate\Support\Collection<int, array{name: string, size: int, at: \Illuminate\Support\Carbon}> */
+    /** @return \Illuminate\Support\Collection<int, array{name: string, size: int, at: \Illuminate\Support\Carbon, partial: bool}> */
     private function existing(): \Illuminate\Support\Collection
     {
         $dir = $this->directory();
@@ -116,6 +124,7 @@ class BackupController extends Controller
                 'name' => $f->getFilename(),
                 'size' => $f->getSize(),
                 'at' => \Illuminate\Support\Carbon::createFromTimestamp($f->getMTime()),
+                'partial' => str_starts_with($f->getFilename(), 'lms_partial_'),
             ])
             ->sortByDesc('at')
             ->values();

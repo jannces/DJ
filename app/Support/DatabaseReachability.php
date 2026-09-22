@@ -52,4 +52,32 @@ class DatabaseReachability
             return "Cannot reach the database at {$where}: ".$e->getMessage();
         }
     }
+
+    /**
+     * A database error reduced to the part worth reading.
+     *
+     * The driver's message is one long line carrying the SQLSTATE, the server's
+     * own words, the connection name, the host and port, and the full statement
+     * with its bindings. Only the server's words belong in a warning: the rest
+     * is noise in a terminal, and the bindings are rows out of the table.
+     *
+     *   SQLSTATE[HY000]: General error: 1030 Got error 194 "Tablespace is
+     *   missing for a table" from storage engine InnoDB (Connection: mysql,
+     *   Host: 127.0.0.1, Port: 3306, SQL: SHOW CREATE TABLE `activity_logs`)
+     *
+     * becomes
+     *
+     *   General error: 1030 Got error 194 "Tablespace is missing for a table"
+     *   from storage engine InnoDB
+     */
+    public static function reason(\Throwable $e): string
+    {
+        $message = $e->getMessage();
+
+        if (preg_match('/SQLSTATE\[[^\]]+\]:?\s*(.+?)\s*\(Connection:/s', $message, $m) === 1) {
+            return trim($m[1]);
+        }
+
+        return trim(strtok($message, "\n") ?: $message);
+    }
 }

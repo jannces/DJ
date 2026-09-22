@@ -154,6 +154,72 @@ class BackupTest extends TestCase
         $this->assertSame($admin->id, $entry->user_id);
     }
 
+    /**
+     * An incomplete archive is listed, and marked.
+     *
+     * It is written when a table could not be read -- which is to say, when
+     * the database is failing -- so it is often the most recent copy of
+     * everything that still works, and hiding it would be the wrong way to
+     * keep it from being trusted. Naming it is the right way.
+     */
+    public function test_a_partial_backup_is_listed_and_marked_incomplete(): void
+    {
+        $this->seedCore();
+        $this->seedBackupFile('lms_partial_20260101_120000.zip');
+        $this->actingAs($this->makeUser('system-admin'));
+        session(['otp_verified' => true]);
+
+        $this->get(route('backups.index'))
+            ->assertOk()
+            ->assertSee('lms_partial_20260101_120000.zip')
+            ->assertSee('Incomplete')
+            ->assertSee('lms:db-check --tables');
+    }
+
+    /** And it downloads, because it is the copy that matters most. */
+    public function test_a_partial_backup_can_be_downloaded(): void
+    {
+        $this->seedCore();
+        $this->seedBackupFile('lms_partial_20260101_120000.zip');
+        $this->actingAs($this->makeUser('system-admin'));
+        session(['otp_verified' => true]);
+
+        $this->get(route('backups.download', 'lms_partial_20260101_120000.zip'))->assertOk();
+    }
+
+    /** Widening the name pattern did not widen it to anything else. */
+    public function test_the_partial_prefix_did_not_open_the_name_pattern(): void
+    {
+        $this->seedCore();
+        $this->actingAs($this->makeUser('system-admin'));
+        session(['otp_verified' => true]);
+
+        foreach ([
+            'lms_partial_.zip',
+            'lms_partial_20260101.zip',
+            'lms_partialx_20260101_120000.zip',
+            'lms_partial_partial_20260101_120000.zip',
+        ] as $name) {
+            $status = $this->get('/admin/backups/'.$name)->getStatusCode();
+
+            $this->assertContains($status, [400, 404],
+                "'{$name}' was not refused - it returned {$status}");
+        }
+    }
+
+    /** No partial archives, no warning on the page. */
+    public function test_the_incomplete_warning_is_absent_when_every_backup_is_whole(): void
+    {
+        $this->seedCore();
+        $this->seedBackupFile('lms_20260101_120000.zip');
+        $this->actingAs($this->makeUser('system-admin'));
+        session(['otp_verified' => true]);
+
+        $this->get(route('backups.index'))
+            ->assertOk()
+            ->assertDontSee('Incomplete');
+    }
+
     /** The download route requires a signed-in administrator, not just a URL. */
     public function test_a_guest_cannot_download_a_backup(): void
     {

@@ -32,7 +32,16 @@
         <tbody>
         @forelse ($backups as $b)
             <tr>
-                <td class="small">{{ $b['name'] }}</td>
+                <td class="small">
+                    {{ $b['name'] }}
+                    {{-- Written when a table could not be read. It is still the
+                         best copy of everything that could be, so it is listed
+                         and downloadable -- but it must not be picked off this
+                         page as if it were whole. --}}
+                    @if ($b['partial'])
+                        <span class="badge text-bg-warning ms-1">Incomplete</span>
+                    @endif
+                </td>
                 <td class="small">{{ $b['at']->format('d M Y, g:i a') }}</td>
                 <td class="small text-end">{{ number_format($b['size'] / 1048576, 2) }} MB</td>
                 <td class="text-end">
@@ -48,6 +57,16 @@
         </tbody>
     </table></div>
 </div>
+
+@if ($backups->contains('partial', true))
+    <div class="alert alert-warning mt-3 mb-0">
+        <strong>One or more backups are incomplete.</strong> A table could not be read
+        when they were taken, so those tables are missing from the archive; everything
+        else in them is complete. Each one contains a <code>READ-ME-FIRST.txt</code>
+        naming the tables. Run <code>php artisan lms:db-check --tables</code> to see
+        which tables the database can still read.
+    </div>
+@endif
 
 {{-- Where they are, in words, because restoring one means finding the file
      from outside this system -- often on a day when this system is the thing

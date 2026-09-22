@@ -22,6 +22,8 @@ use ZipArchive;
  * INSERT statements only, which is not a backup: restoring it required a
  * database that already had every table, so it could not rebuild anything
  * after the failure a backup exists for.
+ *
+ * One table that cannot be read does not stop the rest. See $skipped.
  */
 class BackupSystem extends Command
 {
@@ -36,8 +38,39 @@ class BackupSystem extends Command
      */
     private const IDENTIFIER = '/^[A-Za-z0-9_]+$/';
 
+    /**
+     * Tables this run could not read, and why. table name => reason.
+     *
+     * The backup used to be all or nothing, and a real install showed why that
+     * is the wrong way round. InnoDB lost the tablespace for activity_logs --
+     * a LOG table -- and the dump threw:
+     *
+     *   SQLSTATE[42S02]: Base table or view not found: 1932
+     *   Table 'lms_alicia.activity_logs' doesn't exist in engine
+     *
+     * so nothing was written at all. Every leave request, every employee
+     * record, every uploaded document in that database was perfectly healthy
+     * and perfectly unsaveable, because one audit table was damaged. That is
+     * exactly backwards: the moment a database starts to break is the moment
+     * you most want whatever of it still reads.
+     *
+     * So a table that cannot be read is now recorded here and skipped, the
+     * archive is written from everything that can, and the run still ends in
+     * FAILURE -- the archive is incomplete and nothing downstream (update.bat
+     * above all) may treat it as a safety net. The filename says so too.
+     *
+     * @var array<string, string>
+     */
+    private array $skipped = [];
+
+    /** How many tables were written, so the summary can say "3 of 41". */
+    private int $dumped = 0;
+
     public function handle(): int
     {
+        $this->skipped = [];
+        $this->dumped = 0;
+
         // Before anything else, and separately from the dump, because a
         // database that is not running is not a dump failure -- it is the one
         // thing this command cannot work around, and it has a one-sentence fix.
@@ -75,10 +108,20 @@ class BackupSystem extends Command
             return self::FAILURE;
         }
 
-        $zipPath = "{$dir}/lms_{$stamp}.zip";
+        // A partial archive is never named like a whole one. Somebody reaching
+        // for this file is restoring a system that is already broken, probably
+        // in a hurry, and "lms_20260922_141230.zip" tells them nothing is
+        // missing. "lms_partial_..." tells them before they open it.
+        $partial = $this->skipped !== [];
+        $zipPath = $dir.'/lms_'.($partial ? 'partial_' : '').$stamp.'.zip';
+
         $zip = new ZipArchive;
         $zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE);
         $zip->addFile($sqlPath, "db_{$stamp}.sql");
+
+        if ($partial) {
+            $zip->addFromString('READ-ME-FIRST.txt', $this->partialNotice());
+        }
 
         // Include uploaded leave documents.
         $docsRoot = storage_path('app/private/leave-documents');
@@ -90,9 +133,65 @@ class BackupSystem extends Command
         $zip->close();
         File::delete($sqlPath);
 
-        $this->info("Backup created: {$zipPath} (".round(filesize($zipPath) / 1024, 1).' KB)');
+        $size = round(filesize($zipPath) / 1024, 1);
+
+        if ($partial) {
+            foreach ($this->skipped as $table => $reason) {
+                $this->warn("       Could not read {$table}: {$reason}");
+            }
+
+            // Last, because BackupController shows the command's final line on
+            // the Backups page and update.bat prints it in the terminal. The
+            // sentence has to carry the whole meaning on its own: something was
+            // saved, something was not, and the update must not go ahead.
+            $this->error(sprintf(
+                'INCOMPLETE backup written to %s (%s KB): %d of %d table(s) could not be read (%s). '
+                .'Everything else was saved. Do NOT update or migrate until the database is repaired.',
+                $zipPath, $size, count($this->skipped),
+                count($this->skipped) + $this->dumped, implode(', ', array_keys($this->skipped)),
+            ));
+
+            return self::FAILURE;
+        }
+
+        $this->info("Backup created: {$zipPath} ({$size} KB)");
 
         return self::SUCCESS;
+    }
+
+    /** The file that goes in a partial archive, addressed to whoever opens it. */
+    private function partialNotice(): string
+    {
+        $lines = [
+            'THIS BACKUP IS INCOMPLETE.',
+            '',
+            'Taken '.now()->toDayDateTimeString().'.',
+            '',
+            'The database could not be read in full. These tables are MISSING or',
+            'only partly present in db_*.sql:',
+            '',
+        ];
+
+        foreach ($this->skipped as $table => $reason) {
+            $lines[] = "  - {$table}: {$reason}";
+        }
+
+        return implode("\n", array_merge($lines, [
+            '',
+            'Every other table was read normally and is complete in this archive.',
+            '',
+            'Restoring this file rebuilds the system WITHOUT the tables listed above.',
+            '',
+            'A message about a MISSING TABLESPACE, or a table that "doesn\'t exist in',
+            'engine" (error 1932 on MySQL, error 194 on MariaDB), means the server still',
+            'lists the table but has lost the file holding it -- usually after MySQL was',
+            'shut down uncleanly. The rest of the database is unaffected, which is why',
+            'this archive exists.',
+            '',
+            'Run "php artisan lms:db-check --tables" for the current state of every',
+            'table before deciding what to restore.',
+            '',
+        ]));
     }
 
     /**
@@ -239,10 +338,16 @@ class BackupSystem extends Command
      */
     private function portableDump(string $path, string $driver): void
     {
+        // Read the catalogue BEFORE opening the file, so a table that cannot
+        // even be described is already known when the header is written.
+        $tables = $this->tables($driver);
+
         $handle = fopen($path, 'w');
         fwrite($handle, '-- LMS portable backup '.now()->toDateTimeString()." ({$driver})\n");
 
-        $tables = $this->tables($driver);
+        foreach ($this->skipped as $table => $reason) {
+            fwrite($handle, "-- WARNING: {$table} could not be read and is NOT in this file ({$reason}).\n");
+        }
 
         fwrite($handle, $driver === 'mysql'
             ? "SET FOREIGN_KEY_CHECKS=0;\n"
@@ -257,14 +362,29 @@ class BackupSystem extends Command
             fwrite($handle, "\nDROP TABLE IF EXISTS {$name};\n");
             fwrite($handle, rtrim($create, ";\n").";\n");
 
-            foreach (DB::table($table)->cursor() as $row) {
-                $data = (array) $row;
-                $cols = implode(', ', array_map(fn ($c) => $q.$c.$q, array_keys($data)));
-                $vals = implode(', ', array_map(
-                    fn ($v) => $v === null ? 'NULL' : $pdo->quote((string) $v),
-                    $data,
-                ));
-                fwrite($handle, "INSERT INTO {$name} ({$cols}) VALUES ({$vals});\n");
+            // Describing a table and reading it are two different privileges
+            // and two different pages on disk: SHOW CREATE TABLE can answer
+            // from the dictionary while the rows themselves are gone. So the
+            // rows get their own guard rather than sharing the one in tables().
+            try {
+                foreach (DB::table($table)->cursor() as $row) {
+                    $data = (array) $row;
+                    $cols = implode(', ', array_map(fn ($c) => $q.$c.$q, array_keys($data)));
+                    $vals = implode(', ', array_map(
+                        fn ($v) => $v === null ? 'NULL' : $pdo->quote((string) $v),
+                        $data,
+                    ));
+                    fwrite($handle, "INSERT INTO {$name} ({$cols}) VALUES ({$vals});\n");
+                }
+
+                $this->dumped++;
+            } catch (\Throwable $e) {
+                // The structure is already written and is worth keeping -- a
+                // restore then rebuilds the table empty rather than not at all.
+                // The rows written before the failure stay too; they are whole
+                // statements, since each is written in one fwrite.
+                $this->skipped[$table] = $this->reason($e);
+                fwrite($handle, "-- WARNING: rows of {$table} stop here; the table could not be read to the end.\n");
             }
         }
 
@@ -272,7 +392,27 @@ class BackupSystem extends Command
             ? "\nSET FOREIGN_KEY_CHECKS=1;\n"
             : "\nPRAGMA foreign_keys=ON;\n");
 
+        // Every skip, in one place, at the end. The header above can only name
+        // the tables that failed to describe -- a table whose rows run out
+        // part-way is not known to have failed until it has been written. One
+        // closing block covers both, so there is a single list to read.
+        if ($this->skipped !== []) {
+            fwrite($handle, "\n-- ================ THIS DUMP IS INCOMPLETE ================\n");
+
+            foreach ($this->skipped as $table => $reason) {
+                fwrite($handle, "-- WARNING: {$table} -- {$reason}\n");
+            }
+
+            fwrite($handle, "-- See READ-ME-FIRST.txt in the archive.\n");
+        }
+
         fclose($handle);
+    }
+
+    /** @see \App\Support\DatabaseReachability::reason() */
+    private function reason(\Throwable $e): string
+    {
+        return \App\Support\DatabaseReachability::reason($e);
     }
 
     /**
@@ -318,8 +458,17 @@ class BackupSystem extends Command
                 continue;
             }
 
-            $row = (array) DB::select("SHOW CREATE TABLE `{$name}`")[0]; // @sql-identifier
-            $out[$name] = $row['Create Table'] ?? array_values($row)[1];
+            // information_schema listing a table does not mean the storage
+            // engine can produce it. When InnoDB has lost the tablespace the
+            // name is still in the catalogue and this line throws 1932 -- the
+            // failure that used to end the whole backup. Record it and move on
+            // to the next table; handle() decides what that means for the run.
+            try {
+                $row = (array) DB::select("SHOW CREATE TABLE `{$name}`")[0]; // @sql-identifier
+                $out[$name] = $row['Create Table'] ?? array_values($row)[1];
+            } catch (\Throwable $e) {
+                $this->skipped[$name] = $this->reason($e);
+            }
         }
 
         return $out;

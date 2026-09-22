@@ -132,6 +132,16 @@ if exist "vendor\autoload.php" (
     echo.
     echo [X] The backup failed, so the update stops here.
     echo     Migrating without one is how a bad update becomes unrecoverable.
+    echo.
+    REM Read the line above this block before doing anything else. If it says
+    REM INCOMPLETE, a partial archive WAS written and holds every table that
+    REM could still be read -- that file is the thing to keep safe first.
+    echo     If the message above says INCOMPLETE, a partial backup was saved
+    echo     to storage\app\backups and one or more tables could not be read.
+    echo     To see which:
+    echo.
+    echo         php artisan lms:db-check --tables
+    echo.
     goto :fail
   )
   set HAVEBACKUP=1

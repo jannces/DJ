@@ -103,7 +103,7 @@ Route::middleware('permission:backup.run')->group(function () {
     Route::get('backups', [BackupController::class, 'index'])->name('backups.index');
     Route::post('backups', [BackupController::class, 'store'])->name('backups.store');
     Route::get('backups/{file}', [BackupController::class, 'download'])
-        ->where('file', 'lms_[0-9]{8}_[0-9]{6}\\.zip')
+        ->where('file', 'lms_(partial_)?[0-9]{8}_[0-9]{6}\\.zip')
         ->name('backups.download');
 });
 
