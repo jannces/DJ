@@ -13,6 +13,15 @@
 # test run. It is a snapshot of one machine at one moment, and it can
 # quote any line of any file -- including one holding a credential.
 test-report.txt
+# The manuscript and any other office document kept beside the project.
+# Leave_Manus_updated.docx was tracked at 3.9 MB: git cannot diff a .docx, so
+# every save stored another whole copy, permanently, in every clone. The file
+# stays where it is -- it is simply not the repository's job to version it.
+*.docx
+*.doc
+*.pptx
+*.xlsx
+
 .phpactor.json
 .phpunit.result.cache
 /.fleet

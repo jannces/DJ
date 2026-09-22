@@ -5,7 +5,7 @@ A production-quality, LAN-deployable leave management system for a Philippine LG
 built on **Laravel 12 / PHP 8.3+ / MySQL** with integrated cybersecurity controls,
 real-time intrusion detection, and full CSC Form No. 6 (Revised 2020) support.
 
-> **New here? Read [`RUN_ON_YOUR_PC.md`](RUN_ON_YOUR_PC.md)** for a complete,
+> **New here? Read [`docs/RUN_ON_YOUR_PC.md`](docs/RUN_ON_YOUR_PC.md)** for a complete,
 > beginner-friendly setup guide.
 
 ## Highlights

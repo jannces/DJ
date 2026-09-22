@@ -11,7 +11,7 @@
 
 See `docs/Deployment.md` for the full step-by-step LAN/XAMPP installation and the
 Windows Task Scheduler entries for the queue worker and scheduler. Beginners should
-follow `RUN_ON_YOUR_PC.md` in the project root.
+follow `docs/RUN_ON_YOUR_PC.md`.
 
 ## Why the address is `.lan` and not `.local`
 
