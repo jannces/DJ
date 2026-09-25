@@ -59,6 +59,20 @@ class User extends Authenticatable
         return $this->hasOne(EmployeeProfile::class);
     }
 
+    /**
+     * The name as a list shows it: surname first, out of the employee record.
+     *
+     * Not every account has one -- the system administrator may be IT with no
+     * leave entitlement and no profile -- so this falls back to the account's
+     * own name rather than leaving an empty cell where a person should be.
+     */
+    public function listName(): string
+    {
+        $formal = $this->employeeProfile?->formalName();
+
+        return ($formal === null || $formal === '') ? (string) $this->name : $formal;
+    }
+
     public function leaveRequests(): HasMany
     {
         return $this->hasMany(LeaveRequest::class);

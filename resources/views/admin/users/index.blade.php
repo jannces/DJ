@@ -38,15 +38,21 @@
     <div data-list>
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
-            <thead><tr><th>Name</th><th>Roles</th><th>Department</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Name</th><th>Roles</th><th>Department</th><th>Status</th><th>Created</th><th></th></tr></thead>
             <tbody>
             @forelse ($users as $user)
                 <tr>
                     {{-- The same row the employee list and the rankings draw.
                          An archived account has no edit page to open, so it
-                         keeps a plain name rather than a link that refuses. --}}
+                         keeps a plain name rather than a link that refuses.
+
+                         Surname first -- "Dela Cruz, Maria S." -- because that
+                         is how a government roster is read down, and it is the
+                         order this list is now sorted in. The avatar is still
+                         keyed off the plain name so the disc is the same colour
+                         here as everywhere else. --}}
                     <td>
-                        <x-person :name="$user->name" :sub="$user->email"
+                        <x-person :name="$user->listName()" :avatar="$user->name" :sub="$user->email"
                             :url="$user->trashed() ? null : route('users.edit', $user)" />
                     </td>
                     <td>@foreach ($user->roles as $r)<span class="badge bg-secondary">{{ $r->name }}</span> @endforeach</td>
@@ -54,6 +60,12 @@
                     <td>
                         @php $color = ['active'=>'success','inactive'=>'secondary','blocked'=>'danger'][$user->status] ?? 'secondary'; @endphp
                         <span class="badge bg-{{ $color }}">{{ $user->status }}</span>
+                    </td>
+                    {{-- When the account was created. "Has this person been
+                         set up yet?" and "who was added this month?" had no
+                         answer on this page at all. --}}
+                    <td class="small text-nowrap">
+                        {{ $user->created_at?->format('d M Y') ?? '—' }}
                     </td>
                     <td class="text-end">
                         @if ($user->trashed())
@@ -133,7 +145,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="5" class="text-center text-muted py-4">No users found.</td></tr>
+                <tr><td colspan="6" class="text-center text-muted py-4">No users found.</td></tr>
             @endforelse
             </tbody>
         </table>

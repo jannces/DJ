@@ -54,7 +54,11 @@ class NameLinkTest extends TestCase
         $this->employee->update(['name' => 'Juan Dela Cruz']);
         EmployeeProfile::factory()->create([
             'user_id' => $this->employee->id, 'employee_no' => 'EMP-0001',
-            'first_name' => 'Juan', 'last_name' => 'Dela Cruz',
+            // middle_name is pinned because the factory fakes one at random,
+            // and the user list now renders it as an initial. Left to the
+            // factory, a test asserting the rendered name would pass or fail
+            // on the draw.
+            'first_name' => 'Juan', 'middle_name' => 'Santos', 'last_name' => 'Dela Cruz',
             'department_id' => $this->office->id, 'position_id' => $position->id,
         ]);
 
@@ -176,8 +180,12 @@ class NameLinkTest extends TestCase
 
         // The user list draws the shared person row now, so the link carries
         // the component's class alongside name-link.
+        //
+        // "Dela Cruz, Juan", not "Juan Dela Cruz": this list writes the surname
+        // first, the way a government roster is read down, and orders by it.
+        // The link itself is what this test is about, and that has not moved.
         $this->assertStringContainsString(
-            '<a href="'.route('users.edit', $this->employee).'" class="person-name name-link">Juan Dela Cruz</a>',
+            '<a href="'.route('users.edit', $this->employee).'" class="person-name name-link">Dela Cruz, Juan S.</a>',
             $this->get('/users')->assertOk()->getContent()
         );
     }

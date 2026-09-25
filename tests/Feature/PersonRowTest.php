@@ -43,7 +43,11 @@ class PersonRowTest extends TestCase
         $this->employee->update(['name' => 'Dj Robin Mendoza', 'email' => 'djrobin@example.test']);
         EmployeeProfile::factory()->create([
             'user_id' => $this->employee->id, 'employee_no' => 'EMP-0001',
-            'first_name' => 'Dj Robin', 'last_name' => 'Mendoza',
+            // middle_name is pinned because the factory fakes one at random,
+            // and the user list now renders it as an initial. Left to the
+            // factory, a test asserting the rendered name would pass or fail
+            // on the draw.
+            'first_name' => 'Dj Robin', 'middle_name' => 'Santos', 'last_name' => 'Mendoza',
             'department_id' => $office->id, 'position_id' => Position::factory()->create()->id,
         ]);
         LeaveBalance::create([
@@ -138,8 +142,12 @@ class PersonRowTest extends TestCase
 
         $html = $this->get('/users?show=archived')->assertOk()->getContent();
 
+        // The disc still reads DM. The user list writes the surname first --
+        // "Mendoza, Dj Robin" -- but the avatar is keyed off the plain account
+        // name on purpose, so the same person is the same colour and the same
+        // two letters here as on every other page.
         $this->assertMatchesRegularExpression('/<span class="person-av" data-n="\d"[^>]*>DM<\/span>/', $html);
-        $this->assertStringContainsString('<span class="person-name">Dj Robin Mendoza</span>', $html);
+        $this->assertStringContainsString('<span class="person-name">Mendoza, Dj Robin S.</span>', $html);
         $this->assertStringNotContainsString(
             '<a href="'.route('users.edit', $this->employee).'"', $html,
             'an archived account offers an edit link it cannot honour');

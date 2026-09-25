@@ -83,4 +83,36 @@ class EmployeeProfile extends Model
     {
         return trim("{$this->first_name} ".($this->middle_name ? "{$this->middle_name} " : '').$this->last_name);
     }
+
+    /**
+     * "Dela Cruz, Maria S." — how a name is written on a government list.
+     *
+     * Surname first because that is what the list is read down and sorted by;
+     * the middle name reduced to an initial because CSC forms carry it that
+     * way and the column has to sit beside four others.
+     *
+     * fullName() above stays as it is: a sentence needs "Maria Dela Cruz", and
+     * a column needs the surname at the left edge. They are two jobs.
+     */
+    public function formalName(): string
+    {
+        $surname = trim((string) $this->last_name);
+        $given = trim((string) $this->first_name);
+
+        $name = match (true) {
+            $surname !== '' && $given !== '' => "{$surname}, {$given}",
+            $surname !== '' => $surname,
+            default => $given,
+        };
+
+        $middle = trim((string) $this->middle_name);
+
+        // Plenty of people have no middle name, and "Dela Cruz, Maria ." is
+        // worse than leaving it off.
+        if ($name !== '' && $middle !== '') {
+            $name .= ' '.mb_strtoupper(mb_substr($middle, 0, 1)).'.';
+        }
+
+        return $name;
+    }
 }

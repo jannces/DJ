@@ -35,12 +35,15 @@ class UserController extends Controller
         $query = User::with(['roles', 'employeeProfile.department']);
 
         if ($search = $request->string('q')->toString()) {
-            $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")
-                ->orWhere('email', 'like', "%{$search}%")
-                ->orWhere('username', 'like', "%{$search}%"));
+            // Qualified, because of the join added below the filters: an
+            // unqualified column is a runtime error the day employee_profiles
+            // gains one of these names.
+            $query->where(fn ($q) => $q->where('users.name', 'like', "%{$search}%")
+                ->orWhere('users.email', 'like', "%{$search}%")
+                ->orWhere('users.username', 'like', "%{$search}%"));
         }
         if ($status = $request->string('status')->toString()) {
-            $query->where('status', $status);
+            $query->where('users.status', $status);
         }
         // "Who are the department heads?" was unanswerable: roles were shown
         // in the list but there was no way to ask by one.
@@ -55,7 +58,21 @@ class UserController extends Controller
             default => null,
         };
 
-        $users = $query->orderBy('name')->paginate(config('lists.per_page'))->withQueryString();
+        // Sorted by surname, because the list now WRITES the surname first.
+        // orderBy('name') sorted by the account's "Maria Dela Cruz" -- that is,
+        // by first name -- and a column headed "Dela Cruz, Maria S." ordered by
+        // Maria reads as a list in no order at all.
+        //
+        // Left join, not whereHas: an account without an employee profile (the
+        // IT administrator, who has no leave entitlement) still has to appear,
+        // and it falls back to the account's own name so it sorts somewhere
+        // sensible rather than ahead of everyone on a NULL.
+        $users = $query
+            ->leftJoin('employee_profiles', 'employee_profiles.user_id', '=', 'users.id')
+            ->select('users.*')
+            ->orderByRaw('COALESCE(employee_profiles.last_name, users.name)')
+            ->orderBy('employee_profiles.first_name')
+            ->paginate(config('lists.per_page'))->withQueryString();
 
         return view('admin.users.index', [
             'users' => $users,
