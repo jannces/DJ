@@ -505,6 +505,52 @@ class HttpsConfigTest extends TestCase
     }
 
     /**
+     * http:// sends you back to the address you typed, not to a fixed one.
+     *
+     * The :80 vhost redirected everything to https://onealicialms.lan/, which
+     * quietly made the bare IP unusable. Nobody types the scheme -- a browser
+     * assumes http:// and knocks on :80 first -- so somebody entering
+     * 192.168.254.102 was bounced to the NAME, and on a PC whose hosts file
+     * does not carry that name the answer was "this site can't be reached".
+     * They never reached the server at all. Typing https:// by hand skipped
+     * :80 entirely and worked, so the fault looked intermittent, and the
+     * laptop that worked was simply the one somebody had typed the scheme on.
+     */
+    public function test_plain_http_redirects_to_the_address_that_was_asked_for(): void
+    {
+        $template = $this->file('deploy/apache-vhost.conf');
+
+        $this->assertStringContainsString('https://%{HTTP_HOST}/$1', $template,
+            'the :80 redirect does not preserve the host, so the bare IP lands on a '
+            .'name the visitor may not be able to resolve');
+
+        // Only in the fallback for an Apache without mod_rewrite, never as the
+        // live rule: the literal hostname here is what broke the IP. Comments
+        // are stripped first -- the reasoning above the rule quotes the old
+        // line on purpose, and quoting it is not using it.
+        $directives = collect(explode("\n", $template))
+            ->reject(fn ($line) => str_starts_with(ltrim($line), '#'))
+            ->implode("\n");
+
+        $this->assertSame(1, substr_count($directives, 'https://onealicialms.lan/'),
+            'the hardcoded redirect target is back in the :80 vhost');
+
+        // An unknown directive does not get skipped -- Apache refuses to start
+        // and reports "Apache shutdown unexpectedly" with the cause in a log.
+        $this->assertStringContainsString('<IfModule mod_rewrite.c>', $template,
+            'RewriteEngine is unguarded, so an Apache without mod_rewrite will not start');
+        $this->assertStringContainsString('<IfModule !mod_rewrite.c>', $template,
+            'there is no fallback redirect, so an Apache without mod_rewrite serves plain HTTP');
+
+        // A permanent redirect is cached by the browser and replayed without
+        // asking again. This deployment has already changed address more than
+        // once, and a wrong 301 in twenty browsers is a visit to twenty PCs.
+        $this->assertStringNotContainsString('R=301', $directives,
+            'the redirect is permanent, so a browser will cache it past the next address change');
+        $this->assertStringNotContainsString('Redirect permanent', $directives);
+    }
+
+    /**
      * Moving to another network reissues the certificate.
      *
      * The check used to test the SAN for the hostname alone, and the hostname
