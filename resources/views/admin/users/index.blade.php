@@ -125,8 +125,7 @@
                                         $self = $user->id === auth()->id();
                                     @endphp
                                     @if ($self)
-                                        <li><span class="dropdown-item disabled">Block
-                                            <span class="small">— not your own account</span></span></li>
+                                        <li><span class="dropdown-item disabled">Block</span></li>
                                     @elseif ($user->status === 'blocked')
                                         <li><form method="POST" action="{{ route('users.unblock', $user) }}"
                                                   data-confirm="Unblock {{ $user->name }}? They will be able to sign in again."
@@ -146,8 +145,7 @@
                                         </li>
                                     @endif
                                     @if ($self)
-                                        <li><span class="dropdown-item disabled">Deactivate
-                                            <span class="small">— not your own account</span></span></li>
+                                        <li><span class="dropdown-item disabled">Deactivate</span></li>
                                     @else
                                     <li>
                                         {{-- Deactivate and Block both stop a sign-in, and the reason
@@ -163,8 +161,7 @@
                                     @endif
                                     <li><hr class="dropdown-divider"></li>
                                     @if ($self)
-                                        <li><span class="dropdown-item disabled">Archive
-                                            <span class="small">— not your own account</span></span></li>
+                                        <li><span class="dropdown-item disabled">Archive</span></li>
                                     @else
                                     <li><form method="POST" action="{{ route('users.archive', $user) }}"
                                               data-confirm="Archive {{ $user->name }}? Use this when they have left the LGU — resigned, dismissed or died. The account leaves the list but nothing is deleted: their leave record, their filed CSC Form 6 copies and their employee number all stay, and the account can be restored."

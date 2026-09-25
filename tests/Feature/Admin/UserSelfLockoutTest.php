@@ -126,8 +126,11 @@ class UserSelfLockoutTest extends TestCase
 
         $html = $this->get(route('users.index'))->assertOk()->getContent();
 
-        $this->assertSame(3, substr_count($html, 'not your own account'),
-            'Deactivate, Block and Archive are not all greyed out on the signed-in row');
+        foreach (['Block', 'Deactivate', 'Archive'] as $label) {
+            $this->assertStringContainsString(
+                '<span class="dropdown-item disabled">'.$label.'</span>', $html,
+                "{$label} is not greyed out on the signed-in row");
+        }
 
         // The other person's row still offers all three as real controls.
         foreach (['toggle-active', 'block', 'archive'] as $action) {
