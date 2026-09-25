@@ -348,8 +348,42 @@ class UserController extends Controller
         return back()->with('status', "Password reset. {$user->name} signs in with {$first} and sets their own before they can go any further.");
     }
 
+    /**
+     * Refuse anything aimed at the signed-in account itself.
+     *
+     * Deactivate, Block and Archive all end the same way: the administrator
+     * who pressed the button cannot sign in again. On a LAN system with no
+     * password-reset email and, often, one system administrator, that is not
+     * an inconvenience -- it is the end of administrative access to the
+     * system, fixed only by editing the database by hand.
+     *
+     * Enforced HERE and not only in the view. The buttons are greyed out on
+     * your own row, but a hidden control is not a control: the route is a
+     * plain POST that anyone holding the permission can send.
+     *
+     * Deliberately NOT applied to Reset password. Resetting your own is
+     * recoverable -- you sign in with the first-time password and set a new
+     * one -- so it is a mistake, not a lockout.
+     *
+     * @return RedirectResponse|null the refusal, or null to carry on
+     */
+    private function refuseSelf(User $user, string $action): ?RedirectResponse
+    {
+        if (request()->user()?->id !== $user->id) {
+            return null;
+        }
+
+        return back()->with('error',
+            "You cannot {$action} your own account. Ask another administrator to do it, "
+            .'or you will be locked out with no way back in.');
+    }
+
     public function block(Request $request, User $user): RedirectResponse
     {
+        if ($refusal = $this->refuseSelf($user, 'block')) {
+            return $refusal;
+        }
+
         $request->validate(['reason' => ['required', 'string', 'max:255']]);
         $old = ['status' => $user->status];
         $user->update([
@@ -371,6 +405,12 @@ class UserController extends Controller
 
     public function toggleActive(User $user): RedirectResponse
     {
+        // Only ever a deactivation when it is your own account -- you are
+        // signed in, so you are active -- and that is the one this stops.
+        if ($refusal = $this->refuseSelf($user, 'deactivate')) {
+            return $refusal;
+        }
+
         $new = $user->status === User::STATUS_INACTIVE ? User::STATUS_ACTIVE : User::STATUS_INACTIVE;
         $user->update(['status' => $new]);
         $this->audit->log('user_status_toggled', $user, [], ['status' => $new]);
@@ -380,6 +420,10 @@ class UserController extends Controller
 
     public function archive(User $user): RedirectResponse
     {
+        if ($refusal = $this->refuseSelf($user, 'archive')) {
+            return $refusal;
+        }
+
         Archive::create([
             'archivable_type' => User::class,
             'archivable_id' => $user->id,

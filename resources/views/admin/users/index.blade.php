@@ -116,7 +116,18 @@
                                             @csrf<button class="dropdown-item">Reset password</button>
                                         </form>
                                     </li>
-                                    @if ($user->status === 'blocked')
+                                    @php
+                                        // Deactivate, Block and Archive all end with the
+                                        // person who pressed them unable to sign in. The
+                                        // controller refuses them outright; these three
+                                        // branches are so nobody presses a button that is
+                                        // only going to say no.
+                                        $self = $user->id === auth()->id();
+                                    @endphp
+                                    @if ($self)
+                                        <li><span class="dropdown-item disabled">Block
+                                            <span class="small">— not your own account</span></span></li>
+                                    @elseif ($user->status === 'blocked')
                                         <li><form method="POST" action="{{ route('users.unblock', $user) }}"
                                                   data-confirm="Unblock {{ $user->name }}? They will be able to sign in again."
                                                   data-confirm-tone="success">@csrf<button class="dropdown-item text-success">Unblock</button></form></li>
@@ -134,6 +145,10 @@
                                             </form>
                                         </li>
                                     @endif
+                                    @if ($self)
+                                        <li><span class="dropdown-item disabled">Deactivate
+                                            <span class="small">— not your own account</span></span></li>
+                                    @else
                                     <li>
                                         {{-- Deactivate and Block both stop a sign-in, and the reason
                                              for choosing between them is the only thing that tells
@@ -145,10 +160,16 @@
                                                     : 'Deactivate '.$user->name.'? Use this while they are away — on leave, or on detail elsewhere — so nobody can sign in as them in the meantime. Nothing is wrong with the account; activate it when they are back.' }}"
                                               data-confirm-tone="{{ $user->status === 'inactive' ? 'success' : 'danger' }}">@csrf<button class="dropdown-item">{{ $user->status==='inactive'?'Activate':'Deactivate' }}</button></form>
                                     </li>
+                                    @endif
                                     <li><hr class="dropdown-divider"></li>
+                                    @if ($self)
+                                        <li><span class="dropdown-item disabled">Archive
+                                            <span class="small">— not your own account</span></span></li>
+                                    @else
                                     <li><form method="POST" action="{{ route('users.archive', $user) }}"
                                               data-confirm="Archive {{ $user->name }}? Use this when they have left the LGU — resigned, dismissed or died. The account leaves the list but nothing is deleted: their leave record, their filed CSC Form 6 copies and their employee number all stay, and the account can be restored."
                                               data-confirm-tone="danger">@csrf<button class="dropdown-item text-warning">Archive</button></form></li>
+                                    @endif
                                 </ul>
                             </div>
                         @endif
