@@ -60,12 +60,24 @@ return [
     |--------------------------------------------------------------------------
     |
     | Here you may specify the default timezone for your application, which
-    | will be used by the PHP date and date-time functions. The timezone
-    | is set to "UTC" by default as it is suitable for most use cases.
+    | will be used by the PHP date and date-time functions.
+    |
+    | Asia/Manila, not Laravel's default of UTC. This system runs on one LAN
+    | in Alicia, Isabela, and every time it shows belongs to somebody standing
+    | in that office: when a leave request was filed, when an approval was
+    | signed, when a device was switched off. Under UTC all of those read
+    | eight hours early -- 11:51 in the morning was recorded and displayed as
+    | 3:51 -- which is wrong on a leave form and worse in an audit trail.
+    |
+    | Philippine Standard Time is a fixed UTC+8 with no daylight saving (there
+    | has been none since 1978), so there is no seasonal shift to reason about.
+    |
+    | It stays env-driven so a second deployment elsewhere can set its own
+    | without editing code.
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => env('APP_TIMEZONE', 'Asia/Manila'),
 
     /*
     |--------------------------------------------------------------------------
