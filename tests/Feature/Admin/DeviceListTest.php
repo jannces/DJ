@@ -111,6 +111,8 @@ class DeviceListTest extends TestCase
         $this->post('/devices', [
             'ip_address' => '192.168.1.44',
             'hostname' => 'TREASURY-01',
+            // Required since the MAC address became mandatory at registration.
+            'mac_address' => '00:1A:2B:3C:4D:5E',
         ])->assertRedirect();
 
         $this->assertDatabaseHas('authorized_devices', [

@@ -62,7 +62,10 @@ class DeviceController extends Controller
         $data = $request->validate([
             'ip_address' => ['required', 'ip', 'unique:authorized_devices,ip_address'],
             'hostname' => ['required', 'string', 'max:150'],
-            'mac_address' => ['nullable', 'string', 'max:17'],
+            // Required on the server as well as in the form. The `required`
+            // attribute on the input is a convenience the browser offers and
+            // a POST straight to this route never sees.
+            'mac_address' => ['required', 'string', 'max:17'],
             'description' => ['nullable', 'string', 'max:255'],
         ]);
         $data['status'] = 'active';

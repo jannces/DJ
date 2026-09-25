@@ -41,6 +41,8 @@ class DeviceSwitchTimesTest extends TestCase
         $this->post(route('devices.store'), [
             'ip_address' => '192.168.254.30',
             'hostname' => 'HR-PC-01',
+            // Required since the MAC address became mandatory at registration.
+            'mac_address' => '00:1A:2B:3C:4D:5E',
         ])->assertRedirect();
 
         $device = AuthorizedDevice::where('ip_address', '192.168.254.30')->first();

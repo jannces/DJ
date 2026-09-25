@@ -25,8 +25,8 @@
 </div>
 
 <div class="mb-3">
-    <label class="form-label" for="dev-mac">MAC address</label>
-    <input id="dev-mac" name="mac_address" maxlength="17"
+    <label class="form-label" for="dev-mac">MAC address <span class="req">*</span></label>
+    <input id="dev-mac" name="mac_address" required maxlength="17"
            class="form-control @error('mac_address') is-invalid @enderror"
            value="{{ old('mac_address') }}" placeholder="00:1A:2B:3C:4D:5E">
     @error('mac_address')<div class="invalid-feedback">{{ $message }}</div>@enderror
