@@ -146,9 +146,10 @@ class DeviceSwitchTimesTest extends TestCase
             'deactivated_at' => \Illuminate\Support\Carbon::parse('2026-09-20 17:05:00'),
         ]);
 
+        // The intrusion log's format, so the two pages read alike.
         $this->get(route('devices.index'))
             ->assertOk()
-            ->assertSee('01 Sep 2026, 8:30 am')
-            ->assertSee('20 Sep 2026, 5:05 pm');
+            ->assertSee('Sep 01, 08:30:00')
+            ->assertSee('Sep 20, 17:05:00');
     }
 }

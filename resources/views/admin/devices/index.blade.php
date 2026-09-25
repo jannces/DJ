@@ -46,13 +46,32 @@
         <table class="table table-hover align-middle mb-0">
             <thead>
                 <tr>
-                    <th>IP</th><th>Hostname</th><th>Status</th><th>Switched</th>
+                    <th>Time</th><th>IP</th><th>Hostname</th><th>Status</th>
                     <th>Online</th><th>Last active</th><th></th>
                 </tr>
             </thead>
             <tbody>
             @forelse ($devices as $d)
                 <tr>
+                    {{-- The last switch in each direction, first in the row.
+                         The full history is in the audit log; this answers
+                         "since when?".
+
+                         Same format as the intrusion log's timestamp column --
+                         "Sep 10, 05:52:28" -- so a security event and the
+                         device it came from read alike when the two pages are
+                         put side by side. --}}
+                    <td class="small text-nowrap">
+                        @if ($d->activated_at)
+                            <div>On &middot; {{ $d->activated_at->format('M d, H:i:s') }}</div>
+                        @endif
+                        @if ($d->deactivated_at)
+                            <div class="text-muted">Off &middot; {{ $d->deactivated_at->format('M d, H:i:s') }}</div>
+                        @endif
+                        @unless ($d->activated_at || $d->deactivated_at)
+                            <span class="text-muted">&mdash;</span>
+                        @endunless
+                    </td>
                     <td><code>{{ $d->ip_address }}</code></td>
                     <td>
                         {{ $d->hostname }}
@@ -67,19 +86,6 @@
                         @if ($d->archived_at)
                             <span class="badge bg-warning">archived</span>
                         @endif
-                    </td>
-                    {{-- The last switch in each direction. The full history is
-                         in the audit log; this answers "since when?". --}}
-                    <td class="small text-nowrap">
-                        @if ($d->activated_at)
-                            <div>On &middot; {{ $d->activated_at->format('d M Y, g:i a') }}</div>
-                        @endif
-                        @if ($d->deactivated_at)
-                            <div class="text-muted">Off &middot; {{ $d->deactivated_at->format('d M Y, g:i a') }}</div>
-                        @endif
-                        @unless ($d->activated_at || $d->deactivated_at)
-                            <span class="text-muted">&mdash;</span>
-                        @endunless
                     </td>
                     <td>
                         @if ($d->isOnline())
