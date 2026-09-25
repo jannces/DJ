@@ -66,6 +66,11 @@ class DeviceController extends Controller
             'description' => ['nullable', 'string', 'max:255'],
         ]);
         $data['status'] = 'active';
+        // Registration is an activation -- store() has no way to create an
+        // inactive device. Without this the column stays empty until somebody
+        // happens to toggle it, and the list shows a dash for a device that
+        // has been running since the day it was added.
+        $data['activated_at'] = now();
         $data['registered_by'] = $request->user()->id;
         $device = AuthorizedDevice::create($data);
         Cache::forget("device.{$data['ip_address']}");
@@ -87,17 +92,32 @@ class DeviceController extends Controller
 
     public function toggle(AuthorizedDevice $device): RedirectResponse
     {
-        $new = $device->status === 'active' ? 'inactive' : 'active';
-        $device->update(['status' => $new]);
+        $activating = $device->status !== 'active';
+        $new = $activating ? 'active' : 'inactive';
+
+        // Only the direction just taken is stamped, so the pair reads as
+        // "last switched on at X, last switched off at Y". Writing both would
+        // make each overwrite the other's meaning.
+        $changes = ['status' => $new];
+        $changes[$activating ? 'activated_at' : 'deactivated_at'] = now();
+
+        $device->update($changes);
         Cache::forget("device.{$device->ip_address}");
-        $this->audit->log('device_'.($new === 'active' ? 'activated' : 'deactivated'), $device);
+        $this->audit->log('device_'.($activating ? 'activated' : 'deactivated'), $device);
 
         return back()->with('status', "Device {$new}.");
     }
 
     public function archive(AuthorizedDevice $device): RedirectResponse
     {
-        $device->update(['archived_at' => now(), 'status' => 'inactive']);
+        // Archiving is a deactivation: the active() scope excludes archived
+        // rows, so the device stops being served the moment this runs. Leaving
+        // deactivated_at empty would show it as never having been switched off.
+        $device->update([
+            'archived_at' => now(),
+            'status' => 'inactive',
+            'deactivated_at' => now(),
+        ]);
         Cache::forget("device.{$device->ip_address}");
         $this->audit->log('device_archived', $device);
 

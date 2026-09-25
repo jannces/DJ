@@ -46,7 +46,7 @@
         <table class="table table-hover align-middle mb-0">
             <thead>
                 <tr>
-                    <th>IP</th><th>Hostname</th><th>Status</th>
+                    <th>IP</th><th>Hostname</th><th>Status</th><th>Switched</th>
                     <th>Online</th><th>Last active</th><th></th>
                 </tr>
             </thead>
@@ -67,6 +67,19 @@
                         @if ($d->archived_at)
                             <span class="badge bg-warning">archived</span>
                         @endif
+                    </td>
+                    {{-- The last switch in each direction. The full history is
+                         in the audit log; this answers "since when?". --}}
+                    <td class="small text-nowrap">
+                        @if ($d->activated_at)
+                            <div>On &middot; {{ $d->activated_at->format('d M Y, g:i a') }}</div>
+                        @endif
+                        @if ($d->deactivated_at)
+                            <div class="text-muted">Off &middot; {{ $d->deactivated_at->format('d M Y, g:i a') }}</div>
+                        @endif
+                        @unless ($d->activated_at || $d->deactivated_at)
+                            <span class="text-muted">&mdash;</span>
+                        @endunless
                     </td>
                     <td>
                         @if ($d->isOnline())
@@ -96,7 +109,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="6" class="text-center text-muted py-4">No devices registered.</td></tr>
+                <tr><td colspan="7" class="text-center text-muted py-4">No devices registered.</td></tr>
             @endforelse
             </tbody>
         </table>

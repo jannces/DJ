@@ -11,11 +11,13 @@ class AuthorizedDevice extends Model
     use Auditable;
     protected $fillable = [
         'ip_address', 'hostname', 'mac_address', 'description', 'status',
-        'registered_by', 'last_active_at', 'archived_at',
+        'registered_by', 'last_active_at', 'activated_at', 'deactivated_at', 'archived_at',
     ];
 
     protected $casts = [
         'last_active_at' => 'datetime',
+        'activated_at' => 'datetime',
+        'deactivated_at' => 'datetime',
         'archived_at' => 'datetime',
     ];
 
