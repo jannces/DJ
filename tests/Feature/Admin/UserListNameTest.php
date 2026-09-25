@@ -9,16 +9,16 @@ use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 /**
- * How the user list writes a name, and when the account was created.
+ * The user list's three name columns, and when each account was created.
  *
- * The list wrote "Maria Dela Cruz" and sorted by it -- which is to say, by
- * first name. A government roster is read down its surnames, so the column now
- * writes "Dela Cruz, Maria S." and the query orders by the same thing. Writing
- * one and ordering by the other would have been worse than leaving it alone: a
- * list headed by surnames in no surname order looks broken.
+ * It had one column reading "Maria Dela Cruz" and no created date, so it could
+ * answer neither "where is Dela Cruz in this list?" nor "has this person been
+ * set up yet?". Last name, first name and middle initial now have a column
+ * each, in the order a government roster is read.
  *
- * The Created column answers two questions the page could not: has this person
- * been set up yet, and who was added this month.
+ * The ordering had to move with them. orderBy('name') sorted by the account's
+ * "Maria Dela Cruz" -- by first name -- and a list headed by surnames in no
+ * surname order reads as a list in no order at all.
  */
 class UserListNameTest extends TestCase
 {
@@ -48,31 +48,48 @@ class UserListNameTest extends TestCase
         return $user->fresh();
     }
 
-    /** Surname, given name, middle initial. */
-    public function test_a_name_is_written_surname_first_with_a_middle_initial(): void
+    /** The middle name becomes one letter and a full stop. */
+    public function test_a_middle_name_is_shown_as_an_initial(): void
     {
         $this->seedCore();
 
         $user = $this->employee('Maria', 'Santos', 'Dela Cruz', 'Maria Dela Cruz');
 
-        $this->assertSame('Dela Cruz, Maria S.', $user->listName());
+        $this->assertSame('S.', $user->employeeProfile->middleInitial());
+        $this->assertSame('Dela Cruz', $user->surname());
     }
 
-    /** Plenty of people have no middle name, and a bare "." is not a name. */
-    public function test_a_missing_middle_name_leaves_no_stray_initial(): void
+    /**
+     * No middle name leaves the cell EMPTY, not a dash.
+     *
+     * A narrow column of em-dashes beside the people who do have one reads as
+     * data somebody forgot to enter, rather than a name that does not exist.
+     */
+    public function test_no_middle_name_leaves_the_initial_empty(): void
     {
         $this->seedCore();
 
         $user = $this->employee('Jose', null, 'Rizal', 'Jose Rizal');
 
-        $this->assertSame('Rizal, Jose', $user->listName());
+        $this->assertSame('', $user->employeeProfile->middleInitial(),
+            'a person with no middle name is given an initial anyway');
+    }
+
+    /** A middle name of nothing but spaces is not a middle name either. */
+    public function test_a_blank_middle_name_leaves_the_initial_empty(): void
+    {
+        $this->seedCore();
+
+        $user = $this->employee('Jose', '   ', 'Rizal', 'Jose Rizal');
+
+        $this->assertSame('', $user->employeeProfile->middleInitial());
     }
 
     /**
      * An account with no employee profile still shows a person.
      *
      * The IT administrator has no leave entitlement and therefore no profile.
-     * Before the fallback that row would have rendered an empty cell.
+     * Without the fallback that row would render an empty name.
      */
     public function test_an_account_without_an_employee_profile_falls_back_to_its_own_name(): void
     {
@@ -80,30 +97,53 @@ class UserListNameTest extends TestCase
 
         $user = User::factory()->create(['name' => 'System Administrator']);
 
-        $this->assertSame('System Administrator', $user->listName());
+        $this->assertSame('System Administrator', $user->surname());
     }
 
-    /** And the page renders it that way, with the creation date beside it. */
-    public function test_the_list_shows_the_formal_name_and_the_created_date(): void
+    /** And the page draws all three columns, with the creation date. */
+    public function test_the_list_shows_the_three_name_columns_and_the_created_date(): void
     {
         $this->admin();
 
         $user = $this->employee('Maria', 'Santos', 'Dela Cruz', 'Maria Dela Cruz');
         $user->forceFill(['created_at' => Carbon::parse('2026-03-14 09:00:00')])->save();
 
-        $this->get(route('users.index'))
-            ->assertOk()
-            ->assertSee('Dela Cruz, Maria S.')
-            ->assertSee('14 Mar 2026');
+        $html = $this->get(route('users.index'))->assertOk()
+            ->assertSee('Last name')
+            ->assertSee('First name')
+            ->assertSee('M.I.')
+            ->assertSee('14 Mar 2026')
+            ->getContent();
+
+        // Three separate cells, not one joined string. The surname carries
+        // the edit link, so it is an anchor rather than a bare span.
+        $this->assertStringContainsString('class="person-name name-link">Dela Cruz</a>', $html);
+        $this->assertStringContainsString('<td>Maria</td>', $html);
+        $this->assertStringContainsString('<td>S.</td>', $html);
+        $this->assertStringNotContainsString('Dela Cruz, Maria', $html,
+            'the columns were joined back into one string');
+    }
+
+    /** The M.I. cell is genuinely empty when there is no middle name. */
+    public function test_the_middle_initial_cell_is_empty_on_the_page(): void
+    {
+        $this->admin();
+
+        $this->employee('Jose', null, 'Rizal', 'Jose Rizal');
+
+        $html = $this->get(route('users.index'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('<td>Jose</td>', $html);
+        $this->assertStringContainsString('<td></td>', $html,
+            'the middle initial cell carries a placeholder instead of being empty');
     }
 
     /**
      * Sorted by surname, not by the account name.
      *
-     * Ordered by users.name these three come back Ana, Maria, Zenaida. Ordered
-     * by surname they come back Bautista, Dela Cruz, Aquino -> Aquino,
-     * Bautista, Dela Cruz -- which is the assertion, and it fails under the
-     * old ordering.
+     * Ordered by users.name these come back Ana, Maria, Zenaida. Ordered by
+     * surname: Aquino, Bautista, Dela Cruz. This assertion fails under the old
+     * ordering, which is the point of it.
      */
     public function test_the_list_is_ordered_by_surname(): void
     {
@@ -115,30 +155,26 @@ class UserListNameTest extends TestCase
 
         $html = $this->get(route('users.index'))->assertOk()->getContent();
 
-        $positions = [
-            'Aquino, Zenaida' => strpos($html, 'Aquino, Zenaida'),
-            'Bautista, Ana' => strpos($html, 'Bautista, Ana'),
-            'Dela Cruz, Maria' => strpos($html, 'Dela Cruz, Maria'),
-        ];
+        $at = fn (string $surname) => strpos($html, 'class="person-name name-link">'.$surname.'</a>');
 
-        foreach ($positions as $name => $at) {
-            $this->assertNotFalse($at, "{$name} is missing from the list");
+        foreach (['Aquino', 'Bautista', 'Dela Cruz'] as $surname) {
+            $this->assertNotFalse($at($surname), "{$surname} is missing from the list");
         }
 
-        $this->assertTrue($positions['Aquino, Zenaida'] < $positions['Bautista, Ana']);
-        $this->assertTrue($positions['Bautista, Ana'] < $positions['Dela Cruz, Maria'],
+        $this->assertTrue($at('Aquino') < $at('Bautista'));
+        $this->assertTrue($at('Bautista') < $at('Dela Cruz'),
             'the list is not in surname order');
     }
 
     /**
-     * The avatar disc is still keyed off the plain name.
+     * The avatar disc is still keyed off the whole account name.
      *
-     * Its colour is a hash of whatever string it is given, so keying it off
-     * the displayed text would make the same person one colour here and
-     * another on every other page -- the exact bug the shared hash exists to
-     * prevent. "Maria Dela Cruz" gives MC; "Dela Cruz, Maria S." would give DS.
+     * Its colour is a hash of whatever string it is given, so keying it off a
+     * single column would make the same person one colour here and another on
+     * every other page -- the bug the shared hash exists to prevent. "Maria
+     * Dela Cruz" gives MC; "Dela Cruz" alone would give D.
      */
-    public function test_the_avatar_is_unchanged_by_the_new_name_order(): void
+    public function test_the_avatar_is_unchanged_by_the_split_columns(): void
     {
         $this->admin();
 
@@ -146,7 +182,6 @@ class UserListNameTest extends TestCase
 
         $this->get(route('users.index'))
             ->assertOk()
-            ->assertSee('Dela Cruz, Maria S.')
             ->assertSee('>MC<', false);
     }
 }

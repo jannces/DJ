@@ -38,23 +38,33 @@
     <div data-list>
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
-            <thead><tr><th>Name</th><th>Roles</th><th>Department</th><th>Status</th><th>Created</th><th></th></tr></thead>
+            {{-- Three name columns, in the order a government roster is read:
+                 surname, given name, middle initial. The list is sorted by the
+                 first two, so the eye goes down the left edge and finds
+                 somebody. --}}
+            <thead><tr><th>Last name</th><th>First name</th><th>M.I.</th>
+                <th>Roles</th><th>Department</th><th>Status</th><th>Created</th><th></th></tr></thead>
             <tbody>
             @forelse ($users as $user)
                 <tr>
-                    {{-- The same row the employee list and the rankings draw.
-                         An archived account has no edit page to open, so it
-                         keeps a plain name rather than a link that refuses.
+                    {{-- The same row the employee list and the rankings draw,
+                         carrying the surname. An archived account has no edit
+                         page to open, so it keeps a plain name rather than a
+                         link that refuses.
 
-                         Surname first -- "Dela Cruz, Maria S." -- because that
-                         is how a government roster is read down, and it is the
-                         order this list is now sorted in. The avatar is still
-                         keyed off the plain name so the disc is the same colour
-                         here as everywhere else. --}}
+                         The avatar is keyed off the full account name, not the
+                         surname: its colour is a hash of whatever it is given,
+                         so keying it off one column would make the same person
+                         a different colour here than on every other page. --}}
                     <td>
-                        <x-person :name="$user->listName()" :avatar="$user->name" :sub="$user->email"
+                        <x-person :name="$user->surname()" :avatar="$user->name" :sub="$user->email"
                             :url="$user->trashed() ? null : route('users.edit', $user)" />
                     </td>
+                    <td>{{ $user->employeeProfile?->first_name ?? '—' }}</td>
+                    {{-- Empty, not a dash, when there is no middle name: a
+                         column of em-dashes reads as data that is missing
+                         rather than a name that does not exist. --}}
+                    <td>{{ $user->employeeProfile?->middleInitial() }}</td>
                     <td>@foreach ($user->roles as $r)<span class="badge bg-secondary">{{ $r->name }}</span> @endforeach</td>
                     <td>{{ $user->employeeProfile?->department?->name ?? '—' }}</td>
                     <td>
@@ -145,7 +155,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="6" class="text-center text-muted py-4">No users found.</td></tr>
+                <tr><td colspan="8" class="text-center text-muted py-4">No users found.</td></tr>
             @endforelse
             </tbody>
         </table>

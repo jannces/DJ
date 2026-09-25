@@ -181,11 +181,11 @@ class NameLinkTest extends TestCase
         // The user list draws the shared person row now, so the link carries
         // the component's class alongside name-link.
         //
-        // "Dela Cruz, Juan", not "Juan Dela Cruz": this list writes the surname
-        // first, the way a government roster is read down, and orders by it.
-        // The link itself is what this test is about, and that has not moved.
+        // The surname alone: the list gives last name, first name and middle
+        // initial their own columns, so this cell carries "Dela Cruz". The
+        // link itself is what this test is about, and that has not moved.
         $this->assertStringContainsString(
-            '<a href="'.route('users.edit', $this->employee).'" class="person-name name-link">Dela Cruz, Juan S.</a>',
+            '<a href="'.route('users.edit', $this->employee).'" class="person-name name-link">Dela Cruz</a>',
             $this->get('/users')->assertOk()->getContent()
         );
     }

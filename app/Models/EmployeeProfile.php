@@ -85,34 +85,17 @@ class EmployeeProfile extends Model
     }
 
     /**
-     * "Dela Cruz, Maria S." — how a name is written on a government list.
+     * "S." for Santos, or an empty string when there is no middle name.
      *
-     * Surname first because that is what the list is read down and sorted by;
-     * the middle name reduced to an initial because CSC forms carry it that
-     * way and the column has to sit beside four others.
-     *
-     * fullName() above stays as it is: a sentence needs "Maria Dela Cruz", and
-     * a column needs the surname at the left edge. They are two jobs.
+     * Empty rather than a dash on purpose: this fills its own narrow column in
+     * the user list, and a column of em-dashes beside the people who do have a
+     * middle name reads as missing data rather than as absent-by-fact. Plenty
+     * of people simply have no middle name.
      */
-    public function formalName(): string
+    public function middleInitial(): string
     {
-        $surname = trim((string) $this->last_name);
-        $given = trim((string) $this->first_name);
-
-        $name = match (true) {
-            $surname !== '' && $given !== '' => "{$surname}, {$given}",
-            $surname !== '' => $surname,
-            default => $given,
-        };
-
         $middle = trim((string) $this->middle_name);
 
-        // Plenty of people have no middle name, and "Dela Cruz, Maria ." is
-        // worse than leaving it off.
-        if ($name !== '' && $middle !== '') {
-            $name .= ' '.mb_strtoupper(mb_substr($middle, 0, 1)).'.';
-        }
-
-        return $name;
+        return $middle === '' ? '' : mb_strtoupper(mb_substr($middle, 0, 1)).'.';
     }
 }

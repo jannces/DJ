@@ -142,12 +142,12 @@ class PersonRowTest extends TestCase
 
         $html = $this->get('/users?show=archived')->assertOk()->getContent();
 
-        // The disc still reads DM. The user list writes the surname first --
-        // "Mendoza, Dj Robin" -- but the avatar is keyed off the plain account
-        // name on purpose, so the same person is the same colour and the same
-        // two letters here as on every other page.
+        // The disc still reads DM. The user list gives the surname its own
+        // column, but the avatar is keyed off the plain account name on
+        // purpose, so the same person is the same colour and the same two
+        // letters here as on every other page.
         $this->assertMatchesRegularExpression('/<span class="person-av" data-n="\d"[^>]*>DM<\/span>/', $html);
-        $this->assertStringContainsString('<span class="person-name">Mendoza, Dj Robin S.</span>', $html);
+        $this->assertStringContainsString('<span class="person-name">Mendoza</span>', $html);
         $this->assertStringNotContainsString(
             '<a href="'.route('users.edit', $this->employee).'"', $html,
             'an archived account offers an edit link it cannot honour');

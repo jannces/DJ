@@ -60,17 +60,17 @@ class User extends Authenticatable
     }
 
     /**
-     * The name as a list shows it: surname first, out of the employee record.
+     * The surname, for the column the user list is sorted by.
      *
-     * Not every account has one -- the system administrator may be IT with no
-     * leave entitlement and no profile -- so this falls back to the account's
-     * own name rather than leaving an empty cell where a person should be.
+     * Not every account has an employee profile -- the system administrator
+     * may be IT with no leave entitlement -- so this falls back to the
+     * account's own name rather than leaving an empty cell where a person
+     * should be. The query orders on the same COALESCE, so the fallback sorts
+     * where it is shown.
      */
-    public function listName(): string
+    public function surname(): string
     {
-        $formal = $this->employeeProfile?->formalName();
-
-        return ($formal === null || $formal === '') ? (string) $this->name : $formal;
+        return trim((string) $this->employeeProfile?->last_name) ?: (string) $this->name;
     }
 
     public function leaveRequests(): HasMany
