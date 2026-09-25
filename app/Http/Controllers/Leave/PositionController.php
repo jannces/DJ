@@ -12,14 +12,29 @@ class PositionController extends Controller
 {
     public function index(): View
     {
-        $positions = Position::withCount('employees')->orderBy('title')->paginate(15);
-
-        return view('hr.positions', compact('positions'));
+        return view('hr.positions', ['positions' => $this->listing()]);
     }
 
-    public function create(): RedirectResponse
+    /** One query shape, so index, create and edit cannot show different lists. */
+    private function listing()
     {
-        return redirect()->route('positions.index');
+        return Position::withCount('employees')->orderBy('title')->paginate(config('lists.per_page'));
+    }
+
+    /**
+     * The list, with the New panel open.
+     *
+     * The "New position" button is a real link here rather than a bare button,
+     * so the page works with the script and without it: Bootstrap opens the
+     * panel in place and cancels the navigation, and if the script never runs
+     * the link loads this, which renders the panel already open.
+     */
+    public function create(): View
+    {
+        return view('hr.positions', [
+            'positions' => $this->listing(),
+            'opening' => true,
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -35,7 +50,7 @@ class PositionController extends Controller
     public function edit(Position $position): View
     {
         return view('hr.positions', [
-            'positions' => Position::withCount('employees')->orderBy('title')->paginate(15),
+            'positions' => $this->listing(),
             'editing' => $position,
         ]);
     }

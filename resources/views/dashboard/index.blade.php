@@ -2,115 +2,408 @@
 @section('title', 'Dashboard')
 @section('content')
 
-<div class="page-head">
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <div>
-            <h1>Good day, {{ \Illuminate\Support\Str::before(auth()->user()->name, ' ') }} 👋</h1>
-            <div class="sub text-capitalize">{{ str_replace('-', ' ', $role) }} workspace &middot; {{ now()->format('l, F j, Y') }}</div>
-        </div>
-        @can('leave.apply')
-            <a href="{{ route('leave.create') }}" class="btn btn-lgu"><i class="bi bi-calendar-plus"></i>Apply for Leave</a>
-        @endcan
-    </div>
-</div>
+{{--
+  Two panes, gated separately, and somebody may hold both:
+
+    · My leave        — leave.view-own. Their own credits and applications. An
+                        HR officer files leave like anybody else, so this is
+                        theirs too.
+    · Leave management — leave.approve.final. Everyone's leave, for whoever
+                        decides it, which is HR. NOT view-all: the Mayor reads
+                        every application through All Leave Requests without
+                        running the operation, and their dashboard is their own
+                        leave.
+
+  Holding both gives one Dashboard link with two tabs rather than two menu
+  items. config/menu.php is not edited: no item is added, removed, renamed,
+  reordered or repointed, and the rail — which already scrolls — does not grow
+  a thirteenth entry.
+
+  The System Administrator is redirected to the Security Dashboard before
+  reaching this view; they hold neither permission and this page would be an
+  empty frame.
+
+  The tabs are radio inputs revealed with :has(), like the period switches. No
+  script, and no second route: both panes are the same page.
+
+  Every chart is HTML, CSS and inline SVG. They print, and there is no canvas
+  to repeat the runaway-growth bug.
+--}}
 
 @php
-    $tones = ['tone-violet','tone-yellow','tone-blue','tone-red','tone-grey'];
-    $icons = [
-        'employees'=>'bi-people','pending_leaves'=>'bi-hourglass-split','intrusions_today'=>'bi-shield-exclamation',
-        'devices_online'=>'bi-pc-display','devices_offline'=>'bi-pc-display-horizontal','total_requests'=>'bi-collection',
-        'approved'=>'bi-check2-circle','departments'=>'bi-diagram-3','my_pending'=>'bi-hourglass','my_approved'=>'bi-check2-circle',
-    ];
+    $hasMine = isset($mine);
+    $hasManagement = isset($management);
+    // A department head heads no office until somebody assigns them one, in
+    // which case the service returns null and the pane is absent rather than
+    // an empty frame.
+    $hasDepartment = isset($department) && $department !== null;
+    $both = $hasMine && ($hasManagement || $hasDepartment);
 @endphp
-<div class="row g-3 mb-4">
-    @foreach ($cards as $key => $value)
-        <div class="col-6 col-xl-3">
-            <div class="stat-card">
-                <div class="stat-icon {{ $tones[$loop->index % count($tones)] }}">
-                    <i class="bi {{ $icons[$key] ?? 'bi-bar-chart' }}"></i>
-                </div>
-                <div>
-                    <div class="stat-value">{{ $value }}</div>
-                    <div class="stat-label">{{ str_replace('_', ' ', $key) }}</div>
-                </div>
-            </div>
-        </div>
-    @endforeach
-</div>
 
-<div class="row g-3">
-    @if (!empty($chartsLeavesMonth))
-        <div class="col-xl-7">
-            <div class="card h-100">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>Leave Requests Trend</span><span class="chip"><i class="bi bi-graph-up"></i>Last 6 months</span>
-                </div>
-                <div class="card-body"><div style="height:280px"><canvas id="chartLeavesMonth"></canvas></div></div>
-            </div>
-        </div>
-        <div class="col-xl-5">
-            <div class="card h-100">
-                <div class="card-header">Requests by Leave Type</div>
-                <div class="card-body"><div style="height:280px"><canvas id="chartLeavesType"></canvas></div></div>
-            </div>
-        </div>
-    @endif
+<div class="dash" @if ($both) id="dash-tabs" @endif>
 
-    @if (!empty($chartsIntrusions))
-        <div class="col-xl-7">
-            <div class="card h-100">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>Intrusion Attempts</span><span class="chip"><i class="bi bi-shield"></i>Last 7 days</span>
-                </div>
-                <div class="card-body"><div style="height:260px"><canvas id="chartIntrusions"></canvas></div></div>
+@if ($both)
+    <div class="dash-tabs">
+        <label><input type="radio" name="dash-pane" id="pane-mine" checked>My leave</label>
+        <label>
+            <input type="radio" name="dash-pane" id="pane-mgt">
+            {{ $hasDepartment ? 'My office' : 'Leave management' }}
+        </label>
+    </div>
+@endif
+
+{{-- ==================================================================== --}}
+{{-- My leave                                                             --}}
+{{-- ==================================================================== --}}
+@if ($hasMine)
+<div class="{{ $both ? 'an-pane pane-mine' : '' }}">
+
+    <div class="kpi-grid">
+        @foreach ($mine['kpis'] as $kpi)
+            @include('dashboard._kpi', ['kpi' => $kpi])
+        @endforeach
+    </div>
+
+    <div class="dash-split">
+        {{-- ---------- Credits ---------- --}}
+        {{-- Grey is used, colour is what remains — so the bar answers "how much
+             is left", which is the question an employee about to file has. The
+             five states it has to survive are in DashboardService::balanceRow():
+             the last of them, a type with nothing accrued at all, used to divide
+             by zero and render the bar NaN% wide. --}}
+        <div class="dash-frame">
+            <div class="dash-head">
+                <p class="dash-title">Credits remaining, by type</p>
+                <span class="dash-link">as of {{ now()->format('j M Y') }}</span>
+            </div>
+            <div class="dash-body">
+                @forelse ($mine['balances'] as $row)
+                    <div class="bal-r" data-state="{{ $row['state'] }}">
+                        <span class="bal-l">{{ $row['name'] }}</span>
+                        <span class="bal-t">
+                            @if ($row['state'] !== 'none')
+                                <span class="bal-u" style="width:{{ $row['used_pct'] }}%"></span>
+                                <span class="bal-k" style="width:{{ $row['left_pct'] }}%"></span>
+                            @endif
+                        </span>
+                        <span class="bal-v">{{ $row['readout'] }}</span>
+                    </div>
+                @empty
+                    <p class="dash-empty">No leave credits on record yet.</p>
+                @endforelse
+                {{-- A legend, shown only when there is something to decode. A
+                     caption explaining a dashed track under a panel that has
+                     no dashed track is noise. --}}
+                @if (collect($mine['balances'])->contains(fn ($r) => $r['state'] === 'none'))
+                    <p class="dash-note">A dashed track means no credits have accrued in that type.</p>
+                @endif
             </div>
         </div>
-    @endif
 
-    @isset($my_balances)
-        <div class="col-xl-5">
-            <div class="card h-100">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>My Leave Balances</span>
-                    <a href="{{ route('leave.balances') }}" class="small">View all <i class="bi bi-arrow-right"></i></a>
-                </div>
-                <div class="card-body">
-                    @forelse ($my_balances as $b)
-                        <div class="d-flex align-items-center justify-content-between py-2 {{ !$loop->last ? 'border-bottom' : '' }}" style="border-color:var(--border)!important">
-                            <div>
-                                <div class="fw-semibold" style="font-size:.9rem">{{ $b->leaveType->name }}</div>
-                                <div class="text-muted" style="font-size:.75rem">Earned {{ number_format($b->earned,2) }} · Used {{ number_format($b->used,2) }}</div>
-                            </div>
-                            <div class="text-end">
-                                <span class="badge bg-success" style="font-size:.9rem">{{ number_format($b->balance,2) }}</span>
-                                <div class="text-muted" style="font-size:.68rem">days left</div>
-                            </div>
-                        </div>
+        {{-- ---------- Recent applications ---------- --}}
+        <div class="dash-frame">
+            <div class="dash-head">
+                <p class="dash-title">Recent leave applications</p>
+                <a href="{{ route('leave.index') }}" class="dash-link">View all &rarr;</a>
+            </div>
+            <div class="table-responsive">
+                <table class="dash-table">
+                    <thead><tr>
+                        <th>Reference</th><th>Leave type</th><th>Inclusive dates</th>
+                        <th class="num">Days</th><th>Status</th><th></th>
+                    </tr></thead>
+                    <tbody>
+                    @forelse ($mine['requests'] as $r)
+                        <tr>
+                            <td class="ref">{{ $r->reference_no }}</td>
+                            <td>{{ $r->leaveType->name }}</td>
+                            <td class="text-muted">{{ $r->start_date->format('M d') }} &ndash; {{ $r->end_date->format('M d, Y') }}</td>
+                            <td class="num">{{ rtrim(rtrim(number_format($r->working_days, 1), '0'), '.') }}</td>
+                            <td>@include('leave._status_badge', ['status' => $r->status])</td>
+                            <td class="text-end">
+                                <a href="{{ route('leave.preview-form', $r) }}" class="dash-link">
+                                    <i class="bi bi-file-earmark-text"></i>View form
+                                </a>
+                            </td>
+                        </tr>
                     @empty
-                        <div class="text-center text-muted py-4"><i class="bi bi-inbox d-block mb-2" style="font-size:1.5rem"></i>No balances yet.</div>
+                        <tr><td colspan="6" class="dash-empty">No leave applications yet.</td></tr>
                     @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {{-- ---------- Credit history ---------- --}}
+    <div class="dash-frame">
+        <div class="dash-head">
+            <p class="dash-title">Credit history</p>
+        </div>
+        <div class="table-responsive">
+            <table class="dash-table">
+                <thead><tr>
+                    <th>Date</th><th>Type</th><th>Entry</th>
+                    <th class="num">Days</th><th class="num">Balance</th><th>Remarks</th>
+                </tr></thead>
+                <tbody>
+                @forelse ($mine['credit_history'] as $h)
+                    <tr>
+                        <td class="text-muted">{{ $h->created_at->format('M d, Y') }}</td>
+                        <td class="ref">{{ $h->leaveType->code }}</td>
+                        <td class="text-capitalize text-muted">{{ $h->entry_type }}</td>
+                        <td class="num {{ $h->days < 0 ? 'text-danger' : 'text-success' }}">
+                            {{ $h->days > 0 ? '+' : '' }}{{ number_format($h->days, 2) }}
+                        </td>
+                        <td class="num">{{ number_format($h->balance_after, 2) }}</td>
+                        <td class="text-muted">{{ $h->remarks }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="6" class="dash-empty">No credit history yet.</td></tr>
+                @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+@endif
+
+{{-- ==================================================================== --}}
+{{-- Leave management                                                     --}}
+{{-- ==================================================================== --}}
+@if ($hasManagement)
+@php
+    $totals = $management['outcome']['totals'];
+@endphp
+<div class="{{ $both ? 'an-pane pane-mgt' : '' }}">
+
+    <div class="kpi-grid">
+        @foreach ($management['kpis'] as $kpi)
+            @include('dashboard._kpi', ['kpi' => $kpi])
+        @endforeach
+    </div>
+
+    {{-- ---------- Filing over the year, by type ---------- --}}
+    {{-- One line per leave type rather than one line for everything. The
+         single line said filings rose in June without saying what kind, and
+         Vacation rising into the school holidays is a plan being made while
+         Sick Leave rising is an outbreak. Full width, because five lines and
+         their breakdown do not fit in half. --}}
+    <div class="dash-frame" id="an-trend">
+        <div class="dash-head">
+            {{-- "per month" was in the title while the Yearly view was on
+                 screen. The switch says which period; the title says what is
+                 being counted. --}}
+            <p class="dash-title">Applications filed</p>
+            <div class="an-switch">
+                <label><input type="radio" name="trend-window" id="trend-month" checked>Monthly</label>
+                <label><input type="radio" name="trend-window" id="trend-year">Yearly</label>
+            </div>
+        </div>
+        <div class="dash-body">
+            <div class="ml-split">
+                <div class="an-pane pane-month">
+                    @include('dashboard._multiline', ['chart' => $management['trend_month'], 'id' => 'ml-m'])
+                </div>
+                <div class="an-pane pane-year">
+                    @include('dashboard._multiline', ['chart' => $management['trend_year'], 'id' => 'ml-y'])
+                </div>
+
+                <div class="ml-side">
+                    <p class="ml-side-h">Period breakdown</p>
+                    <div class="an-pane pane-month">
+                        @include('dashboard._breakdown', ['chart' => $management['trend_month']])
+                    </div>
+                    <div class="an-pane pane-year">
+                        @include('dashboard._breakdown', ['chart' => $management['trend_year']])
+                    </div>
                 </div>
             </div>
         </div>
-    @endisset
-</div>
+    </div>
 
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const P = window.lmsChartPalette;
-    @if (!empty($chartsLeavesMonth))
-    (function(){ const d=@json($chartsLeavesMonth); const ctx=document.getElementById('chartLeavesMonth');
-      const g=ctx.getContext('2d').createLinearGradient(0,0,0,280); g.addColorStop(0,'rgba(109,40,217,.30)'); g.addColorStop(1,'rgba(109,40,217,0)');
-      new Chart(ctx,{type:'line',data:{labels:d.labels,datasets:[{label:'Requests',data:d.data,borderColor:P[0],backgroundColor:g,fill:true,tension:.4,borderWidth:2.5,pointRadius:4,pointBackgroundColor:P[0],pointBorderColor:'#fff',pointBorderWidth:2}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}},x:{grid:{display:false}}}}}); })();
-    (function(){ const d=@json($chartsLeavesType ?? ['labels'=>[],'data'=>[]]);
-      new Chart(document.getElementById('chartLeavesType'),{type:'doughnut',data:{labels:d.labels,datasets:[{data:d.data,backgroundColor:P,borderWidth:2,borderColor:'var(--surface)'}]},options:{cutout:'62%',plugins:{legend:{position:'right'}}}}); })();
-    @endif
-    @if (!empty($chartsIntrusions))
-    (function(){ const d=@json($chartsIntrusions);
-      new Chart(document.getElementById('chartIntrusions'),{type:'bar',data:{labels:d.labels,datasets:[{label:'Events',data:d.data,backgroundColor:'#be123c',borderRadius:6,maxBarThickness:34}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}},x:{grid:{display:false}}}}}); })();
-    @endif
-});
-</script>
-@endpush
+    <div class="dash-split">
+        {{-- ---------- Leave types ---------- --}}
+        {{-- Every type, including the ones nobody used. A type with no
+             applications is a real answer to "what do people apply for", and a
+             chart that silently omits it cannot be told apart from one where
+             the type does not exist. The zeros are sorted to the bottom and
+             marked with a rule rather than dropped. --}}
+        <div class="dash-frame" id="an-types">
+            <div class="dash-head">
+                <p class="dash-title">Most applied leave type</p>
+                <div class="an-switch">
+                    <label><input type="radio" name="types-window" id="types-month" checked>This month</label>
+                    <label><input type="radio" name="types-window" id="types-year">This year</label>
+                </div>
+            </div>
+            <div class="dash-body">
+                <div class="an-pane pane-month">
+                    @include('dashboard._donut', ['ring' => $management['ring_month'],
+                        'empty' => 'Nothing filed this month.'])
+                </div>
+                <div class="an-pane pane-year">
+                    @include('dashboard._donut', ['ring' => $management['ring_year'],
+                        'empty' => 'Nothing filed this year.'])
+                </div>
+            </div>
+        </div>
+
+        {{-- ---------- Outcome ---------- --}}
+        <div class="dash-frame">
+            <div class="dash-head">
+                <p class="dash-title">Outcome of this year&rsquo;s applications</p>
+                <span class="dash-link">{{ $totals['total'] }} filed in {{ now()->year }}</span>
+            </div>
+            <div class="dash-body">
+                @include('dashboard._split', ['parts' => [
+                    ['key' => 'approved', 'label' => 'Approved', 'value' => $totals['approved']],
+                    ['key' => 'rejected', 'label' => 'Rejected', 'value' => $totals['rejected']],
+                    ['key' => 'pending', 'label' => 'Waiting', 'value' => $totals['pending']],
+                ]])
+
+                <details class="an-numbers">
+                    <summary>Show the numbers</summary>
+                    <div class="table-responsive">
+                        <table class="dash-table">
+                            <thead><tr>
+                                <th>Month</th><th class="num">Approved</th><th class="num">Rejected</th>
+                                <th class="num">Waiting</th><th class="num">Filed</th>
+                            </tr></thead>
+                            <tbody>
+                            @foreach ($management['outcome']['months'] as $month)
+                                @continue($month['total'] === 0)
+                                <tr>
+                                    <td>{{ $month['label'] }}</td>
+                                    <td class="num">{{ $month['approved'] }}</td>
+                                    <td class="num">{{ $month['rejected'] }}</td>
+                                    <td class="num">{{ $month['pending'] }}</td>
+                                    <td class="num">{{ $month['total'] }}</td>
+                                </tr>
+                            @endforeach
+                            <tr>
+                                <td><strong>{{ now()->year }}</strong></td>
+                                <td class="num"><strong>{{ $totals['approved'] }}</strong></td>
+                                <td class="num"><strong>{{ $totals['rejected'] }}</strong></td>
+                                <td class="num"><strong>{{ $totals['pending'] }}</strong></td>
+                                <td class="num"><strong>{{ $totals['total'] }}</strong></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+            </div>
+        </div>
+    </div>
+
+    <div class="dash-frame">
+        <div class="dash-head">
+            <p class="dash-title">Applications by office</p>
+            <span class="dash-link">{{ now()->year }} to date</span>
+        </div>
+        <div class="dash-body">
+            @include('dashboard._stack', ['stack' => $management['office_stack']])
+        </div>
+    </div>
+
+</div>
+@endif
+
+{{-- ==================================================================== --}}
+{{-- My office — the department head's pane                               --}}
+{{-- ==================================================================== --}}
+@if ($hasDepartment)
+<div class="{{ $both ? 'an-pane pane-mgt' : '' }}">
+
+    <div class="kpi-grid">
+        @foreach ($department['kpis'] as $kpi)
+            @include('dashboard._kpi', ['kpi' => $kpi])
+        @endforeach
+    </div>
+
+    <div class="dash-split">
+        {{-- ---------- Waiting on the head ---------- --}}
+        <div class="dash-frame">
+            <div class="dash-head">
+                {{-- A head acts on none of this. What the panel is for is
+                     knowing who in the office is still waiting to hear, so
+                     there is no link to an approval queue they cannot open. --}}
+                <p class="dash-title">Waiting on HR</p>
+            </div>
+            <div class="dash-body">
+                @forelse ($department['worklist'] as $row)
+                    <div class="wl-r">
+                        <span class="wl-ref">{{ $row['reference'] }}</span>
+                        <span class="wl-m">
+                            {{-- The row had no destination at all; now the
+                                 name is one, and it is the application this
+                                 row is about. The row cannot be wrapped in a
+                                 link: the department pane carries a form
+                                 inside it, and a form inside an anchor is not
+                                 valid HTML. --}}
+                            <b><a href="{{ route('leave.show', $row['id']) }}"
+                                  class="name-link">{{ $row['who'] }}</a></b>
+                            <small>{{ $row['what'] }}</small>
+                        </span>
+                        <span class="wl-age {{ $row['stale'] ? 'hot' : '' }}">{{ $row['age'] }}d waiting</span>
+                    </div>
+                @empty
+                    <p class="dash-empty">Nothing from your office is waiting.</p>
+                @endforelse
+                <p class="dash-note">HR decides these &mdash; no approval is needed from you.</p>
+            </div>
+        </div>
+
+        {{-- ---------- Coverage for this one office ---------- --}}
+        <div class="dash-frame">
+            <div class="dash-head">
+                <p class="dash-title">{{ $department['office'] }}</p>
+                <span class="dash-link">next 14 days</span>
+            </div>
+            <div class="dash-body">
+                @php $cover = $department['coverage']; @endphp
+                @if ($cover)
+                    <div class="dash-figures">
+                        <div>
+                            <p class="hero-n {{ $cover['at_risk'] ? 'is-bad' : '' }}">{{ $cover['out'] }}</p>
+                            <p class="hero-s">
+                                away at once, of {{ $department['headcount'] }}
+                                @if ($cover['when']) &middot; {{ $cover['when'] }} @endif
+                            </p>
+                        </div>
+                        <div>
+                            <p class="hero-n">{{ $cover['pct'] }}%</p>
+                            <p class="hero-s">of the office, at the worst day</p>
+                        </div>
+                    </div>
+                @else
+                    <p class="dash-empty">Nobody from this office is booked off in the next fortnight.</p>
+                @endif
+                <p class="dash-note">
+                    Red is {{ (int) (\App\Services\DashboardService::COVERAGE_RISK * 100) }}% or more
+                    of the office away on the same day.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="dash-frame">
+        <div class="dash-head">
+            <p class="dash-title">Most applied leave type in your office</p>
+            <span class="dash-link">{{ now()->year }} to date</span>
+        </div>
+        <div class="dash-body">
+            @include('dashboard._hbars', ['rows' => $department['types'], 'markZeros' => true])
+        </div>
+    </div>
+
+</div>
+@endif
+
+@if (! $hasMine && ! $hasManagement && ! $hasDepartment)
+    <p class="dash-empty">There is nothing on your dashboard yet.</p>
+@endif
+
+</div>{{-- /.dash --}}
 @endsection

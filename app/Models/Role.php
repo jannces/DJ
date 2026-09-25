@@ -11,9 +11,35 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Role extends Model
 {
     use Auditable;
+
+    /**
+     * The five roles the LGU has, in the order they are offered.
+     *
+     * All five are assignable: these are the account types, fixed by the
+     * organisation's structure rather than by anything in this application, and
+     * there is no sixth to invent — the Roles page offers no way to create one.
+     *
+     * Ordered as the organisation reads: an employee, the head of their office,
+     * HR, the Mayor, and the administrator who runs the system.
+     *
+     * Still a separate list from "every row in the roles table", and
+     * UserController still validates submissions against it, because the two
+     * being the same today is a fact about the data rather than a guarantee.
+     */
+    public const ASSIGNABLE = ['employee', 'department-head', 'hr', 'mayor', 'system-admin'];
+
     protected $fillable = ['name', 'slug', 'description', 'parent_id', 'is_system'];
 
     protected $casts = ['is_system' => 'boolean'];
+
+    /** The roles an administrator may hand out, in the declared order. */
+    public function scopeAssignable($query)
+    {
+        return $query->whereIn('slug', self::ASSIGNABLE)
+            ->orderByRaw('CASE slug '.collect(self::ASSIGNABLE)
+                ->map(fn ($slug, $i) => "WHEN '{$slug}' THEN {$i}")
+                ->implode(' ').' ELSE 99 END');
+    }
 
     public function permissions(): BelongsToMany
     {

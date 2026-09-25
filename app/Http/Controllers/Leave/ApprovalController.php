@@ -15,34 +15,35 @@ class ApprovalController extends Controller
     {
     }
 
-    public function departmentQueue(Request $request): View
+    /**
+     * Everything awaiting HR's decision.
+     *
+     * One audience now. The department head step became a notification, so
+     * there is no second, narrower queue and no branch here deciding which of
+     * the two a visitor gets — the route admits only holders of
+     * `leave.approve.final`, and every one of them sees the same list.
+     *
+     * STATUS_DEPT_REVIEW is still in the filter for installations that carry
+     * requests filed under the old two-step flow: the migration moves them to
+     * pending, but a request created by a queued job mid-deploy should not
+     * become invisible because of when it happened to be written.
+     */
+    public function queue(Request $request): View
     {
-        $deptId = $request->user()->employeeProfile?->department_id;
-        $requests = LeaveRequest::with('leaveType', 'user.employeeProfile')
-            ->where('status', LeaveRequest::STATUS_DEPT_REVIEW)
-            ->when(! $request->user()->hasPermission('leave.requests.view-all'),
-                fn ($q) => $q->whereHas('user.employeeProfile', fn ($w) => $w->where('department_id', $deptId)))
-            ->latest()->paginate(15);
+        $requests = LeaveRequest::with('leaveType', 'user.employeeProfile.department')
+            ->whereIn('status', [
+                LeaveRequest::STATUS_PENDING,
+                LeaveRequest::STATUS_DEPT_REVIEW,
+                LeaveRequest::STATUS_RETURNED,
+            ])
+            ->latest()
+            ->paginate(config('lists.per_page'));
 
-        return view('leave.review', ['requests' => $requests, 'queue' => 'department', 'title' => 'Department Reviews']);
-    }
-
-    public function hrQueue(Request $request): View
-    {
-        $requests = LeaveRequest::with('leaveType', 'user.employeeProfile')
-            ->where('status', LeaveRequest::STATUS_HR_REVIEW)
-            ->latest()->paginate(15);
-
-        return view('leave.review', ['requests' => $requests, 'queue' => 'hr', 'title' => 'HR Validation']);
-    }
-
-    public function finalQueue(Request $request): View
-    {
-        $requests = LeaveRequest::with('leaveType', 'user.employeeProfile')
-            ->where('status', LeaveRequest::STATUS_FINAL_REVIEW)
-            ->latest()->paginate(15);
-
-        return view('leave.review', ['requests' => $requests, 'queue' => 'final', 'title' => 'Final Approval']);
+        return view('leave.review', [
+            'requests' => $requests,
+            'title' => 'Leave Approvals',
+            'decides' => true,
+        ]);
     }
 
     public function act(Request $request, LeaveRequest $leaveRequest): RedirectResponse
@@ -62,15 +63,57 @@ class ApprovalController extends Controller
             'signature' => $data['signature'] ?? $request->user()->name,
         ];
 
-        // HR certifies the credit snapshot automatically.
-        $approval = $this->workflow->currentApproval($leaveRequest);
-        if ($approval?->role_slug === 'hr') {
-            $extra['certified_balances'] = $this->certification($leaveRequest);
-        }
+        // The officer deciding is the officer certifying — one step, one
+        // person, and the credit balances are snapshotted onto the decision so
+        // the printed form states what was certified rather than what the
+        // ledger happens to say when somebody reprints it.
+        $extra['certified_balances'] = $this->certification($leaveRequest);
 
         $this->workflow->act($leaveRequest, $request->user(), $data['action'], $extra);
 
         return back()->with('status', 'Decision recorded.');
+    }
+
+    /**
+     * Box 7.B: the head of the applicant's office recommends.
+     *
+     * The route already carries the permission. This checks the SCOPE, which
+     * the permission cannot: "may review a department" does not say which one,
+     * and the answer comes from the department record naming its head, never
+     * from anything in the request. Without it a head could recommend on
+     * anybody in the LGU by posting the right reference number.
+     */
+    public function recommend(Request $request, LeaveRequest $leaveRequest): RedirectResponse
+    {
+        abort_unless($this->workflow->canRecommend($request->user(), $leaveRequest), 403);
+
+        // Nothing to recommend on once it is decided: HR has already signed
+        // 7.C or 7.D, and a recommendation added afterwards would be advice
+        // about a question that is closed.
+        abort_if($leaveRequest->isFinal(), 422,
+            'This application has already been decided.');
+
+        $data = $request->validate([
+            'recommendation' => ['required', 'in:recommended,not_recommended'],
+            // Required only when they are NOT recommending it: the printed
+            // form rules a line for "For disapproval due to" and leaves the
+            // approval box bare, because a refusal is the one that needs a
+            // reason on it.
+            'reason' => ['nullable', 'string', 'max:500', 'required_if:recommendation,not_recommended'],
+        ], [], ['reason' => 'reason']);
+
+        $favourable = $data['recommendation'] === 'recommended';
+
+        $this->workflow->recommend(
+            $leaveRequest,
+            $request->user(),
+            $favourable,
+            $favourable ? ($data['reason'] ?? null) : $data['reason'],
+        );
+
+        return back()->with('status', $favourable
+            ? 'Recommended for approval. HR still decides the application.'
+            : 'Recorded as not recommended. HR still decides the application.');
     }
 
     private function certification(LeaveRequest $r): array

@@ -16,7 +16,8 @@
             <td>{{ $t->deductible ? ($t->credit_source==='vacation'?'VL':'SL') : 'No' }}</td>
             <td>{{ $t->filing_deadline_days ? $t->filing_deadline_days.' day(s)' : '—' }}</td>
             <td>@if($t->active)<span class="badge bg-success">Active</span>@else<span class="badge bg-secondary">Inactive</span>@endif</td>
-            <td class="text-end"><a href="{{ route('leave-types.edit',$t) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a></td>
+            <td class="text-end"><a href="{{ route('leave-types.edit',$t) }}" class="btn btn-sm btn-outline-secondary"
+                    aria-label="Edit {{ $t->name }}" title="Edit {{ $t->name }}"><i class="bi bi-pencil" aria-hidden="true"></i></a></td>
         </tr>
     @endforeach
     </tbody></table></div><div class="card-body">{{ $types->links() }}</div></div>

@@ -1,7 +1,29 @@
 @extends('layouts.app')
 @section('title', $title)
 @section('content')
-<h1 class="h4 mb-3">{{ $title }}</h1>
+{{-- A sidebar page, so no back link — but the same header shape as everything
+     else, rather than its own hand-written one. --}}
+{{-- One audience. The department step is a notification and the Mayor
+     oversees rather than decides, so everybody who reaches this page holds
+     `leave.approve.final` and sees the same list.
+
+     $decides is still passed and still read, because the route guard is the
+     thing that keeps this page to HR — not this variable — and a template that
+     silently assumes authority is a template that grants it the day the guard
+     is loosened. --}}
+{{--
+  A blank CSC Form 6 lives here, on HR's own page.
+
+  It is the same PDF template a filed application renders through, with
+  nothing in it, on the same four paper sizes. HR is the office that would
+  hand paper across a counter -- a walk-in with no account, a day the LAN box
+  is down -- so it sits with HR rather than on the employee's Apply page,
+  where a button offering the paper path would work against the point of the
+  system.
+--}}
+<x-page-head :title="$title" sub="Waiting on a decision">
+    <x-paper-picker label="Blank form" icon="bi-printer" />
+</x-page-head>
 <div class="card">
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
@@ -10,13 +32,21 @@
             @forelse ($requests as $r)
                 <tr>
                     <td class="fw-semibold">{{ $r->reference_no }}</td>
-                    <td>{{ $r->user->name }}<div class="text-muted small">{{ $r->user->employeeProfile?->department?->name }}</div></td>
+                    {{-- Same destination as the View button beside it. An
+                         officer working down this queue clicks a name meaning
+                         "show me that request", and that is where it goes. --}}
+                    <td>
+                        <a href="{{ route('leave.show', $r) }}" class="name-link fw-semibold">{{ $r->user->name }}</a>
+                        <div class="text-muted small">{{ $r->user->employeeProfile?->department?->name }}</div>
+                    </td>
                     <td>{{ $r->leaveType->name }}</td>
                     <td class="small">{{ $r->start_date->format('M d') }} – {{ $r->end_date->format('M d, Y') }}</td>
                     <td>{{ rtrim(rtrim(number_format($r->working_days,1),'0'),'.') }}</td>
                     <td class="text-end">
                         <a href="{{ route('leave.show', $r) }}" class="btn btn-sm btn-outline-secondary">View</a>
-                        <button class="btn btn-sm btn-lgu" data-bs-toggle="modal" data-bs-target="#act{{ $r->id }}">Act</button>
+                        @if ($decides)
+                            <button class="btn btn-sm btn-lgu" data-bs-toggle="modal" data-bs-target="#act{{ $r->id }}">Act</button>
+                        @endif
                     </td>
                 </tr>
             @empty
@@ -30,6 +60,7 @@
 
 {{-- Modals live outside the table (valid HTML + correct stacking so they are clickable). --}}
 @foreach ($requests as $r)
+    @continue(! $decides)
     <div class="modal fade" id="act{{ $r->id }}" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <form method="POST" action="{{ route('review.act', $r) }}" class="modal-content" data-no-loader>
@@ -43,25 +74,27 @@
                     <div class="mb-2">
                         <label class="form-label">Decision</label>
                         <select name="action" class="form-select" required>
-                            <option value="approved">{{ $queue==='department' ? 'Recommend approval' : ($queue==='hr' ? 'Certify & endorse' : 'Approve (final)') }}</option>
+                            <option value="approved">Approve</option>
                             <option value="returned">Return for revision</option>
-                            <option value="rejected">{{ $queue==='department' ? 'Recommend disapproval' : 'Disapprove' }}</option>
+                            <option value="rejected">Disapprove</option>
                         </select>
                     </div>
-                    @if ($queue === 'final')
-                        <div class="row g-2 mb-2">
-                            <div class="col"><label class="form-label small">Days with pay</label>
-                                <input type="number" step="0.5" name="days_with_pay" class="form-control" value="{{ $r->working_days }}"></div>
-                            <div class="col"><label class="form-label small">Days without pay</label>
-                                <input type="number" step="0.5" name="days_without_pay" class="form-control" value="0"></div>
-                        </div>
-                    @endif
+                    {{-- The pay split is what actually gets deducted from the
+                         employee's credits, so it belongs to the decision. --}}
+                    <div class="row g-2 mb-2">
+                        <div class="col"><label class="form-label small">Days with pay</label>
+                            <input type="number" step="0.5" name="days_with_pay" class="form-control" value="{{ $r->working_days }}"></div>
+                        <div class="col"><label class="form-label small">Days without pay</label>
+                            <input type="number" step="0.5" name="days_without_pay" class="form-control" value="0"></div>
+                    </div>
                     <div class="mb-2"><label class="form-label">Comments / remarks</label>
                         <textarea name="comments" class="form-control" rows="2"></textarea></div>
                     <div class="mb-0"><label class="form-label">Signature (type your name)</label>
                         <input name="signature" class="form-control" value="{{ auth()->user()->name }}"></div>
                 </div>
-                <div class="modal-footer"><button class="btn btn-lgu">Submit decision</button></div>
+                <div class="modal-footer">
+                    <button class="btn btn-lgu">Submit decision</button>
+                </div>
             </form>
         </div>
     </div>
