@@ -1,5 +1,8 @@
 # User Manual (Employees, Department Heads, HR)
 
+> **Outdated.** This guide describes an earlier multi-step approval workflow that the
+> system no longer uses. See [`USER_MANUAL.md`](USER_MANUAL.md) for the current user manual.
+
 ## 1. Signing in
 1. Open `https://onealicialms.lan` on an **authorized office computer**.
 2. Enter your email/username and password → click **Login**.
