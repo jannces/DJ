@@ -10,8 +10,9 @@
 | Document | User Manual |
 | System version | As deployed on the LGU Alicia local area network (LAN) |
 | Prepared for | Employees, HR, Department Heads, the Municipal Mayor and the System Administrator of LGU Alicia |
-| Prepared by | *[Name of proponents]* |
-| Date | *[Date of release]* |
+| Prepared by | Macarubbo, Noly J., Jr.; Mendoza, Alexander John T.; Mendoza, Dj Robin O. |
+| Institution | Isabela State University – Echague Campus, College of Computing Studies, Information and Communication Technology |
+| Date | September 2026 |
 
 > This manual describes the system **as it is actually built**. Where the system works
 > differently from what earlier project documents describe, the difference is listed in the
