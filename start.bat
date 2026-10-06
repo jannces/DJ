@@ -13,6 +13,7 @@ REM  HTTP on a port and cannot serve HTTPS at all, so it could never
 REM  answer on https://onealicialms.lan whatever .env says.
 REM ============================================================
 setlocal enabledelayedexpansion
+title LGU Alicia LMS - Server
 
 cd /d "%~dp0"
 

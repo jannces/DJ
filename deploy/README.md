@@ -5,6 +5,9 @@
 | `setup-https.bat` | **On the SERVER, as administrator, once.** Whole HTTPS setup, with backups |
 | `connect-client.bat` | **On every OTHER PC, as administrator.** Points the name at the server and trusts the certificate |
 | `trust-cert.bat` | Trusts the certificate only. `connect-client.bat` calls this; run it alone if the name already resolves |
+| `package-server.bat` | **On the DEVELOPMENT PC.** Builds `dist\lms-server-*.zip` with only the files the server needs |
+| `make-shortcuts.bat` | **On the SERVER, once.** Puts *Start* / *Stop* icons with the municipal seal on the desktop |
+| `lms.ico` | The seal as a Windows icon, used by those shortcuts |
 | `make-cert.sh` / `make-cert.bat` | Generate a self-signed TLS cert (`certs/lms.crt`, `certs/lms.key`) |
 | `apache-vhost.conf` | Apache VirtualHost (HTTP→HTTPS redirect, LAN-only, TLS) |
 | `lms-queue.service` | systemd unit for the queue worker (Linux) |
@@ -12,6 +15,58 @@
 See `docs/Deployment.md` for the full step-by-step LAN/XAMPP installation and the
 Windows Task Scheduler entries for the queue worker and scheduler. Beginners should
 follow `docs/RUN_ON_YOUR_PC.md`.
+
+## Installing on the server
+
+**What the server needs** — and nothing else:
+
+| Keep | Why |
+|------|-----|
+| `app/ bootstrap/ config/ database/ resources/ routes/` | the application |
+| `public/` | the only folder Apache serves |
+| `storage/` | logs, sessions, uploaded documents — must be writable |
+| `vendor/` | PHP libraries (`composer install --no-dev`) |
+| `deploy/` | HTTPS setup, certificate, shortcuts, icon |
+| `artisan`, `composer.json`, `composer.lock`, `.env.example` | Laravel itself |
+| `start.bat`, `stop.bat` | daily use |
+
+**Leave off the server:** `tests/`, `docs/` (except the user manuals),
+`.github/`, `.claude/`, `node_modules/`, `package*.json`, `vite.config.js`,
+`phpunit.xml`, `test.bat`, `update.bat` (needs Git), `DemoDataSeeder.php`,
+and above all **your own `.env`, `deploy/certs/` and `storage/logs/`** — those
+belong to the machine that made them. `package-server.bat` does this sorting
+for you.
+
+**Steps**
+
+1. On the development PC: `deploy\package-server.bat` → copy the ZIP over.
+2. On the server, install XAMPP (PHP 8.3+). Unzip, and move the `lms-server-…`
+   folder inside it to `C:\xampp\htdocs\lms`.
+3. In phpMyAdmin create the database `lms_alicia` (utf8mb4_unicode_ci).
+4. In the project folder, from a terminal:
+   ```
+   copy .env.example .env
+   php artisan key:generate
+   ```
+   Edit `.env`: database password, and change `SEED_SUPERADMIN_PASSWORD`.
+5. ```
+   php artisan migrate --force
+   php artisan db:seed --force
+   php artisan storage:link
+   ```
+6. Right-click `deploy\setup-https.bat` → **Run as administrator**.
+7. `deploy\make-shortcuts.bat` (or `make-shortcuts.bat all`, as administrator,
+   for every account on the server).
+8. Double-click **LGU Alicia LMS - Start** on the desktop.
+9. On each office PC: `deploy\connect-client.bat <server IP>` as administrator.
+
+Then log in as the super admin, change its password, and register the office
+PCs under **Admin → Authorized Devices** (see `docs/Deployment.md` §5).
+
+**Updating later:** build a new package, stop the system, and unzip it over the
+old folder — the ZIP carries no `.env`, certificate, logs or uploaded files, so
+the server's own are kept. Then run `php artisan migrate --force` and start again. Back up
+first with `php artisan lms:backup`.
 
 ## Why the address is `.lan` and not `.local`
 
