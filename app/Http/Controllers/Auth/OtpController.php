@@ -25,7 +25,17 @@ class OtpController extends Controller
             return redirect()->route('dashboard');
         }
 
-        return view('auth.otp');
+        // Display only. The resend throttle below already refuses a fourth
+        // request inside two minutes; this is how long that refusal has left,
+        // so the button can be disabled for exactly that long instead of
+        // inviting a press that the server will reject.
+        $key = 'otp-resend|'.$request->user()->id;
+
+        return view('auth.otp', [
+            // this screen draws the flash itself, above the verify button
+            'ownFlash' => true,
+            'resendIn' => RateLimiter::tooManyAttempts($key, 3) ? RateLimiter::availableIn($key) : 0,
+        ]);
     }
 
     public function verify(Request $request): RedirectResponse

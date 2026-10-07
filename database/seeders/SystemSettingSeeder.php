@@ -26,6 +26,11 @@ class SystemSettingSeeder extends Seeder
             ['leave', 'leave.monthly_vl_accrual', '1.25', 'string', 'Vacation Leave credits earned per month'],
             ['leave', 'leave.monthly_sl_accrual', '1.25', 'string', 'Sick Leave credits earned per month'],
             ['leave', 'leave.vl_hard_deadline_days', '3', 'int', 'HR rule: VL must be filed N days ahead (warning + HR override)'],
+            // CSC MC 41 s.1998 as amended. Settings rather than constants so a
+            // change of circular does not need a developer.
+            ['leave', 'leave.monetization_min_days', '10', 'string', 'Fewest leave credits that may be monetized at once'],
+            ['leave', 'leave.monetization_retain_days', '15', 'string', 'Vacation Leave days that must remain after monetizing'],
+            ['leave', 'leave.forced_leave_min_vl', '10', 'string', 'Vacation Leave credits from which the 5-day mandatory leave applies'],
             ['general', 'general.lgu_name', 'Local Government Unit of Alicia', 'string', 'Organization name on forms and reports'],
             ['general', 'general.alerts_poll_seconds', '15', 'int', 'Dashboard alert polling interval'],
         ];

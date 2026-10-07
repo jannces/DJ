@@ -7,17 +7,23 @@ use App\Models\IntrusionLog;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Services\Security\AuditLogger;
+use App\Services\Security\SecurityAlerter;
 use Illuminate\Http\Request;
 
 /**
  * Brute-force protection (FR-A8): after N failed attempts (default 3) the
  * account is blocked for a configurable period (default 24 h) with the
  * reason, IP, browser and timestamp preserved. Admins may unblock manually.
+ *
+ * The threshold is this system's brute-force detector, so a lockout is an
+ * intrusion detection and is alerted on like one — see blockAccount().
  */
 class LoginSecurityService
 {
-    public function __construct(private readonly AuditLogger $audit)
-    {
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly SecurityAlerter $alerts,
+    ) {
     }
 
     public function maxAttempts(): int
@@ -86,6 +92,17 @@ class LoginSecurityService
             'ip' => $request->ip(),
             'browser' => (string) $request->userAgent(),
         ], $user);
+
+        // The row above is recorded at high severity in intrusion_logs, and
+        // until this call it was the only detection in the system that told
+        // nobody. An administrator signed in gets the topbar alert; one who is
+        // not gets the email.
+        $this->alerts->accountLocked(
+            $user->email,
+            (string) $request->ip(),
+            $this->maxAttempts(),
+            $user->blocked_until?->format('D, d M Y H:i'),
+        );
     }
 
     public function unblockAccount(User $user, ?User $admin = null, string $how = 'manual'): void

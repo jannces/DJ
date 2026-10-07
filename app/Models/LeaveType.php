@@ -15,7 +15,8 @@ class LeaveType extends Model
     public const SOURCE_SICK = 'sick';
 
     protected $fillable = [
-        'code', 'name', 'category', 'max_days', 'deductible', 'credit_source',
+        'code', 'name', 'category', 'max_days', 'counts_calendar_days',
+        'deductible', 'credit_source',
         'requires_medical_after_days', 'filing_deadline_days', 'deadline_is_hard',
         'detail_schema', 'required_documents', 'approval_flow',
         'annual_reset', 'expires', 'is_custom', 'active', 'description',
@@ -23,6 +24,7 @@ class LeaveType extends Model
 
     protected $casts = [
         'max_days' => 'decimal:1',
+        'counts_calendar_days' => 'boolean',
         'deductible' => 'boolean',
         'deadline_is_hard' => 'boolean',
         'detail_schema' => 'array',

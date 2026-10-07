@@ -60,6 +60,30 @@ Every change is audited (old → new).
 `php artisan lms:backup` / nightly schedule; restore per Deployment.md §6. Keep 30 daily,
 12 monthly copies off-host.
 
+**When a backup comes back INCOMPLETE.** A table the database can no longer read does
+not stop the backup any more. The other tables are saved, the archive is named
+`lms_partial_<date>_<time>.zip`, it carries a `READ-ME-FIRST.txt` naming what is
+missing, and the command still exits non-zero so `update.bat` refuses to migrate.
+The Backups page lists it with an **Incomplete** badge.
+
+```
+php artisan lms:db-check --tables
+```
+
+reads every table and names the ones that will not answer. A message about a missing
+tablespace, or a table that "doesn't exist in engine" (error 1932 on MySQL, 194 on
+MariaDB), means the server still lists the table but has lost the file holding it —
+almost always an unclean MySQL shutdown. Recovery, in order:
+
+1. Stop MySQL and copy the whole `xampp\mysql\data` folder somewhere safe. Everything
+   below changes that folder; this is the only step that cannot be redone.
+2. Take the partial backup off the machine. It holds every healthy table.
+3. Scope it with `lms:db-check --tables`. If only log tables are affected
+   (`activity_logs`, `intrusion_logs`), the leave records are intact.
+4. Drop and recreate the affected table: `DROP TABLE <name>;` in phpMyAdmin, then
+   `php artisan migrate` to rebuild it empty. The rows in it are lost; the rest is not.
+5. Re-run `php artisan lms:backup` and confirm the archive is no longer `lms_partial_*`.
+
 ## 9. Maintenance
 - Update vendored UI assets: replace files in `public/vendor/*` (ADR-009).
 - Log growth: archive `activity_logs`/`intrusion_logs` older than 12 months via

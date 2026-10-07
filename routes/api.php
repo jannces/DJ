@@ -23,5 +23,10 @@ Route::prefix('v1')->name('api.')->group(function () {
 });
 
 // Session-authenticated alert polling for the web UI bell (uses web guard).
-Route::middleware(['web', 'auth'])->get('/internal/security/alerts', [SecurityApiController::class, 'alerts'])
+// The IDS no longer counts this towards an address's request rate -- it is the
+// system polling itself -- so it carries a real throttle instead: the bell asks
+// every fifteen seconds, or four times a minute, and sixty is well clear of
+// that while still bounding what a stuck or tampered-with tab can ask for.
+Route::middleware(['web', 'auth', 'throttle:60,1'])
+    ->get('/internal/security/alerts', [SecurityApiController::class, 'alerts'])
     ->name('web.security.alerts');

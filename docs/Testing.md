@@ -7,8 +7,8 @@ no external services required (mail → array, queue → sync, cache → array i
 
 | Level | Location | Covers |
 |---|---|---|
-| Unit | `tests/Unit` | LeaveCreditService math, working-day calculator (weekends/holidays), OTP hashing/expiry, RBAC inheritance resolution, IDS signature matcher, policy engine document rules |
-| Feature/Integration | `tests/Feature` | Auth flow (login→OTP→dashboard), lockout after 3 failures + 24 h block + unblock, password reset, session timeout, RBAC route protection + menu visibility, device allow-list, leave application end-to-end (submit → dept head → HR certify → mayor approve → balance deducted → history row → notification), negative-balance prevention incl. concurrent approvals, cancellation, document requirement enforcement, monetization flow, reports render + export headers, API auth + rate limiting + contract vs openapi.yaml, intrusion events (SQLi/XSS/traversal probes create logs; threshold auto-blocks IP), audit log old/new capture |
+| Unit | `tests/Unit` | LeaveCreditService math (accrual, deduction, negative-balance guard), working-day calculator (weekends/holidays), StrongPassword rule |
+| Feature/Integration | `tests/Feature` | Auth flow (login→OTP→dashboard), lockout after 3 failures + 24 h block, blocked account refused, password change/reset, device allow-list, RBAC route protection + menu visibility + deny-overrides-allow, leave application end-to-end (submit → single authorized approval → balance deducted → history row → notification), negative-balance prevention incl. concurrent approvals, medical-certificate policy rule, approval authority (each of Mayor/Vice Mayor/HR alone, Department Head refused, no overturning a decision, no self-approval), employee restrictions (no global search, no CSV, own data only), employee timeline + read-only form preview, reports render + CSV export headers, API auth, intrusion detection (SQLi/XSS/traversal probes logged, threshold auto-blocks IP, loopback never blocked, free-text prose not matched) |
 | Security (pentest) | `docs/PenetrationTestReport.md` | Manual + scripted probes executed against a running instance (SQLi, XSS, CSRF, IDOR, brute force, traversal, header audit) with findings and remediations |
 | Performance | documented | N+1 audit via eager-loading review, indexed query plans, pagination checks; ab/wrk smoke numbers in the report |
 
@@ -22,3 +22,6 @@ thesis defense.
 - One behavior per test; factories provide minimal fixtures; time controlled via `Carbon::setTestNow`.
 - Every FR in Requirements.md maps to ≥1 test — traceability matrix at the bottom of ISO25010.md.
 - Run: `php artisan test` · filtered: `php artisan test --filter=LeaveWorkflow`.
+
+> This table describes tests that exist. If you add a behaviour here, add the test with
+> it — an inaccurate coverage claim is worse than an unmentioned gap.
