@@ -40,7 +40,7 @@ for you.
 **Steps**
 
 1. On the development PC: `deploy\package-server.bat` → copy the ZIP over.
-2. On the server, install XAMPP (PHP 8.3+). Unzip, and move the `lms-server-…`
+2. On the server, install the same XAMPP as the development PC (PHP 8.2.12+). Unzip, and move the `lms-server-…`
    folder inside it to `C:\xampp\htdocs\lms`.
 3. In phpMyAdmin create the database `lms_alicia` (utf8mb4_unicode_ci).
 4. In the project folder, from a terminal:
