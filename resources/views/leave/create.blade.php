@@ -576,18 +576,74 @@
             </span>
         </div>
         <div class="card-body">
-            {{-- ---------- 6.C WORKING DAYS ---------- --}}
+            {{-- ---------- 6.C WORKING DAYS ---------- ------------------------
+                 Two ways to give a date, because a phone offers no choice.
+
+                 <input type="date"> hands the control to the operating system:
+                 Android opens a calendar dialog and iOS a wheel, and neither
+                 can be persuaded to show a keyboard -- inputmode is ignored on
+                 a date input. So somebody who would rather type a date cannot,
+                 on the device where typing is often quicker than spinning a
+                 wheel to a month eleven taps away.
+
+                 The switch below reveals one pair of inputs or the other with
+                 CSS :has(), the same idiom the leave-type blocks use. Both
+                 pairs stay in the DOM and both post; the server reads whichever
+                 one the switch says to read.
+
+                 Two consequences worth knowing, both deliberate:
+
+                 - NEITHER input carries `required`. A required field that CSS
+                   has hidden makes a browser refuse to submit and refuse to say
+                   why ("An invalid form control is not focusable"), which is a
+                   dead form with no message. Both dates are still required --
+                   LeaveRequestController enforces it and the error prints at
+                   the top of the form.
+
+                 - The typed box takes YYYY-MM-DD, not 10/13/2026. PHP reads a
+                   slashed date as month/day/year, so "13/10/2026" for 13
+                   October errors and "10/12/2026" meaning 10 December files
+                   silently as 12 October. On a form that deducts credits and
+                   is signed by three officers, one unambiguous format beats a
+                   familiar one. The rule is date_format:Y-m-d, so a wrong
+                   shape is refused rather than guessed at. --}}
+            <div class="lf-f lf-datemode">
+                <label>How would you like to enter the dates?</label>
+                <div class="lf-seg">
+                    <label><input type="radio" name="date_mode" value="calendar"
+                        @checked(old('date_mode', 'calendar') === 'calendar')>Calendar</label>
+                    <label><input type="radio" name="date_mode" value="type"
+                        @checked(old('date_mode') === 'type')>Type it</label>
+                </div>
+            </div>
+
             <div class="lf-g lf-g3">
                 <div class="lf-f">
                     <label for="start_date">From <span class="req">*</span></label>
-                    <input id="start_date" type="date" name="start_date" class="form-control @error('start_date') is-invalid @enderror"
-                           value="{{ old('start_date') }}" required>
+                    <input id="start_date" type="date" name="start_date"
+                           class="form-control lf-date-cal @error('start_date') is-invalid @enderror"
+                           value="{{ old('date_mode') === 'type' ? '' : old('start_date') }}">
+                    <input id="start_date_typed" type="text" name="start_date_typed"
+                           class="form-control lf-date-typed @error('start_date') is-invalid @enderror"
+                           value="{{ old('start_date_typed') }}"
+                           inputmode="numeric" pattern="\d{4}-\d{2}-\d{2}"
+                           placeholder="2026-10-13" aria-describedby="start_date_help"
+                           aria-label="First day of leave, as year-month-day">
+                    <span id="start_date_help" class="hint lf-date-typed">Year-Month-Day, e.g. 2026-10-13.</span>
                     @error('start_date')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                 </div>
                 <div class="lf-f">
                     <label for="end_date">To <span class="req">*</span></label>
-                    <input id="end_date" type="date" name="end_date" class="form-control @error('end_date') is-invalid @enderror"
-                           value="{{ old('end_date') }}" required>
+                    <input id="end_date" type="date" name="end_date"
+                           class="form-control lf-date-cal @error('end_date') is-invalid @enderror"
+                           value="{{ old('date_mode') === 'type' ? '' : old('end_date') }}">
+                    <input id="end_date_typed" type="text" name="end_date_typed"
+                           class="form-control lf-date-typed @error('end_date') is-invalid @enderror"
+                           value="{{ old('end_date_typed') }}"
+                           inputmode="numeric" pattern="\d{4}-\d{2}-\d{2}"
+                           placeholder="2026-10-16" aria-describedby="end_date_help"
+                           aria-label="Last day of leave, as year-month-day">
+                    <span id="end_date_help" class="hint lf-date-typed">Year-Month-Day, e.g. 2026-10-16.</span>
                     @error('end_date')<span class="invalid-feedback d-block">{{ $message }}</span>@enderror
                 </div>
                 <div class="lf-f">

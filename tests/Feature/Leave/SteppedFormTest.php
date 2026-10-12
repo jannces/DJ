@@ -181,17 +181,35 @@ class SteppedFormTest extends TestCase
             'the conditional blocks are not in this slice, so it proves nothing');
     }
 
-    /** Exactly five required fields, spread so each step has at least one. */
-    public function test_the_required_fields_are_the_five_the_form_has_always_had(): void
+    /**
+     * Three fields carry the browser's `required`, and the two dates do not.
+     *
+     * It was five. The dates lost the attribute when they gained a typed twin
+     * that CSS hides: a required field the stylesheet has hidden makes a
+     * browser refuse to submit AND refuse to say why ("An invalid form control
+     * is not focusable"), which is a dead form with no message on it.
+     *
+     * They are still required. LeaveRequestController rejects a missing date
+     * and DateEntryModeTest proves it through both pairs of inputs -- which is
+     * where the requirement belonged anyway, since the next test down asserts
+     * the browser is not the gate.
+     */
+    public function test_the_required_fields_are_the_three_the_browser_can_police(): void
     {
         $html = $this->form();
 
-        $this->assertSame(5, substr_count($html, ' required>'));
-        foreach (['date_filed', 'leave_type_id[]', 'start_date', 'end_date', 'applicant_signature'] as $field) {
+        $this->assertSame(3, substr_count($html, ' required>'));
+        foreach (['date_filed', 'leave_type_id[]', 'applicant_signature'] as $field) {
             $this->assertMatchesRegularExpression(
                 '/name="'.preg_quote($field, '/').'"[^>]*required|required[^>]*name="'.preg_quote($field, '/').'"/',
                 $html, $field.' is no longer required'
             );
+        }
+
+        foreach (['start_date', 'end_date'] as $date) {
+            $this->assertDoesNotMatchRegularExpression(
+                '/<input[^>]*name="'.$date.'"[^>]*\srequired/', $html,
+                $date.' carries required while CSS can hide it, which dead-ends the form');
         }
     }
 

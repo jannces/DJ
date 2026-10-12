@@ -1935,6 +1935,34 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
    leave spent within the Philippines too, so the asterisk is permanent and
    the rule is gone rather than left behind as dead CSS. */
 
+/* ---- Calendar or keyboard, for the From/To dates ------------------------
+   <input type="date"> gives the control to the operating system -- Android a
+   calendar dialog, iOS a wheel -- and neither can be made to offer a keyboard.
+   So both inputs exist and the switch reveals one pair.
+
+   Calendar is the default, so the typed pair is the one hidden by default: a
+   browser without :has() then shows the form it has always shown, rather than
+   a blank where the dates should be. */
+.lf-date-typed{ display:none; }
+
+#lf-form:has(input[name="date_mode"][value="type"]:checked) .lf-date-cal{ display:none; }
+#lf-form:has(input[name="date_mode"][value="type"]:checked) .lf-date-typed{ display:block; }
+#lf-form:has(input[name="date_mode"][value="type"]:checked) span.lf-date-typed{ display:inline; }
+
+/* Browsers without :has(): the switch cannot work, so hide it rather than
+   offer a control that does nothing. The calendar inputs stay. */
+@supports not selector(:has(*)){
+  .lf-datemode{ display:none; }
+}
+
+/* ---- iOS zooms the page in on any input under 16px ----------------------
+   ...and does not zoom back out, so tapping a field on a phone lurches the
+   layout and leaves it there. 16px on narrow screens only; every wider
+   viewport keeps the designed .875rem. */
+@media (max-width:767.98px){
+  .form-control,.form-select{ font-size:1rem; }
+}
+
 /* ---- The four steps ----------------------------------------------------
    Who you are, what kind of leave, when, and signing it off.
 

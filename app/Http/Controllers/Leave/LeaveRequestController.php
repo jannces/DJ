@@ -131,6 +131,11 @@ class LeaveRequestController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        // The dates arrive from one of two pairs of inputs -- see the comment
+        // in create.blade.php. The switch says which pair to read; the other
+        // pair posts too, and is ignored.
+        $typed = $this->readTypedDates($request);
+
         // 6.A posts an array: the entry form uses a single <select name="…[]">,
         // which yields a one-element array, and the printed sheet is a checkbox
         // list. Either way the "exactly one type" rule is enforced here, on the
@@ -139,8 +144,12 @@ class LeaveRequestController extends Controller
             'leave_type_id' => ['required', 'array', 'size:1'],
             'leave_type_id.*' => ['required', 'integer', 'exists:leave_types,id'],
             'date_filed' => ['required', 'date'],
-            'start_date' => ['required', 'date'],
-            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+            // date_format when it was typed, so a shape we cannot read without
+            // guessing is refused rather than guessed at. 'date' alone accepts
+            // "13/10/2026" and reads it as a month -- which is either an error
+            // or, for "10/12/2026", a silently wrong day.
+            'start_date' => ['required', $typed ? 'date_format:Y-m-d' : 'date'],
+            'end_date' => ['required', $typed ? 'date_format:Y-m-d' : 'date', 'after_or_equal:start_date'],
             'purpose' => ['nullable', 'string', 'max:1000'],
             'commutation' => ['nullable', 'boolean'],
             'late_filing_reason' => ['nullable', 'string', 'max:500'],
@@ -153,6 +162,8 @@ class LeaveRequestController extends Controller
             'leave_type_id.*.required' => 'Choose the type of leave you are applying for in section 6.A.',
             'leave_type_id.*.exists' => 'That leave type is not available. Choose one from the list.',
             'end_date.after_or_equal' => 'The last day of leave cannot fall before the first day.',
+            'start_date.date_format' => 'Write the first day of leave as Year-Month-Day, for example 2026-10-13.',
+            'end_date.date_format' => 'Write the last day of leave as Year-Month-Day, for example 2026-10-16.',
         ], [
             // These names are read aloud in the error summary at the top of the
             // form, so they are the words on the printed CSC sheet rather than
@@ -189,6 +200,34 @@ class LeaveRequestController extends Controller
         }
 
         return redirect()->route('leave.show', $leaveRequest)->with('status', $message);
+    }
+
+    /**
+     * Move the typed dates into start_date/end_date when that is the pair the
+     * form says to read, and report whether it did.
+     *
+     * Both pairs of inputs post -- CSS hides one, and a hidden input is still
+     * submitted -- so something has to choose. The switch does, and anything
+     * other than "type" means the calendar inputs, so a request that omits the
+     * switch entirely behaves exactly as it did before this existed. That
+     * matters: the printed-sheet path and the tests both post the plain fields.
+     *
+     * Deliberately NOT "whichever one is filled in". A date typed, then
+     * switched back to Calendar and picked, would leave both populated and the
+     * answer would turn on which branch was written first.
+     */
+    private function readTypedDates(Request $request): bool
+    {
+        if ($request->input('date_mode') !== 'type') {
+            return false;
+        }
+
+        $request->merge([
+            'start_date' => trim((string) $request->input('start_date_typed')),
+            'end_date' => trim((string) $request->input('end_date_typed')),
+        ]);
+
+        return true;
     }
 
     public function show(Request $request, LeaveRequest $leaveRequest): View

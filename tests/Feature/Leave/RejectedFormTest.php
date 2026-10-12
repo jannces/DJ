@@ -124,8 +124,12 @@ class RejectedFormTest extends TestCase
             'Choose the type of leave you are applying for in section 6.A.', $html,
             '6.A lost the message it already had');
         $this->assertStringContainsString('id="start_date" type="date" name="start_date"', $html);
+        // Any class list containing is-invalid, rather than that exact pair:
+        // the date input also carries lf-date-cal now, since the field has a
+        // typed twin that CSS swaps it for. What is being asserted is that the
+        // control is marked bad, not the order of its classes.
         $this->assertMatchesRegularExpression(
-            '/id="start_date"[^>]*class="form-control\s+is-invalid\s*"/', $html,
+            '/id="start_date"[^>]*class="[^"]*\bis-invalid\b/', $html,
             'the field the summary points at is not marked as the bad one');
     }
 
