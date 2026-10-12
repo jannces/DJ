@@ -280,18 +280,11 @@ class LeavePolicyEngine
             return ($input['details']['purpose'] ?? null) !== 'other';
         }
 
-        // Where the leave will be spent is always required; naming the place is
-        // required only once that answer is "abroad".
-        //
-        // Vacation Leave's detail_schema marks location_specify required
-        // outright, so an ordinary vacation spent in Alicia was refused with
-        // "The field 'Specify location' is required for Vacation Leave" -- for
-        // a box the form labels "If abroad, specify", which reads as optional
-        // and is. The CSC form asks for the destination of foreign travel, not
-        // for the barangay somebody is spending their leave in.
-        if ($field['name'] === 'location_specify') {
-            return ($input['details']['location'] ?? null) !== 'abroad';
-        }
+        // location_specify is NOT listed here: the LGU wants the place recorded
+        // for leave spent within the Philippines as well as abroad, so it stays
+        // required whenever its leave type's schema asks for it. The printed
+        // form puts the place on whichever line is ticked, so a domestic leave
+        // is not written onto the "Abroad (Specify)" rule.
 
         return false;
     }

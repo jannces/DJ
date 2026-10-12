@@ -218,15 +218,29 @@
                     <div class="csc-sub">6.B DETAILS OF LEAVE</div>
 
                     <div class="csc-case"><em>In case of Vacation/Special Privilege Leave:</em></div>
+                    {{-- The place goes on the line that is TICKED.
+                         ------------------------------------------------------
+                         The CSC sheet prints its specify-rule beside "Abroad",
+                         because that is the only one the form asks about. This
+                         system requires the place for domestic leave as well,
+                         and printing it on the Abroad rule made every leave
+                         spent in Alicia read as foreign travel to Alicia -- the
+                         value sitting on an unticked "Abroad (Specify)" line,
+                         on a signed government form.
+
+                         So each row carries its own value and shows it only
+                         when it is the one chosen. Both rules print identically
+                         when empty, so the sheet is unchanged for anyone
+                         reading a blank one. --}}
                     <div class="csc-check csc-rowline">
                         <span class="{{ $tick($detail('location') === 'within_ph') }}" aria-hidden="true"></span>
                         <span class="csc-check-text">Within the Philippines</span>
-                        <span class="csc-fill" aria-hidden="true"></span>
+                        <span class="csc-fill-value">{{ $detail('location') === 'within_ph' ? $detail('location_specify') : '' }}</span>
                     </div>
                     <div class="csc-check csc-rowline">
                         <span class="{{ $tick($detail('location') === 'abroad') }}" aria-hidden="true"></span>
                         <span class="csc-check-text">Abroad (Specify)</span>
-                        <span class="csc-fill-value">{{ $detail('location_specify') }}</span>
+                        <span class="csc-fill-value">{{ $detail('location') === 'abroad' ? $detail('location_specify') : '' }}</span>
                     </div>
 
                     <div class="csc-case"><em>In case of Sick Leave:</em></div>

@@ -349,14 +349,13 @@
                         </div>
                     </div>
                     <div class="lf-f">
-                        {{-- The asterisk is shown only once "Abroad" is chosen:
-                             the field genuinely is optional for leave spent in
-                             the Philippines, and marking it required all the
-                             time would be marking it wrongly most of the time.
-                             The reveal is CSS :has(), the same idiom the type
-                             blocks above use. --}}
+                        {{-- Required for both answers, not only Abroad: the LGU
+                             records where every leave is spent. The asterisk is
+                             therefore permanent rather than revealed by the
+                             radio, and the printed form puts the place on
+                             whichever line is ticked. --}}
                         <label for="location_specify">If abroad, specify
-                            <span class="req lf-req-abroad">*</span></label>
+                            <span class="req">*</span></label>
                         <input id="location_specify" type="text" name="details[location_specify]"
                                class="form-control" value="{{ old('details.location_specify') }}"
                                placeholder="Country or city">

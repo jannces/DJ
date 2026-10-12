@@ -1930,21 +1930,10 @@ h1.h4{ font-size:1.35rem; font-weight:600; letter-spacing:-.01em; }
   .lf-grp-none{ display:none; }
 }
 
-/* "If abroad, specify" is required only when Abroad is the answer.
-   ----------------------------------------------------------------------
-   The asterisk is hidden until the Abroad radio is checked. .lf-g is the
-   common ancestor of the two fields -- the radio pair sits in one .lf-f and
-   the text box in the next -- so :has() reaches across from one to the other.
-
-   The HTML `required` attribute is deliberately NOT used here: it cannot be
-   switched on and off by CSS, and setting it permanently would block a leave
-   spent in the Philippines, where the field is genuinely empty. The rule that
-   enforces this is required_if in LeaveRequestController::store(). The
-   asterisk is the courtesy; the server is the control. */
-.lf-req-abroad{ display:none; }
-.lf-g:has(input[name="details[location]"][value="abroad"]:checked) .lf-req-abroad{
-  display:inline;
-}
+/* "If abroad, specify" carried a conditional asterisk here, revealed by
+   :has() when the Abroad radio was checked. The LGU requires the place for
+   leave spent within the Philippines too, so the asterisk is permanent and
+   the rule is gone rather than left behind as dead CSS. */
 
 /* ---- The four steps ----------------------------------------------------
    Who you are, what kind of leave, when, and signing it off.
