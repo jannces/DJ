@@ -540,9 +540,9 @@ on the form.
 3. Under **Details of leave**, answer the questions that appear for the type you chose.
    For example:
    - *Vacation / Mandatory-Forced / Special Privilege Leave:* **Where will it be spent?**
-     (Within the Philippines / Abroad) and **If abroad, specify**. For Vacation Leave the
-     system requires this box even for leave within the Philippines, so always type the
-     place (see Validation Check, item C-10).
+     (Within the Philippines / Abroad) and **If abroad, specify**. The second box is
+     required only when you choose **Abroad** — an asterisk appears beside it as soon as
+     you do. For leave spent within the Philippines you may leave it empty.
    - *Sick Leave:* **Where** (In hospital / Out patient) and **Specify illness**.
    - *Maternity Leave:* **Contingency** (Live childbirth / Miscarriage or emergency
      termination), **Expected / actual date of delivery**.
@@ -2070,7 +2070,7 @@ confirm their tooltips in the screenshots.
 | C-6 | **Insufficient credits at approval time** | If an employee's credits fall below the requested days between filing and approval, approval fails with a system error instead of a friendly message. Confirm what HR sees and the procedure to follow. |
 | C-7 | **HR "manage employees" permission** | HR holds a "Create/update/archive employees" permission, but the Employees page is view-only; employee details are edited only by the System Administrator on Users. Confirm who maintains employee records in practice. |
 | C-8 | **Support contacts** | Section 11 needs names, offices and local numbers from the LGU. |
-| C-10 | **Vacation Leave location** | The Vacation Leave type requires "Specify location" even when **Within the Philippines** is chosen, although the form labels the box **If abroad, specify**. Leaving it blank refuses the application (*The field 'Specify location' is required for Vacation Leave.*). The place then prints beside **Abroad (Specify)** on CSC Form No. 6 even when **Within the Philippines** is ticked. Found while capturing the manual's screenshots; confirm whether this is intended. |
+| C-10 | **Vacation Leave location** | ~~Vacation Leave required "Specify location" even when **Within the Philippines** was chosen, although the form labels the box **If abroad, specify**.~~ **Resolved.** It was not intended: the CSC sheet asks for the destination of foreign travel, not for the place somebody spends an ordinary vacation. The box is now required only when **Abroad** is chosen, and the asterisk appears beside it at that moment. One thing remains worth knowing: if you type a place while **Within the Philippines** is ticked, it still prints beside **Abroad (Specify)** on CSC Form No. 6 — the sheet has only the one line for it. |
 | C-9 | **Mayor's name and HR officer's name on the form** | The printed form uses names stored as settings (with built-in fallback names). Confirm they are current. |
 
 ### 4. Discrepancies between earlier project documents and the implemented system
