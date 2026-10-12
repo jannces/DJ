@@ -17,7 +17,12 @@
 --}}
 
 <div class="user-form">
-    <x-page-head class="mb-3" title="Access for {{ $user->name }}"
+    {{-- :title, not title="... {{ }} ...". The interpolated form escapes the
+         name into the attribute and the component's own {{ $title }} escapes
+         it again, so a name carrying an apostrophe was printed on screen as
+         "Access for Mayra O&#039;Kon". Every other x-page-head in the project
+         already passes a bound expression; this was the one that did not. --}}
+    <x-page-head class="mb-3" :title="'Access for '.$user->name"
         :sub="$user->roles->pluck('name')->implode(', ')"
         :back-url="route('users.edit', $user)" back-label="Edit user" />
 

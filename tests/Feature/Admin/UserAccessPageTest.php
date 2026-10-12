@@ -168,11 +168,39 @@ class UserAccessPageTest extends TestCase
 
         $html = $this->get('/users/'.$user->id.'/access')->assertOk()->getContent();
 
-        $this->assertStringContainsString('Access for '.$user->name, $html);
+        // e(), because the name is faked and one in fifty of them carries an
+        // apostrophe -- "Mayra O'Kon". Blade escapes it to O&#039;Kon, so the
+        // raw string is not in the HTML and this assertion failed roughly one
+        // run in six, on a different name each time.
+        $this->assertStringContainsString('Access for '.e($user->name), $html);
         $this->assertStringContainsString('name="allow[]"', $html);
         $this->assertStringContainsString('perm-columns', $html, 'the list is not in two columns');
         $this->assertStringContainsString('Leave both unticked to inherit', $html,
             'the default state has no control to show it and is not explained either');
+    }
+
+    /**
+     * A name with an apostrophe is printed once, not escaped twice.
+     *
+     * The heading was written as title="Access for {{ $user->name }}", which
+     * escapes the name into the attribute, and x-page-head's own {{ $title }}
+     * then escaped it again -- so the screen read "Access for Mayra O&#039;Kon"
+     * in plain sight. Faker produces such a name about one time in fifty, which
+     * is why the suite failed roughly one run in six and passed on a re-run.
+     *
+     * Pinned here rather than left to the draw: the name is set explicitly, so
+     * this fails every time if the heading goes back to the interpolated form.
+     */
+    public function test_a_name_with_an_apostrophe_is_not_double_escaped(): void
+    {
+        $user = $this->employee();
+        $user->update(['name' => "Mayra O'Kon"]);
+
+        $html = $this->get('/users/'.$user->id.'/access')->assertOk()->getContent();
+
+        $this->assertStringContainsString('Access for Mayra O&#039;Kon', $html);
+        $this->assertStringNotContainsString('O&amp;#039;Kon', $html,
+            'the name is escaped twice and the ampersand is printed on screen');
     }
 
     public function test_overrides_save(): void

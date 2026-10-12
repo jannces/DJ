@@ -349,7 +349,14 @@
                         </div>
                     </div>
                     <div class="lf-f">
-                        <label for="location_specify">If abroad, specify</label>
+                        {{-- The asterisk is shown only once "Abroad" is chosen:
+                             the field genuinely is optional for leave spent in
+                             the Philippines, and marking it required all the
+                             time would be marking it wrongly most of the time.
+                             The reveal is CSS :has(), the same idiom the type
+                             blocks above use. --}}
+                        <label for="location_specify">If abroad, specify
+                            <span class="req lf-req-abroad">*</span></label>
                         <input id="location_specify" type="text" name="details[location_specify]"
                                class="form-control" value="{{ old('details.location_specify') }}"
                                placeholder="Country or city">

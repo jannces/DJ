@@ -173,7 +173,10 @@ class PrintedFormTest extends TestCase
         $request = $this->file();
         $hr = $this->approve($request);
 
-        $this->assertStringContainsString($hr->name, $this->sheet($request->fresh()));
+        // e(), because the name is faked and one in fifty carries an apostrophe
+        // -- "Mayra O'Kon" -- which Blade escapes to O&#039;Kon. Without this
+        // the assertion fails on that draw and passes on every other.
+        $this->assertStringContainsString(e($hr->name), $this->sheet($request->fresh()));
     }
 
     /**
