@@ -29,21 +29,26 @@ class LeaveRequest extends Model
         'late_filing_reason', 'filing_warnings', 'hr_override', 'hr_override_reason',
         'days_with_pay', 'days_without_pay', 'disapproval_reason',
         'office_snapshot', 'position_snapshot', 'salary_snapshot',
-        'applicant_signature', 'decided_at',
+        'applicant_signature', 'applicant_signature_path', 'applicant_signature_hash',
+        'decided_at',
     ];
 
     protected $casts = [
         'date_filed' => 'date',
         'start_date' => 'date',
         'end_date' => 'date',
-        'working_days' => 'decimal:1',
+        // Three decimals, matching leave_balances.balance -- terminal leave's
+        // count is a sum of balances (VL 120.500 + SL 150.250 = 270.750) and
+        // decimal:1 rounded it to 270.8 in PHP even after the column was
+        // widened. See the widen_day_counts migration.
+        'working_days' => 'decimal:3',
         'details' => 'array',
         'commutation' => 'boolean',
         'is_late_filing' => 'boolean',
         'filing_warnings' => 'array',
         'hr_override' => 'boolean',
-        'days_with_pay' => 'decimal:1',
-        'days_without_pay' => 'decimal:1',
+        'days_with_pay' => 'decimal:3',
+        'days_without_pay' => 'decimal:3',
         'salary_snapshot' => 'decimal:2',
         'decided_at' => 'datetime',
     ];
