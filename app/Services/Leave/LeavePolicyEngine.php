@@ -74,11 +74,22 @@ class LeavePolicyEngine
         }
 
         // Sick leave filed after returning → capture a late-filing reason.
+        //
+        // NOTE ON THE WORDING. The message names the documents HR asks for,
+        // but the condition below is on the reason text box -- section 6.B's
+        // "If filed after returning to work, why?" -- and filling that box is
+        // what clears the error. Attaching the documents alone does not.
+        //
+        // That difference is deliberate and was asked for: the sentence tells
+        // the employee what HR will want, while the form still gates on the
+        // explanation. If the requirement itself should move to the uploads,
+        // this `if` is the line to change, and requiredDocuments() below is
+        // where a document rule would belong.
         $requiresLateReason = false;
         if ($type->code === 'SL' && $startDate->startOfDay()->lt($dateFiled->startOfDay())) {
             $requiresLateReason = true;
             if (empty($input['late_filing_reason'] ?? null)) {
-                $errors[] = 'This sick leave is filed after the leave dates; a late-filing reason is required.';
+                $errors[] = 'This sick leave is filed after the leave dates; a primary document and medical certificate is required.';
             }
         }
 

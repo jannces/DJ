@@ -25,6 +25,12 @@ class AssetVersionTest extends TestCase
         $this->assertMatchesRegularExpression('#/css/app\.css\?v=\d+$#', $first);
 
         touch(public_path('css/app.css'), time() + 60);
+        // PHP caches stat results per request, and touch() does not reliably
+        // invalidate that entry -- on this runner filemtime() kept returning
+        // the pre-touch value, so the version never moved and the test failed
+        // while the code under it was correct. Clearing the entry makes the
+        // test depend on the file rather than on undefined behaviour.
+        clearstatcache(true, public_path('css/app.css'));
         Cache::flush();
 
         $this->assertNotSame($first, Asset::url('css/app.css'),
