@@ -68,8 +68,8 @@ class Approval extends Model
 
     protected $casts = [
         'certified_balances' => 'array',
-        'days_with_pay' => 'decimal:1',
-        'days_without_pay' => 'decimal:1',
+        'days_with_pay' => 'decimal:3',
+        'days_without_pay' => 'decimal:3',
         'acted_at' => 'datetime',
     ];
 

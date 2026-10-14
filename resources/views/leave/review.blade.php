@@ -81,11 +81,17 @@
                     </div>
                     {{-- The pay split is what actually gets deducted from the
                          employee's credits, so it belongs to the decision. --}}
+                    {{-- step="0.001", not 0.5. Ordinary leave is whole or half
+                         days, but terminal leave's count is a sum of credit
+                         balances -- 120.500 + 150.250 = 270.750 -- and a
+                         browser rejects a value that is not a multiple of the
+                         step, so HR could not have approved a retirement at
+                         all. The server rule is numeric|min:0 either way. --}}
                     <div class="row g-2 mb-2">
                         <div class="col"><label class="form-label small">Days with pay</label>
-                            <input type="number" step="0.5" name="days_with_pay" class="form-control" value="{{ $r->working_days }}"></div>
+                            <input type="number" step="0.001" min="0" name="days_with_pay" class="form-control" value="{{ $r->working_days }}"></div>
                         <div class="col"><label class="form-label small">Days without pay</label>
-                            <input type="number" step="0.5" name="days_without_pay" class="form-control" value="0"></div>
+                            <input type="number" step="0.001" min="0" name="days_without_pay" class="form-control" value="0"></div>
                     </div>
                     <div class="mb-2"><label class="form-label">Comments / remarks</label>
                         <textarea name="comments" class="form-control" rows="2"></textarea></div>
