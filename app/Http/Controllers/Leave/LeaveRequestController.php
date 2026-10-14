@@ -235,7 +235,22 @@ class LeaveRequestController extends Controller
         $this->authorizeView($request, $leaveRequest);
         $leaveRequest->load('leaveType', 'user.employeeProfile.department', 'user.employeeProfile.position', 'approvals.approver', 'documents');
 
-        return view('leave.show', compact('leaveRequest'));
+        // Terminal leave and monetization pay money rather than grant an
+        // absence, so their page shows what the payment comes to. The salary
+        // is the snapshot taken when the application was filed, not today's:
+        // a figure on an approved application must not move afterwards.
+        $money = null;
+        if ($leaveRequest->leaveType->isCommuted()) {
+            $value = app(\App\Services\Leave\LeaveMoneyValue::class);
+            $money = [
+                'salary' => (float) $leaveRequest->salary_snapshot,
+                'days' => (float) $leaveRequest->working_days,
+                'factor' => $value->factor(),
+                'total' => $value->compute((float) $leaveRequest->working_days, (float) $leaveRequest->salary_snapshot),
+            ];
+        }
+
+        return view('leave.show', compact('leaveRequest', 'money'));
     }
 
     // balances() was removed together with the `leave/balances` route and view.

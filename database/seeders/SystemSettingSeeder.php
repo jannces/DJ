@@ -29,6 +29,7 @@ class SystemSettingSeeder extends Seeder
             // CSC MC 41 s.1998 as amended. Settings rather than constants so a
             // change of circular does not need a developer.
             ['leave', 'leave.monetization_min_days', '10', 'string', 'Fewest leave credits that may be monetized at once'],
+            ['leave', 'leave.money_value_factor', '0.0481927', 'string', 'Constant factor for the money value of leave credits (1 ÷ 20.75 working days a month)'],
             ['leave', 'leave.monetization_retain_days', '15', 'string', 'Vacation Leave days that must remain after monetizing'],
             ['leave', 'leave.forced_leave_min_vl', '10', 'string', 'Vacation Leave credits from which the 5-day mandatory leave applies'],
             ['general', 'general.lgu_name', 'Local Government Unit of Alicia', 'string', 'Organization name on forms and reports'],

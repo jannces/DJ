@@ -119,6 +119,58 @@
 --}}
 <div class="row g-3">
     <div class="col-lg-8">
+        @if ($money)
+            {{-- What this application is worth, and how that was arrived at.
+                 ------------------------------------------------------------
+                 Terminal leave and monetization pay money rather than grant an
+                 absence, and until now the system computed nothing: the leave
+                 type's own description promised "money value of accumulated
+                 credits" and no screen anywhere showed a figure.
+
+                 The working is printed, not just the total. HR certifies the
+                 credits and the Mayor approves the payment, and both have to
+                 be able to check it against what the accountant computes by
+                 hand -- a bare peso figure invites "where did that come
+                 from?" and has no answer. Salary, days and factor are all
+                 here, so the line can be reproduced on paper.
+
+                 NOT on the printed CSC Form 6: that sheet has no box for a
+                 money value, and inventing a field on a government form is
+                 not this system's to do. --}}
+            <div class="card mb-3">
+                <div class="card-header fw-semibold">
+                    Money value &middot; {{ $leaveRequest->leaveType->name }}
+                </div>
+                <div class="card-body">
+                    <dl class="dfl dfl-2 mb-0">
+                        <dt>Monthly salary</dt>
+                        <dd>@if ($money['salary'] > 0)&#8369;{{ number_format($money['salary'], 2) }}@else<span class="text-danger">not recorded</span>@endif</dd>
+                        <dt>Credit days</dt>
+                        <dd>{{ rtrim(rtrim(number_format($money['days'], 2), '0'), '.') }}</dd>
+                        <dt>Constant factor</dt>
+                        <dd>&times; {{ $money['factor'] }}</dd>
+                        <dt class="fw-semibold">Money value</dt>
+                        <dd class="fw-semibold">&#8369;{{ number_format($money['total'], 2) }}</dd>
+                    </dl>
+
+                    @if ($money['salary'] <= 0)
+                        <div class="alert alert-warning small mt-3 mb-0">
+                            No monthly salary was recorded for this employee when the
+                            application was filed, so the money value cannot be computed.
+                            Set it on their employee record and file again.
+                        </div>
+                    @else
+                        <p class="text-muted small mt-3 mb-0">
+                            Monthly salary &times; credit days &times; {{ $money['factor'] }}.
+                            The factor is one working day's share of a month
+                            (1 &divide; {{ \App\Services\Leave\LeaveMoneyValue::WORKING_DAYS_PER_MONTH }}),
+                            and is set in System Settings.
+                        </p>
+                    @endif
+                </div>
+            </div>
+        @endif
+
         <div class="card">
             <div class="card-header fw-semibold">Application details</div>
             <div class="card-body">
