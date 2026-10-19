@@ -59,6 +59,20 @@ class User extends Authenticatable
         return $this->hasOne(EmployeeProfile::class);
     }
 
+    /**
+     * The surname, for the column the user list is sorted by.
+     *
+     * Not every account has an employee profile -- the system administrator
+     * may be IT with no leave entitlement -- so this falls back to the
+     * account's own name rather than leaving an empty cell where a person
+     * should be. The query orders on the same COALESCE, so the fallback sorts
+     * where it is shown.
+     */
+    public function surname(): string
+    {
+        return trim((string) $this->employeeProfile?->last_name) ?: (string) $this->name;
+    }
+
     public function leaveRequests(): HasMany
     {
         return $this->hasMany(LeaveRequest::class);

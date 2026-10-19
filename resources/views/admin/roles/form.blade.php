@@ -1,33 +1,48 @@
 @extends('layouts.app')
-@section('title', $role->exists ? 'Edit role' : 'New role')
+@section('title', 'Edit role')
 @section('content')
-<h1 class="h4 mb-3">{{ $role->exists ? 'Edit role: '.$role->name : 'Create role' }}</h1>
-<form method="POST" action="{{ $role->exists ? route('roles.update', $role) : route('roles.store') }}">
+
+{{--
+  Editing one of the five fixed roles. There is no create form: the roles are
+  the LGU's structure, and a sixth invented here would hold authority nothing in
+  the organisation answers for.
+
+  "Full system access (wildcard)" is not on this page. It satisfies every
+  permission check in the application, so one click used to be enough to give
+  any role unrestricted access to users, security, settings and every employee's
+  leave record. RoleController filters it out of the list and refuses it on
+  submission — hiding a control is not access control, and this form can be
+  replayed with any permission id in it.
+
+  Permissions read DOWN their module, not across two columns. The old grid
+  flowed left, right, left, so the first LEAVE permission sat beside the fourth
+  and a reader had to zig-zag to take in a group.
+--}}
+
+<x-page-head class="mb-3" :title="'Edit role: '.$role->name"
+    :back-url="route('roles.index')" back-label="Roles & Permissions" />
+
+<form method="POST" action="{{ route('roles.update', $role) }}">
     @csrf
-    @if ($role->exists) @method('PUT') @endif
+    @method('PUT')
     <div class="row g-3">
         <div class="col-md-4">
             <div class="card">
                 <div class="card-body">
                     <div class="mb-3">
-                        <label class="form-label">Name</label>
-                        <input name="name" class="form-control @error('name') is-invalid @enderror" value="{{ old('name', $role->name) }}" required>
+                        <label class="form-label" for="role-name">Name</label>
+                        <input id="role-name" name="name" class="form-control @error('name') is-invalid @enderror"
+                               value="{{ old('name', $role->name) }}" required>
                         @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
-                    @unless ($role->exists)
-                        <div class="mb-3">
-                            <label class="form-label">Slug</label>
-                            <input name="slug" class="form-control @error('slug') is-invalid @enderror" value="{{ old('slug') }}" required>
-                            @error('slug')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                        </div>
-                    @endunless
                     <div class="mb-3">
-                        <label class="form-label">Description</label>
-                        <input name="description" class="form-control" value="{{ old('description', $role->description) }}">
+                        <label class="form-label" for="role-description">Description</label>
+                        <input id="role-description" name="description" class="form-control"
+                               value="{{ old('description', $role->description) }}">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Inherit from (parent role)</label>
-                        <select name="parent_id" class="form-select">
+                        <label class="form-label" for="role-parent">Inherit from (parent role)</label>
+                        <select id="role-parent" name="parent_id" class="form-select">
                             <option value="">— none —</option>
                             @foreach ($roles as $r)
                                 <option value="{{ $r->id }}" @selected(old('parent_id', $role->parent_id) == $r->id)>{{ $r->name }}</option>
@@ -39,32 +54,31 @@
                 </div>
             </div>
         </div>
+
         <div class="col-md-8">
             <div class="card">
                 <div class="card-header fw-semibold">Permissions</div>
                 <div class="card-body">
-                    @foreach ($permissions as $module => $perms)
-                        <div class="mb-3">
-                            <div class="text-uppercase small text-muted mb-1">{{ $module }}</div>
-                            <div class="row">
+                    <div class="perm-cols">
+                        @foreach ($permissions as $module => $perms)
+                            <div class="perm-group">
+                                <p class="perm-cap">{{ $module }}</p>
                                 @foreach ($perms as $perm)
                                     @php $isInherited = in_array($perm->slug, $inherited ?? []); @endphp
-                                    <div class="col-md-6">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="permissions[]"
-                                                   value="{{ $perm->id }}" id="p{{ $perm->id }}"
-                                                   @checked(in_array($perm->id, $assigned) || $isInherited)
-                                                   @disabled($isInherited)>
-                                            <label class="form-check-label small" for="p{{ $perm->id }}">
-                                                {{ $perm->name }}
-                                                @if ($isInherited)<span class="badge bg-light text-muted">inherited</span>@endif
-                                            </label>
-                                        </div>
+                                    <div class="perm {{ $isInherited ? 'is-locked' : '' }}">
+                                        <input class="form-check-input" type="checkbox" name="permissions[]"
+                                               value="{{ $perm->id }}" id="p{{ $perm->id }}"
+                                               @checked(in_array($perm->id, $assigned) || $isInherited)
+                                               @disabled($isInherited)>
+                                        <label for="p{{ $perm->id }}">
+                                            {{ $perm->name }}
+                                            @if ($isInherited)<span class="perm-lock">inherited</span>@endif
+                                        </label>
                                     </div>
                                 @endforeach
                             </div>
-                        </div>
-                    @endforeach
+                        @endforeach
+                    </div>
                 </div>
             </div>
         </div>

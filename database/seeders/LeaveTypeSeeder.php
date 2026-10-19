@@ -14,8 +14,12 @@ class LeaveTypeSeeder extends Seeder
 {
     public function run(): void
     {
-        $standardFlow = ['department_head', 'hr', 'mayor'];
-        $hrMayorFlow = ['hr', 'mayor'];
+        // Single-step approval: HR validates and decides. The applicant's
+        // department head is notified when the application is filed and acts
+        // on nothing, so that is not a step and does not appear here.
+        // Both names are kept so the per-type entries below stay readable.
+        $standardFlow = ['authorized'];
+        $hrMayorFlow = ['authorized'];
 
         $types = [
             [
@@ -61,8 +65,13 @@ class LeaveTypeSeeder extends Seeder
             ],
             [
                 'code' => 'ML', 'name' => 'Maternity Leave', 'category' => 'special',
-                'max_days' => 105, 'deductible' => false, 'credit_source' => null,
+                'max_days' => 105, 'deductible' => false, 'credit_source' => null, 'counts_calendar_days' => true,
                 'detail_schema' => [
+                    // The ceiling depends on this answer: 105 days for live
+                    // childbirth, 60 for miscarriage or emergency termination
+                    // (Sec. 11, CSC MC 5 s.2021).
+                    ['name' => 'delivery_type', 'label' => 'Contingency', 'type' => 'radio', 'required' => true,
+                        'options' => ['live' => 'Live childbirth', 'miscarriage' => 'Miscarriage / emergency termination of pregnancy']],
                     ['name' => 'expected_delivery', 'label' => 'Expected/Actual date of delivery', 'type' => 'date', 'required' => true],
                     ['name' => 'extension', 'label' => 'Availing additional extension (RA 11210)', 'type' => 'checkbox', 'required' => false],
                 ],
@@ -71,7 +80,7 @@ class LeaveTypeSeeder extends Seeder
                     ['type' => 'medical_certificate', 'label' => 'Medical Certificate', 'rule' => 'always'],
                 ],
                 'approval_flow' => $hrMayorFlow,
-                'description' => '105 days per RA 11210, CSC compliant; extension where applicable.',
+                'description' => '105 days for live childbirth (120 for a solo parent), 60 for miscarriage or emergency termination of pregnancy. Counted in calendar days, continuous and uninterrupted.',
             ],
             [
                 'code' => 'PL', 'name' => 'Paternity Leave', 'category' => 'special',
@@ -83,7 +92,7 @@ class LeaveTypeSeeder extends Seeder
                     ['type' => 'medical_document', 'label' => 'Medical documents', 'rule' => 'optional'],
                 ],
                 'approval_flow' => $standardFlow, 'annual_reset' => false,
-                'description' => 'Seven (7) days for married male employees, per RA 8187.',
+                'description' => 'Seven (7) working days for married male employees, per RA 8187, for the first four deliveries.',
             ],
             [
                 'code' => 'SPL', 'name' => 'Special Privilege Leave', 'category' => 'regular',
@@ -110,7 +119,7 @@ class LeaveTypeSeeder extends Seeder
             ],
             [
                 'code' => 'STL', 'name' => 'Study Leave', 'category' => 'special',
-                'max_days' => 180, 'deductible' => false, 'credit_source' => null,
+                'max_days' => 180, 'deductible' => false, 'credit_source' => null, 'counts_calendar_days' => true,
                 'detail_schema' => [
                     ['name' => 'purpose', 'label' => 'Purpose', 'type' => 'radio', 'required' => true,
                         'options' => [
@@ -130,17 +139,25 @@ class LeaveTypeSeeder extends Seeder
             [
                 'code' => 'VAWC', 'name' => '10-Day VAWC Leave', 'category' => 'special',
                 'max_days' => 10, 'deductible' => false, 'credit_source' => null,
-                'detail_schema' => [],
+                'detail_schema' => [
+                    // RA 9262 sec. 43 grants ten days "extendible when the
+                    // necessity arises AS SPECIFIED IN THE PROTECTION ORDER".
+                    // The extension is not open-ended: it is whatever the order
+                    // says, which is why the number is asked for and the order
+                    // is already a required document.
+                    ['name' => 'extension_days', 'label' => 'Additional days specified in a protection order',
+                        'type' => 'number', 'required' => false],
+                ],
                 'required_documents' => [
                     ['type' => 'vawc_document', 'label' => 'Barangay Protection Order / Court Order / Medical Certificate / Police Report',
                         'rule' => 'always'],
                 ],
                 'approval_flow' => $hrMayorFlow, 'annual_reset' => true,
-                'description' => 'Ten (10) days per RA 9262 with any qualifying supporting document.',
+                'description' => 'Ten (10) working days per RA 9262, separate from all other leave and not deducted from credits. Extendible only by the number of days a protection order specifies.',
             ],
             [
                 'code' => 'RL', 'name' => 'Rehabilitation Privilege Leave', 'category' => 'special',
-                'max_days' => 180, 'deductible' => false, 'credit_source' => null,
+                'max_days' => 180, 'deductible' => false, 'credit_source' => null, 'counts_calendar_days' => true,
                 'detail_schema' => [
                     ['name' => 'accident_details', 'label' => 'Details of work-related accident', 'type' => 'textarea', 'required' => true],
                 ],
@@ -154,7 +171,7 @@ class LeaveTypeSeeder extends Seeder
             ],
             [
                 'code' => 'SLBW', 'name' => 'Special Leave Benefits for Women', 'category' => 'special',
-                'max_days' => 60, 'deductible' => false, 'credit_source' => null,
+                'max_days' => 60, 'deductible' => false, 'credit_source' => null, 'counts_calendar_days' => true,
                 'detail_schema' => [
                     ['name' => 'illness', 'label' => 'Gynecological illness', 'type' => 'text', 'required' => true],
                     ['name' => 'surgery_details', 'label' => 'Surgery details', 'type' => 'textarea', 'required' => true],
@@ -172,13 +189,17 @@ class LeaveTypeSeeder extends Seeder
                 'max_days' => 5, 'deductible' => false, 'credit_source' => null,
                 'detail_schema' => [
                     ['name' => 'calamity', 'label' => 'Declared calamity', 'type' => 'text', 'required' => true],
+                    // CSC MC 2 s.2012 item 4: availed within 30 days of the
+                    // declaration. Without this field the window could not be
+                    // checked by hand either.
+                    ['name' => 'declaration_date', 'label' => 'First day of calamity declaration', 'type' => 'date', 'required' => true],
                     ['name' => 'calamity_area', 'label' => 'Affected area (must match residence)', 'type' => 'text', 'required' => true],
                 ],
                 'required_documents' => [
                     ['type' => 'government_proof', 'label' => 'Government declaration / supporting documents', 'rule' => 'always'],
                 ],
                 'approval_flow' => $hrMayorFlow, 'annual_reset' => true,
-                'description' => 'Up to five (5) days; HR validates residence against the declared calamity area.',
+                'description' => 'Five (5) working days, straight or staggered, not deducted from leave credits. Must be availed within 30 days of the calamity declaration.',
             ],
             [
                 'code' => 'MON', 'name' => 'Monetization of Leave Credits', 'category' => 'monetization',
@@ -209,7 +230,7 @@ class LeaveTypeSeeder extends Seeder
             ],
             [
                 'code' => 'AL', 'name' => 'Adoption Leave', 'category' => 'special',
-                'max_days' => 60, 'deductible' => false, 'credit_source' => null,
+                'max_days' => 60, 'deductible' => false, 'credit_source' => null, 'counts_calendar_days' => true,
                 'detail_schema' => [],
                 'required_documents' => [
                     ['type' => 'papa_document', 'label' => 'Pre-Adoption Placement Authority (PAPA)', 'rule' => 'always'],
