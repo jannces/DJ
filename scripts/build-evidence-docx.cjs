@@ -106,11 +106,18 @@ function pill(text, fill, color) {
   });
 }
 
-function image(file, widthIn) {
+// Read a PNG's pixel dimensions from its IHDR chunk (bytes 16-24, big-endian).
+function pngSize(buf) {
+  return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) };
+}
+
+// Centered image scaled to `targetWpx` pixels wide (96 px = 1 inch in docx-js),
+// height derived from the file's real aspect ratio.
+function image(file, targetWpx) {
   const data = fs.readFileSync(path.join(base, file));
-  // report-summary.png is 2000x1640 (aspect 1.2195).
-  const wEmu = widthIn, hEmu = Math.round(widthIn * (1640 / 2000));
-  return P(new ImageRun({ type: 'png', data, transformation: { width: wEmu, height: hEmu } }),
+  const { w, h } = pngSize(data);
+  const height = Math.round(targetWpx * (h / w));
+  return P(new ImageRun({ type: 'png', data, transformation: { width: targetWpx, height } }),
     { alignment: AlignmentType.CENTER });
 }
 
@@ -294,6 +301,21 @@ tip('ISO/IEC 25010 — Security characteristic',
 
 children.push(P(run('Honesty note for your defense: this is a defensive self-assessment run in-process against the project’s own application, not an external penetration engagement. Where the test plan names an external tool (ZAP, SQLMap, Hydra), the suite reproduces the check that tool performs against the live controls. State this plainly in Chapter 3 so the scope is clear; it strengthens, rather than weakens, the work.',
   { italics: true, size: 19, color: MUTED }), { spacing: { before: 160 } }));
+
+// --- Appendix A: report screenshots ---
+children.push(new Paragraph({ children: [new PageBreak()] }));
+children.push(H1('Appendix A. Report Screenshots'));
+children.push(P(run('Screenshots of the automated evidence report (report.html), produced by the test run. The full report is reproduced across the following strips at readable width.', { size: 20 }), { spacing: { after: 140 } }));
+
+children.push(H2('A.1  Results summary'));
+children.push(image('images/report-summary.png', 600));
+children.push(P(run('Figure A1. Evidence report — header and results-by-scenario table.', { italics: true, size: 18, color: MUTED }), { alignment: AlignmentType.CENTER, spacing: { before: 40, after: 160 } }));
+
+children.push(H2('A.2  Full report'));
+['images/report-full-01.png', 'images/report-full-02.png', 'images/report-full-03.png', 'images/report-full-04.png']
+  .filter((f) => fs.existsSync(path.join(base, f)))
+  .forEach((f) => children.push(image(f, 600), spacer(40)));
+children.push(P(run('Figure A2. Full evidence report (continuous, shown in sequential strips).', { italics: true, size: 18, color: MUTED }), { alignment: AlignmentType.CENTER, spacing: { before: 40 } }));
 
 // ============================================================ document
 const doc = new Document({
