@@ -31,6 +31,17 @@ CACHE_STORE=database             # or redis
 MAIL_MAILER=smtp  MAIL_HOST=<lan-smtp>  MAIL_PORT=25 ...
 ```
 
+**Redis profile (high-concurrency login, ~50x load):** sessions, cache, queue and the
+login/OTP throttle counters move off MySQL. Requires the `phpredis` extension.
+```
+SESSION_DRIVER=redis  SESSION_CONNECTION=session   # Redis DB 2
+CACHE_STORE=redis                                  # Redis DB 1
+CACHE_LIMITER=limiter                              # Redis DB 3 (throttles survive cache:clear)
+QUEUE_CONNECTION=redis                             # OTP mails are queued; run `php artisan queue:work`
+REDIS_CLIENT=phpredis  REDIS_HOST=127.0.0.1  REDIS_PORT=6379
+```
+Run `php artisan migrate` to add the OTP / failed-login indexes. `otp:prune` stays on the hourly schedule.
+
 Create DB + user (phpMyAdmin or):
 ```sql
 CREATE DATABASE lms_alicia CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
