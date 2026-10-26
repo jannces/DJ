@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security Test Matrix — Evidence Report</title>
+<style>
+  :root {
+    --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --bg:#f8fafc; --card:#ffffff;
+    --pass:#15803d; --pass-bg:#dcfce7; --fail:#b91c1c; --fail-bg:#fee2e2;
+    --accent:#1d4ed8; --accent-bg:#eff6ff;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:960px; margin:0 auto; padding:32px 20px 64px; }
+  header { border-bottom:3px solid var(--accent); padding-bottom:16px; margin-bottom:24px; }
+  h1 { font-size:24px; margin:0 0 4px; }
+  .sub { color:var(--muted); font-size:13px; }
+  .pill { display:inline-block; padding:3px 12px; border-radius:999px; font-weight:700;
+    font-size:13px; letter-spacing:.3px; }
+  .pill.pass { background:var(--pass-bg); color:var(--pass); }
+  .pill.fail { background:var(--fail-bg); color:var(--fail); }
+  .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:20px 0 28px; }
+  @media (max-width:720px){ .grid{ grid-template-columns:repeat(2,1fr);} }
+  .stat { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+  .stat .n { font-size:26px; font-weight:800; }
+  .stat .l { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.5px; }
+  table { width:100%; border-collapse:collapse; background:var(--card);
+    border:1px solid var(--line); border-radius:12px; overflow:hidden; margin:8px 0 28px; }
+  th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--line); font-size:14px; vertical-align:top; }
+  th { background:var(--accent-bg); color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.4px; }
+  tr:last-child td { border-bottom:none; }
+  .mono { font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-size:12px; color:var(--muted); }
+  h2 { font-size:17px; margin:30px 0 10px; }
+  .ratio { font-weight:700; }
+  .ok { color:var(--pass); } .bad { color:var(--fail); }
+  .note { color:var(--muted); font-size:12.5px; margin-top:6px; }
+  details { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:8px 14px; margin:8px 0; }
+  summary { cursor:pointer; font-weight:600; }
+  pre { background:#0f172a; color:#e2e8f0; padding:12px; border-radius:8px; overflow:auto; font-size:12px; }
+  footer { color:var(--muted); font-size:12px; border-top:1px solid var(--line); padding-top:14px; margin-top:32px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Security Test Matrix — Evidence Report</h1>
+    <div class="sub">Cybersecurity Integrated Digital Leave Management System · LGU of Alicia<br>
+      Generated 2026-10-26T22:14:25+08:00 · Suite <span class="mono">SecurityTestMatrixTest</span></div>
+    <p style="margin:12px 0 0"><span class="pill pass">ALL SCENARIOS PASS</span></p>
+  </header>
+
+  <div class="grid">
+    <div class="stat"><div class="n">6</div><div class="l">Scenarios</div></div>
+    <div class="stat"><div class="n">300</div><div class="l">Total trials</div></div>
+    <div class="stat"><div class="n ok">300</div><div class="l">Passed</div></div>
+    <div class="stat"><div class="n ok">0</div><div class="l">Failed</div></div>
+  </div>
+
+  <h2>Results by scenario</h2>
+  <table>
+    <thead><tr><th>#</th><th>Scenario</th><th>Security control verified</th><th>Trials (pass/total)</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td><strong>Detected Vulnerabilities</strong></td>
+        <td>Input validation · RBAC · Authentication · Secure configuration</td>
+        <td class="ratio ok">50 / 50</td>
+        <td><span class="pill pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td><strong>Unauthorized Access Attempt</strong></td>
+        <td>OTP authentication · RBAC · Access logging</td>
+        <td class="ratio ok">50 / 50</td>
+        <td><span class="pill pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td><strong>Blocked Unauthorized Login Attempts</strong></td>
+        <td>Login-attempt blocking · IP / source monitoring</td>
+        <td class="ratio ok">50 / 50</td>
+        <td><span class="pill pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td><strong>SQL Injection Attempt</strong></td>
+        <td>Input validation · IDS signatures · Parameterized queries</td>
+        <td class="ratio ok">50 / 50</td>
+        <td><span class="pill pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td><strong>Brute Force Login Attempt</strong></td>
+        <td>Login blocking · OTP authentication · Intrusion logging</td>
+        <td class="ratio ok">50 / 50</td>
+        <td><span class="pill pass">PASS</span></td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td><strong>Intrusion Alerts Generated</strong></td>
+        <td>Real-time intrusion alerts · Audit logging</td>
+        <td class="ratio ok">50 / 50</td>
+        <td><span class="pill pass">PASS</span></td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="note">Mean real-time alert latency (brute-force lockout → administrator notification queued): <strong>19.32 ms</strong> across 50 trials.</p>
+
+  <h2>Database evidence — sample application log rows</h2>
+  <p class="note">Captured live from the application's own tables during the run
+    (<span class="mono">intrusion_logs</span>, <span class="mono">failed_logins</span>).
+    The full set is queryable in <span class="mono">security-evidence.sqlite</span>.</p>
+  <details open>
+    <summary>Blocked Unauthorized Login Attempts — 5 row(s)</summary>
+    <pre>[
+    {
+        &quot;identifier&quot;: &quot;s3.victim50@alicia.gov.ph&quot;,
+        &quot;ip&quot;: &quot;198.51.0.50&quot;,
+        &quot;reason&quot;: &quot;invalid_password&quot;,
+        &quot;occurred_at&quot;: &quot;2026-10-26T14:14:20.000000Z&quot;
+    },
+    {
+        &quot;identifier&quot;: &quot;s3.victim50@alicia.gov.ph&quot;,
+        &quot;ip&quot;: &quot;198.51.0.50&quot;,
+        &quot;reason&quot;: &quot;invalid_password&quot;,
+        &quot;occurred_at&quot;: &quot;2026-10-26T14:14:20.000000Z&quot;
+    },
+    {
+        &quot;identifier&quot;: &quot;s3.victim50@alicia.gov.ph&quot;,
+        &quot;ip&quot;: &quot;198.51.0.50&quot;,
+        &quot;reason&quot;: &quot;invalid_password&quot;,
+        &quot;occurred_at&quot;: &quot;2026-10-26T14:14:20.000000Z&quot;
+    },
+    {
+        &quot;identifier&quot;: &quot;s3.victim50@alicia.gov.ph&quot;,
+        &quot;ip&quot;: &quot;198.51.0.50&quot;,
+        &quot;reason&quot;: &quot;blocked&quot;,
+        &quot;occurred_at&quot;: &quot;2026-10-26T14:14:20.000000Z&quot;
+    },
+    {
+        &quot;identifier&quot;: &quot;s3.victim50@alicia.gov.ph&quot;,
+        &quot;ip&quot;: &quot;198.51.0.50&quot;,
+        &quot;reason&quot;: &quot;blocked&quot;,
+        &quot;occurred_at&quot;: &quot;2026-10-26T14:14:20.000000Z&quot;
+    }
+]</pre>
+  </details>
+  <details open>
+    <summary>Brute Force Login Attempt — 1 row(s)</summary>
+    <pre>[
+    {
+        &quot;category&quot;: &quot;auth_fail&quot;,
+        &quot;severity&quot;: &quot;high&quot;,
+        &quot;matched_rule&quot;: &quot;lockout_threshold&quot;,
+        &quot;payload_excerpt&quot;: &quot;Account auto-blocked: s5.sample@alicia.gov.ph&quot;,
+        &quot;ip&quot;: &quot;198.51.200.200&quot;
+    }
+]</pre>
+  </details>
+  <details open>
+    <summary>Detected Vulnerabilities — 1 row(s)</summary>
+    <pre>{
+    &quot;endpoints&quot;: [
+        &quot;/users&quot;,
+        &quot;/roles&quot;,
+        &quot;/security&quot;,
+        &quot;/audit-logs&quot;,
+        &quot;/settings&quot;
+    ],
+    &quot;anon_expected&quot;: &quot;302 \u2192 /login&quot;,
+    &quot;employee_expected&quot;: &quot;403 Forbidden&quot;
+}</pre>
+  </details>
+  <details open>
+    <summary>Sql Injection Attempt — 5 row(s)</summary>
+    <pre>[
+    {
+        &quot;category&quot;: &quot;sqli&quot;,
+        &quot;severity&quot;: &quot;high&quot;,
+        &quot;matched_rule&quot;: &quot;sqli_signature&quot;,
+        &quot;payload_excerpt&quot;: &quot;-- &quot;,
+        &quot;ip&quot;: &quot;198.51.0.50&quot;
+    },
+    {
+        &quot;category&quot;: &quot;sqli&quot;,
+        &quot;severity&quot;: &quot;high&quot;,
+        &quot;matched_rule&quot;: &quot;sqli_signature&quot;,
+        &quot;payload_excerpt&quot;: &quot;-- &quot;,
+        &quot;ip&quot;: &quot;198.51.0.50&quot;
+    },
+    {
+        &quot;category&quot;: &quot;sqli&quot;,
+        &quot;severity&quot;: &quot;high&quot;,
+        &quot;matched_rule&quot;: &quot;sqli_signature&quot;,
+        &quot;payload_excerpt&quot;: &quot;UNION+SELECT+username,+password+FROM+users+-- x&#039; UNION SELECT&quot;,
+        &quot;ip&quot;: &quot;198.51.0.50&quot;
+    },
+    {
+        &quot;category&quot;: &quot;sqli&quot;,
+        &quot;severity&quot;: &quot;high&quot;,
+        &quot;matched_rule&quot;: &quot;sqli_signature&quot;,
+        &quot;payload_excerpt&quot;: &quot;UNION+SELECT+NULL,+version()+-- &#039; UNION SELECT&quot;,
+        &quot;ip&quot;: &quot;198.51.0.50&quot;
+    },
+    {
+        &quot;category&quot;: &quot;sqli&quot;,
+        &quot;severity&quot;: &quot;high&quot;,
+        &quot;matched_rule&quot;: &quot;sqli_signature&quot;,
+        &quot;payload_excerpt&quot;: &quot;-- &quot;,
+        &quot;ip&quot;: &quot;198.51.0.50&quot;
+    }
+]</pre>
+  </details>
+  <details open>
+    <summary>Unauthorized Access Attempt — 5 row(s)</summary>
+    <pre>[
+    {
+        &quot;category&quot;: &quot;privilege&quot;,
+        &quot;severity&quot;: &quot;medium&quot;,
+        &quot;route&quot;: &quot;users&quot;,
+        &quot;method&quot;: &quot;GET&quot;,
+        &quot;matched_rule&quot;: &quot;rbac_denied&quot;,
+        &quot;ip&quot;: &quot;127.0.0.1&quot;,
+        &quot;user_id&quot;: 50
+    },
+    {
+        &quot;category&quot;: &quot;privilege&quot;,
+        &quot;severity&quot;: &quot;medium&quot;,
+        &quot;route&quot;: &quot;roles&quot;,
+        &quot;method&quot;: &quot;GET&quot;,
+        &quot;matched_rule&quot;: &quot;rbac_denied&quot;,
+        &quot;ip&quot;: &quot;127.0.0.1&quot;,
+        &quot;user_id&quot;: 50
+    },
+    {
+        &quot;category&quot;: &quot;privilege&quot;,
+        &quot;severity&quot;: &quot;medium&quot;,
+        &quot;route&quot;: &quot;security&quot;,
+        &quot;method&quot;: &quot;GET&quot;,
+        &quot;matched_rule&quot;: &quot;rbac_denied&quot;,
+        &quot;ip&quot;: &quot;127.0.0.1&quot;,
+        &quot;user_id&quot;: 50
+    },
+    {
+        &quot;category&quot;: &quot;privilege&quot;,
+        &quot;severity&quot;: &quot;medium&quot;,
+        &quot;route&quot;: &quot;audit-logs&quot;,
+        &quot;method&quot;: &quot;GET&quot;,
+        &quot;matched_rule&quot;: &quot;rbac_denied&quot;,
+        &quot;ip&quot;: &quot;127.0.0.1&quot;,
+        &quot;user_id&quot;: 50
+    },
+    {
+        &quot;category&quot;: &quot;privilege&quot;,
+        &quot;severity&quot;: &quot;medium&quot;,
+        &quot;route&quot;: &quot;settings&quot;,
+        &quot;method&quot;: &quot;GET&quot;,
+        &quot;matched_rule&quot;: &quot;rbac_denied&quot;,
+        &quot;ip&quot;: &quot;127.0.0.1&quot;,
+        &quot;user_id&quot;: 50
+    }
+]</pre>
+  </details>
+
+  <footer>
+    Artifacts in <span class="mono">storage/app/security-evidence/</span>:
+    <span class="mono">security-evidence.sqlite</span> (database),
+    <span class="mono">runs.csv</span> (ledger),
+    <span class="mono">summary.json</span>, <span class="mono">runs.jsonl</span>, <span class="mono">samples/</span>.<br>
+    Reproduce: <span class="mono">php artisan test --filter=SecurityTestMatrixTest &amp;&amp; php scripts/security-evidence-report.php</span>
+  </footer>
+</div>
+</body>
+</html>

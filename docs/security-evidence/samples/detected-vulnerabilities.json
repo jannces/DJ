@@ -1,0 +1,11 @@
+{
+    "endpoints": [
+        "/users",
+        "/roles",
+        "/security",
+        "/audit-logs",
+        "/settings"
+    ],
+    "anon_expected": "302 \u2192 /login",
+    "employee_expected": "403 Forbidden"
+}

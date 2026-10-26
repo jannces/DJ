@@ -12,6 +12,25 @@ no external services required (mail → array, queue → sync, cache → array i
 | Security (pentest) | `docs/PenetrationTestReport.md` | Manual + scripted probes executed against a running instance (SQLi, XSS, CSRF, IDOR, brute force, traversal, header audit) with findings and remediations |
 | Performance | documented | N+1 audit via eager-loading review, indexed query plans, pagination checks; ab/wrk smoke numbers in the report |
 
+## Security test matrix (repeated-trial acceptance)
+
+`tests/Feature/Security/SecurityTestMatrixTest.php` runs the six security
+acceptance scenarios — vulnerability sweep, unauthorized access, blocked logins,
+SQL injection, brute force, and intrusion alerting — **50 times each** (override
+with `SECURITY_MATRIX_ITERATIONS`) so each result is a tally of independent
+trials. It drives the live controls (IDS middleware, `LoginSecurityService`,
+`PermissionMiddleware`) and writes a reproducible evidence pack — a queryable
+SQLite database, a CSV ledger, an HTML report and screenshots:
+
+```bash
+SECURITY_MATRIX_ITERATIONS=50 php artisan test --filter=SecurityTestMatrixTest
+php scripts/security-evidence-report.php          # → security-evidence.sqlite, runs.csv, report.html
+node scripts/security-evidence-screenshots.cjs    # → images/*.png
+```
+
+A committed snapshot of one full run lives in `docs/security-evidence/` (see its
+`README.md`).
+
 ## ISO/IEC 25010 evaluation
 `docs/ISO25010.md` scores the eight characteristics (functional suitability, performance
 efficiency, compatibility, usability, reliability, security, maintainability, portability)

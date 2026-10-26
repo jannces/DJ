@@ -1,0 +1,37 @@
+[
+    {
+        "category": "sqli",
+        "severity": "high",
+        "matched_rule": "sqli_signature",
+        "payload_excerpt": "-- ",
+        "ip": "198.51.0.50"
+    },
+    {
+        "category": "sqli",
+        "severity": "high",
+        "matched_rule": "sqli_signature",
+        "payload_excerpt": "-- ",
+        "ip": "198.51.0.50"
+    },
+    {
+        "category": "sqli",
+        "severity": "high",
+        "matched_rule": "sqli_signature",
+        "payload_excerpt": "UNION+SELECT+username,+password+FROM+users+-- x' UNION SELECT",
+        "ip": "198.51.0.50"
+    },
+    {
+        "category": "sqli",
+        "severity": "high",
+        "matched_rule": "sqli_signature",
+        "payload_excerpt": "UNION+SELECT+NULL,+version()+-- ' UNION SELECT",
+        "ip": "198.51.0.50"
+    },
+    {
+        "category": "sqli",
+        "severity": "high",
+        "matched_rule": "sqli_signature",
+        "payload_excerpt": "-- ",
+        "ip": "198.51.0.50"
+    }
+]

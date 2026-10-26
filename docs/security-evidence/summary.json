@@ -1,0 +1,55 @@
+{
+    "generated_at": "2026-10-26T22:14:25+08:00",
+    "meta": {
+        "system": "Cybersecurity Integrated Digital Leave Management System (LGU Alicia)",
+        "suite": "SecurityTestMatrixTest"
+    },
+    "scenarios": [
+        {
+            "scenario": "Detected Vulnerabilities",
+            "iterations": 50,
+            "passed": 50,
+            "failed": 0,
+            "result": "PASS"
+        },
+        {
+            "scenario": "Unauthorized Access Attempt",
+            "iterations": 50,
+            "passed": 50,
+            "failed": 0,
+            "result": "PASS"
+        },
+        {
+            "scenario": "Blocked Unauthorized Login Attempts",
+            "iterations": 50,
+            "passed": 50,
+            "failed": 0,
+            "result": "PASS"
+        },
+        {
+            "scenario": "SQL Injection Attempt",
+            "iterations": 50,
+            "passed": 50,
+            "failed": 0,
+            "result": "PASS"
+        },
+        {
+            "scenario": "Brute Force Login Attempt",
+            "iterations": 50,
+            "passed": 50,
+            "failed": 0,
+            "result": "PASS"
+        },
+        {
+            "scenario": "Intrusion Alerts Generated",
+            "iterations": 50,
+            "passed": 50,
+            "failed": 0,
+            "result": "PASS"
+        }
+    ],
+    "overall": {
+        "total_iterations": 300,
+        "all_passed": true
+    }
+}
