@@ -1,0 +1,47 @@
+[
+    {
+        "category": "privilege",
+        "severity": "medium",
+        "route": "users",
+        "method": "GET",
+        "matched_rule": "rbac_denied",
+        "ip": "127.0.0.1",
+        "user_id": 50
+    },
+    {
+        "category": "privilege",
+        "severity": "medium",
+        "route": "roles",
+        "method": "GET",
+        "matched_rule": "rbac_denied",
+        "ip": "127.0.0.1",
+        "user_id": 50
+    },
+    {
+        "category": "privilege",
+        "severity": "medium",
+        "route": "security",
+        "method": "GET",
+        "matched_rule": "rbac_denied",
+        "ip": "127.0.0.1",
+        "user_id": 50
+    },
+    {
+        "category": "privilege",
+        "severity": "medium",
+        "route": "audit-logs",
+        "method": "GET",
+        "matched_rule": "rbac_denied",
+        "ip": "127.0.0.1",
+        "user_id": 50
+    },
+    {
+        "category": "privilege",
+        "severity": "medium",
+        "route": "settings",
+        "method": "GET",
+        "matched_rule": "rbac_denied",
+        "ip": "127.0.0.1",
+        "user_id": 50
+    }
+]
