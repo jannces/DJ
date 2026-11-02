@@ -304,6 +304,74 @@ all four:
    `Status` should read `OK`. Anything else, or `chkdsk` reporting bad sectors, means the
    drive is the problem and no amount of rebuilding will hold.
 
+## Reinstalling XAMPP (last resort)
+
+Warranted when MySQL dies on startup even with a freshly generated data directory, or
+when `mysql_install_db.exe` itself fails — at that point the MariaDB installation is
+damaged, not just its data.
+
+> **The uninstaller deletes `C:\xampp\htdocs`.** Copy the project out first, or you lose
+> `.env`, `vendor/` and any uploaded documents under `storage/app/private`. The code is
+> in git; those three are not.
+
+1. **Back up the project** to somewhere outside `C:\xampp`:
+
+   ```
+   xcopy /E /I /H C:\xampp\htdocs\lms C:\lms_project_backup
+   ```
+
+   Verify `.env` and `vendor` came across before continuing:
+
+   ```
+   dir C:\lms_project_backup\.env
+   dir C:\lms_project_backup\vendor
+   ```
+
+2. **Stop everything.** Apache and MySQL stopped, then quit the Control Panel. Confirm
+   with `tasklist | findstr /I "mysqld httpd"` — no output.
+
+3. **Uninstall** via Settings → Apps, or `C:\xampp\uninstall.exe`.
+
+4. **Delete whatever is left** of `C:\xampp`. The uninstaller leaves the old `mysql\data*`
+   directories behind, and a fresh install over them reproduces the original fault.
+
+5. **Install** XAMPP with **PHP 8.2 or newer** (8.3+ recommended) from
+   apachefriends.org, to `C:\xampp`.
+
+6. **Add the antivirus exclusion before starting anything** — Windows Security →
+   Virus & threat protection → Manage settings → Exclusions → Add → Folder →
+   `C:\xampp`. Doing this after the first corruption is too late.
+
+7. **Start Apache and MySQL.** Both green. Verify MySQL actually serves:
+
+   ```
+   C:\xampp\mysql\bin\mysql -u root -e "SHOW DATABASES;"
+   ```
+
+8. **Restore the project and rebuild the database:**
+
+   ```
+   xcopy /E /I /H C:\lms_project_backup C:\xampp\htdocs\lms
+   cd C:\xampp\htdocs\lms
+   php -v
+   C:\xampp\mysql\bin\mysql -u root -e "CREATE DATABASE lms_alicia CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+   php artisan migrate:fresh --seed
+   php artisan db:seed --class=DemoDataSeeder
+   php artisan storage:link
+   php artisan migrate:status
+   ```
+
+   `php -v` should report 8.2 or newer. If the restored `vendor/` misbehaves after a PHP
+   version change, run `composer install` (needs internet).
+
+9. **Take a backup you can restore from:**
+
+   ```
+   php artisan lms:backup
+   ```
+
+   Copy the zip off the machine.
+
 ## Preventing it
 
 - Always stop MySQL from the XAMPP Control Panel before shutting the PC down. Sleep and
