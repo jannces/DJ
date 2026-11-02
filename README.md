@@ -51,7 +51,7 @@ Run the tests: `php artisan test` (**47 passing / 152 assertions**).
 
 ## Documentation (`/docs`)
 Architecture · Requirements · Database · Security · API · Roadmap · Deployment · LAN-Access ·
-Two-Device-Testing · Testing ·
+Two-Device-Testing · Troubleshooting-XAMPP · Testing ·
 ThreatModel (STRIDE) · AdminGuide · UserGuide · DecisionLog + **12 ADRs** · **Diagrams**
 (context/DFD/use-case/class/activity/sequence/deployment/network/flowcharts) ·
 PenetrationTestReport · ISO25010 · SecurityReport.

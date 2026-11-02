@@ -173,7 +173,7 @@ small letter, a number, and a symbol — for example `MyStr0ng!Pass2026`).
 | Problem | Fix |
 |---------|-----|
 | `php` is not recognized | Add `C:\xampp\php` to Windows PATH, or run commands from inside `C:\xampp\htdocs\lms` after restarting Command Prompt. |
-| MySQL won't start in XAMPP | Another program is using port 3306. Stop it, or change the port in XAMPP config. |
+| MySQL won't start in XAMPP ("MySQL shutdown unexpectedly") | Read `C:\xampp\mysql\data\mysql_error.log` first — it is usually a port conflict or a corrupted data folder. Full recovery steps: **`docs/Troubleshooting-XAMPP.md`**. |
 | "could not find driver" | In XAMPP, edit `C:\xampp\php\php.ini`, remove the `;` before `extension=pdo_mysql`, save, restart Apache. |
 | Login says database error | Make sure MySQL is **green** in XAMPP and you created the `lms_alicia` database (Part C step 5). |
 | I didn't get the OTP email | Read it from `storage\logs\laravel.log` (Part E), or turn off OTP in System Settings for testing. |
