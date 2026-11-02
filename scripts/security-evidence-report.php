@@ -32,6 +32,7 @@ $summary = json_decode(file_get_contents($summaryFile), true);
 $titleMap = [
     'security-evidence' => 'Security Test Matrix',
     'input-validation-evidence' => 'Input Validation',
+    'otp-evidence' => 'OTP Authentication',
 ];
 $reportTitle = $titleMap[basename($ns)] ?? ucwords(trim(str_replace(['-evidence', '-'], ['', ' '], basename($ns))));
 $suiteName = $summary['meta']['suite'] ?? 'SecurityTestMatrixTest';
@@ -137,6 +138,11 @@ $controlMap = [
     'Special-Character Input Accepted' => 'Free-text accepted; not falsely blocked',
     'Script Input Blocked (XSS)' => 'IDS XSS signatures · Blade output escaping',
     'Invalid-Format Input Rejected' => 'Date-format, ordering, and file-type validation',
+    // OTP negative-path matrix
+    'Omitted OTP Denied' => 'OTP gate — dashboard refused without verification',
+    'Incorrect OTP Rejected' => 'Wrong code rejected + otp_failed audit log',
+    'Expired OTP Rejected' => 'Past-TTL code rejected + otp_failed audit log',
+    'Reused OTP Rejected' => 'Single-use enforcement + otp_failed audit log',
 ];
 
 ob_start();
