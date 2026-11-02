@@ -98,8 +98,14 @@ most reliable fix is to stop trying to rescue the old data directory:
 
 1. Stop MySQL in the XAMPP Control Panel (make sure no `mysqld.exe` is left in Task
    Manager).
-2. Rename `C:\xampp\mysql\data` to `C:\xampp\mysql\data_old`.
+2. Rename `C:\xampp\mysql\data` to something dated, e.g. `data_corrupt_1102`.
+   **Do not reuse `data_old`** — if it already exists it is from an earlier incident and
+   may be your only fallback.
 3. Copy `C:\xampp\mysql\backup` and rename the copy to `C:\xampp\mysql\data`.
+
+   > **No `backup` folder?** Not every XAMPP build ships one, and a previous repair may
+   > have consumed it. See *Rebuilding without a backup folder* below before continuing.
+
 4. Start MySQL — it should go green.
 5. Recreate the database at **http://localhost/phpmyadmin** → **New** → `lms_alicia`.
 6. Rebuild the schema and data:
@@ -113,6 +119,37 @@ You lose any leave requests you entered by hand, but roles, permissions, the 15 
 leave types, holidays, settings, the Super Admin account and the demo employees all
 come straight back. For a system you are still testing, this is almost always the right
 trade.
+
+### Rebuilding without a `backup` folder
+
+`C:\xampp\mysql\backup` is a pristine copy of the system tables that XAMPP ships so the
+data directory can be recreated. If it is missing, there are two ways to get a working
+one back.
+
+**First, try an earlier data directory.** Repeated incidents leave folders like
+`data_old`, `data_old2` or `data-copy-before-repair` behind. Any of them that still
+starts is enough — you re-seed the application database afterwards anyway, so its age
+does not matter:
+
+```
+ren C:\xampp\mysql\data data_corrupt_<date>
+xcopy /E /I /H C:\xampp\mysql\data_old C:\xampp\mysql\data
+```
+
+Start MySQL. Green means you have working system tables; carry on with the re-seed.
+Red means try the next oldest folder.
+
+**Otherwise, generate a fresh one.** MariaDB ships the tool that builds a data directory
+from scratch:
+
+```
+ren C:\xampp\mysql\data data_corrupt_<date>
+C:\xampp\mysql\bin\mysql_install_db.exe --datadir=C:\xampp\mysql\data
+```
+
+This writes new system tables with a blank `root` password, which is what `.env`
+expects. If it fails, reinstall XAMPP over the top — it restores `mysql\backup` as well,
+so the normal procedure works next time.
 
 ### Option B — Keep the existing data
 
@@ -242,6 +279,30 @@ Then carry on with `php artisan lms:lan` (see `docs/LAN-Access.md`) if you are s
 access from other devices.
 
 ---
+
+## When it keeps happening
+
+Several `data_*` folders in `C:\xampp\mysql` mean the data directory has been rebuilt
+before. Rebuilding again without finding the cause just resets the clock. Work through
+all four:
+
+1. **Antivirus exclusion.** Windows Security → Virus & threat protection → Manage
+   settings → Exclusions → Add → Folder → `C:\xampp`. Controlled Folder Access blocks
+   `mysqld.exe` from its own files mid-write.
+2. **Cloud sync.** Confirm `C:\xampp` is not inside a OneDrive, Google Drive or Dropbox
+   folder. A sync client rewriting `ibdata1` under a running server corrupts it reliably.
+3. **Unclean shutdowns.** Sleep, hibernate and lid-close while MySQL is running are the
+   most common cause. Stop MySQL from the Control Panel first, every time.
+4. **The disk itself.** Repeated corruption with plenty of free space can mean failing
+   storage. Check it:
+
+   ```
+   wmic diskdrive get model,status
+   chkdsk C: /f
+   ```
+
+   `Status` should read `OK`. Anything else, or `chkdsk` reporting bad sectors, means the
+   drive is the problem and no amount of rebuilding will hold.
 
 ## Preventing it
 
