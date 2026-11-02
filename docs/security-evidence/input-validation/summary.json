@@ -1,0 +1,48 @@
+{
+    "generated_at": "2026-11-03T04:53:21+08:00",
+    "meta": {
+        "system": "Cybersecurity Integrated Digital Leave Management System (LGU Alicia)",
+        "suite": "InputValidationTest"
+    },
+    "scenarios": [
+        {
+            "scenario": "Empty Input Rejected",
+            "iterations": 50,
+            "passed": 50,
+            "failed": 0,
+            "result": "PASS"
+        },
+        {
+            "scenario": "Oversized Input Rejected",
+            "iterations": 50,
+            "passed": 50,
+            "failed": 0,
+            "result": "PASS"
+        },
+        {
+            "scenario": "Special-Character Input Accepted",
+            "iterations": 50,
+            "passed": 50,
+            "failed": 0,
+            "result": "PASS"
+        },
+        {
+            "scenario": "Script Input Blocked (XSS)",
+            "iterations": 50,
+            "passed": 50,
+            "failed": 0,
+            "result": "PASS"
+        },
+        {
+            "scenario": "Invalid-Format Input Rejected",
+            "iterations": 50,
+            "passed": 50,
+            "failed": 0,
+            "result": "PASS"
+        }
+    ],
+    "overall": {
+        "total_iterations": 250,
+        "all_passed": true
+    }
+}

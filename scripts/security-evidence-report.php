@@ -14,7 +14,10 @@
  * server. Usage:  php scripts/security-evidence-report.php
  */
 
-$base = __DIR__.'/../storage/app/security-evidence';
+// Which evidence folder to render (default the security matrix). Pass a folder
+// name as the first argument, e.g. `php scripts/security-evidence-report.php input-validation-evidence`.
+$ns = $argv[1] ?? 'security-evidence';
+$base = __DIR__.'/../storage/app/'.basename($ns);
 $summaryFile = $base.'/summary.json';
 $ledgerFile = $base.'/runs.jsonl';
 
@@ -24,6 +27,14 @@ if (! is_file($summaryFile)) {
 }
 
 $summary = json_decode(file_get_contents($summaryFile), true);
+
+// Human title + suite name per evidence folder.
+$titleMap = [
+    'security-evidence' => 'Security Test Matrix',
+    'input-validation-evidence' => 'Input Validation',
+];
+$reportTitle = $titleMap[basename($ns)] ?? ucwords(trim(str_replace(['-evidence', '-'], ['', ' '], basename($ns))));
+$suiteName = $summary['meta']['suite'] ?? 'SecurityTestMatrixTest';
 $trials = [];
 foreach (file($ledgerFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
     $row = json_decode($line, true);
@@ -120,6 +131,12 @@ $controlMap = [
     'SQL Injection Attempt' => 'Input validation · IDS signatures · Parameterized queries',
     'Brute Force Login Attempt' => 'Login blocking · OTP authentication · Intrusion logging',
     'Intrusion Alerts Generated' => 'Real-time intrusion alerts · Audit logging',
+    // Input-validation matrix
+    'Empty Input Rejected' => 'Required-field validation (login + leave form)',
+    'Oversized Input Rejected' => 'Max-length validation (identifier, purpose, signature)',
+    'Special-Character Input Accepted' => 'Free-text accepted; not falsely blocked',
+    'Script Input Blocked (XSS)' => 'IDS XSS signatures · Blade output escaping',
+    'Invalid-Format Input Rejected' => 'Date-format, ordering, and file-type validation',
 ];
 
 ob_start();
@@ -128,7 +145,7 @@ ob_start();
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Security Test Matrix — Evidence Report</title>
+<title><?= $e($reportTitle) ?> — Evidence Report</title>
 <style>
   :root {
     --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --bg:#f8fafc; --card:#ffffff;
@@ -170,9 +187,9 @@ ob_start();
 <body>
 <div class="wrap">
   <header>
-    <h1>Security Test Matrix — Evidence Report</h1>
+    <h1><?= $e($reportTitle) ?> — Evidence Report</h1>
     <div class="sub">Cybersecurity Integrated Digital Leave Management System · LGU of Alicia<br>
-      Generated <?= $generated ?> · Suite <span class="mono">SecurityTestMatrixTest</span></div>
+      Generated <?= $generated ?> · Suite <span class="mono"><?= $e($suiteName) ?></span></div>
     <p style="margin:12px 0 0"><span class="pill <?= $allPass ? 'pass':'fail' ?>"><?= $allPass ? 'ALL SCENARIOS PASS' : 'FAILURES PRESENT' ?></span></p>
   </header>
 
@@ -218,7 +235,7 @@ ob_start();
     <span class="mono">security-evidence.sqlite</span> (database),
     <span class="mono">runs.csv</span> (ledger),
     <span class="mono">summary.json</span>, <span class="mono">runs.jsonl</span>, <span class="mono">samples/</span>.<br>
-    Reproduce: <span class="mono">php artisan test --filter=SecurityTestMatrixTest &amp;&amp; php scripts/security-evidence-report.php</span>
+    Reproduce: <span class="mono">php artisan test --filter=<?= $e($suiteName) ?> &amp;&amp; php scripts/security-evidence-report.php</span>
   </footer>
 </div>
 </body>

@@ -13,7 +13,10 @@ const path = require('path');
 const fs = require('fs');
 
 (async () => {
-  const base = path.resolve(__dirname, '../storage/app/security-evidence');
+  // Which evidence folder to screenshot (default the security matrix). Pass a
+  // folder name as the first argument, e.g. `node ... input-validation-evidence`.
+  const ns = (process.argv[2] || 'security-evidence').replace(/[^a-z0-9-]/gi, '');
+  const base = path.resolve(__dirname, '../storage/app/' + ns);
   const reportPath = path.join(base, 'report.html');
   if (!fs.existsSync(reportPath)) {
     console.error('report.html not found — run php scripts/security-evidence-report.php first');

@@ -16,9 +16,18 @@ namespace Tests\Support;
  */
 class SecurityEvidence
 {
+    /** Subfolder under storage/app that this run writes to. */
+    private static string $namespace = 'security-evidence';
+
+    /** Point the recorder at a different evidence folder (e.g. input-validation-evidence). */
+    public static function setNamespace(string $namespace): void
+    {
+        self::$namespace = $namespace;
+    }
+
     public static function dir(): string
     {
-        $dir = storage_path('app/security-evidence');
+        $dir = storage_path('app/'.self::$namespace);
         if (! is_dir($dir)) {
             mkdir($dir, 0775, true);
             mkdir($dir.'/samples', 0775, true);
