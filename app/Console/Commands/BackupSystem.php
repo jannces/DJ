@@ -85,6 +85,21 @@ class BackupSystem extends Command
             return self::FAILURE;
         }
 
+        // Checked up front, not discovered at the zip step. A fresh XAMPP
+        // ships php.ini with `;extension=zip` commented out, so the first
+        // backup after a reinstall used to dump the whole database, then die
+        // on `new ZipArchive` with "Class not found" and a stack trace --
+        // leaving a loose db_*.sql behind and no archive.
+        if (! class_exists(ZipArchive::class)) {
+            $this->error('PHP\'s zip extension is not enabled, so no archive can be written.');
+            $this->line('  Fix: open '.(php_ini_loaded_file() ?: 'php.ini').' in Notepad, find the line');
+            $this->line('       ;extension=zip   and delete the ; at the start, then save.');
+            $this->line('  Then close this window, open a new Command Prompt, and run the backup again.');
+            $this->line('  (Restart Apache in XAMPP too, so the website picks it up.)');
+
+            return self::FAILURE;
+        }
+
         $dir = $this->option('path') ?: storage_path('app/backups');
         File::ensureDirectoryExists($dir);
         $stamp = now()->format('Ymd_His');

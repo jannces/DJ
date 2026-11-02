@@ -196,6 +196,7 @@ small letter, a number, and a symbol — for example `MyStr0ng!Pass2026`).
 | `php` is not recognized | Add `C:\xampp\php` to Windows PATH, or run commands from inside `C:\xampp\htdocs\lms` after restarting Command Prompt. |
 | MySQL won't start in XAMPP | Another program is using port 3306. Stop it, or change the port in XAMPP config. |
 | "could not find driver" | In XAMPP, edit `C:\xampp\php\php.ini`, remove the `;` before `extension=pdo_mysql`, save, restart Apache. |
+| `Class "ZipArchive" not found` (or "zip extension is not enabled") during `lms:backup` | Edit `C:\xampp\php\php.ini`, remove the `;` before `extension=zip`, save, open a new Command Prompt and run the backup again. A fresh or reinstalled XAMPP ships with it off. |
 | Login says database error | Make sure MySQL is **green** in XAMPP and you created the `lms_alicia` database (Part C step 5). |
 | I didn't get the OTP email | Read it from `storage\logs\laravel.log` (Part E), or turn off OTP in System Settings for testing. |
 | Page looks unstyled | Run `php artisan storage:link` and refresh; make sure you opened `https://onealicialms.lan` (not the `public` folder directly). |
