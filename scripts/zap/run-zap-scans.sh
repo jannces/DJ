@@ -26,7 +26,7 @@
 #      the session cookie, and export it before running (see ZAP_AUTH_COOKIE).
 #
 # USAGE
-#   export ZAP_AUTH_COOKIE='lms_session=eyJpdiI6...'   # from your logged-in browser
+#   export ZAP_AUTH_COOKIE='lgu-alicia-lms-session=eyJpdiI6...'   # from your logged-in browser
 #   ./run-zap-scans.sh                                 # 50 runs, both sessions
 #   RUNS=5 ./run-zap-scans.sh                           # quick 5-run trial
 #   TARGET=https://192.168.1.10 ./run-zap-scans.sh      # override target
@@ -39,7 +39,7 @@ set -u
 TARGET="${TARGET:-https://onealicialms.lan}"
 RUNS="${RUNS:-50}"
 OUTDIR="${OUTDIR:-zap-results}"
-COOKIE_NAME="${COOKIE_NAME:-lms_session}"   # Laravel session cookie name
+COOKIE_NAME="${COOKIE_NAME:-lgu-alicia-lms-session}"   # Laravel session cookie name
 
 mkdir -p "$OUTDIR"
 
