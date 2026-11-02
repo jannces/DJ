@@ -30,6 +30,7 @@ matter. Match what you see against the table below.
 | `Can't start server: Bind on TCP/IP port`, `Address already in use`, `Do you already have another mysqld server running` | Port 3306 is taken | Step 2 |
 | `Unable to lock ./ibdata1, error: 11` | A second MySQL is already running | Step 2 |
 | `InnoDB: Database page corruption`, `InnoDB: Cannot open datafile`, `Operating system error number 13`, `Table 'mysql.plugin' doesn't exist` | Unclean shutdown / corrupted data directory | Step 3 |
+| `outside the tablespace bounds`, `space name innodb_system`, `mysqld got exception` | `ibdata1` is truncated or mismatched — unrecoverable in place | Step 3, via Step 3b |
 | `Aria engine: log initialization failed`, `Can't init tc log` | Stale log files | Step 4 |
 | Nothing useful, or the log is empty | Permissions or antivirus | Step 5 |
 
@@ -133,6 +134,66 @@ Steps 1–3 as above, then **before starting MySQL**:
 
 If it still will not start after step 6, the corruption is in `ibdata1` itself. Go back
 to Option A — the data is not coming back, and the seeders will rebuild it.
+
+---
+
+## Step 3b — Salvaging data from a corrupt `ibdata1`
+
+A log line like this is the end of the road for the data directory as it stands:
+
+```
+[ERROR] [FATAL] InnoDB: Trying to read page number 212993 in space 0,
+space name innodb_system, which is outside the tablespace bounds.
+[ERROR] mysqld got exception 0x80000003
+```
+
+`space 0` is `ibdata1` itself — the InnoDB system tablespace. InnoDB is being told by
+its own metadata to read a page far beyond the end of the file, so it asserts and dies
+before it can serve anything. The file is truncated, or it does not match the `.ibd`
+files and redo logs sitting beside it. Nothing you change in `.env` or the Control Panel
+will fix it: the fix is a new data directory (Step 3).
+
+**Common causes** — worth knowing, because they recur:
+
+- The disk filled up mid-write. Check free space on `C:` before rebuilding, or it will
+  happen again.
+- `ibdata1` was restored from a different backup than the database folders, or copied
+  without them. The two are a matched set.
+- Antivirus or a sync client (OneDrive, Google Drive) touched `C:\xampp\mysql\data`.
+- The PC was powered off or slept mid-transaction.
+
+### Try to rescue the data first — only if you need it
+
+If the database holds records you cannot recreate from the seeders, it is worth one
+attempt before rebuilding. Back up `C:\xampp\mysql\data` first (Step 3), then open
+`C:\xampp\mysql\bin\my.ini`, and under `[mysqld]` add:
+
+```ini
+innodb_force_recovery = 1
+```
+
+Start MySQL. If it stays red, stop it, raise the number by one and try again, up to `6`.
+
+> Levels `1`–`3` are relatively safe. From `4` upward InnoDB skips integrity work and can
+> return corrupt rows, so treat anything that starts at `4`+ as read-only: dump and get
+> out. Do not run migrations, seeders or the application against a server in forced
+> recovery.
+
+If MySQL comes up at any level, dump immediately:
+
+```
+C:\xampp\mysql\bin\mysqldump -u root --databases lms_alicia > C:\lms_rescue.sql
+```
+
+Then remove the `innodb_force_recovery` line from `my.ini`, rebuild the data directory
+(Step 3, Option A), and import what you rescued:
+
+```
+C:\xampp\mysql\bin\mysql -u root < C:\lms_rescue.sql
+```
+
+If the dump is empty, errors out, or MySQL will not start even at `6`, stop — the data
+is gone. Rebuild with Step 3 Option A and re-seed.
 
 ---
 
