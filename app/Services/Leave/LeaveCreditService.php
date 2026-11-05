@@ -53,11 +53,42 @@ class LeaveCreditService
         };
     }
 
+    /**
+     * The balances terminal leave commutes: vacation AND sick, together.
+     *
+     * Terminal leave pays the money value of every accumulated credit, not of
+     * one kind of them. The leave type carries credit_source 'vacation', which
+     * is what every other deductible type uses and is wrong here -- it would
+     * pay out the vacation credits and leave the sick ones unpaid, and would
+     * refuse the application altogether for somebody whose credits are mostly
+     * sick leave.
+     *
+     * @return \Illuminate\Support\Collection<int, LeaveBalance>
+     */
+    public function commutableBalances(User $user): \Illuminate\Support\Collection
+    {
+        return LeaveType::whereIn('code', ['VL', 'SL'])->get()
+            ->map(fn (LeaveType $type) => $this->balanceFor($user, $type));
+    }
+
+    /** Their sum, which is D in the terminal leave computation. */
+    public function commutableCredits(User $user): float
+    {
+        return (float) $this->commutableBalances($user)->sum(fn ($b) => (float) $b->balance);
+    }
+
     public function hasSufficientCredits(User $user, LeaveType $type, float $days): bool
     {
         if (! $type->deductible) {
             return true;
         }
+
+        // Terminal leave commutes what is there, across both balances, so the
+        // single credit_source balance is the wrong thing to compare against.
+        if ($type->category === LeaveType::CATEGORY_TERMINAL) {
+            return $this->commutableCredits($user) >= $days;
+        }
+
         $balance = $this->sourceBalance($user, $type);
 
         return $balance ? (float) $balance->balance >= $days : true;
@@ -71,6 +102,14 @@ class LeaveCreditService
     {
         $type = $request->leaveType;
         if (! $type->deductible || ! $type->credit_source) {
+            return;
+        }
+
+        // Terminal leave empties both balances rather than taking a number of
+        // days off one, so it has its own path below.
+        if ($type->category === LeaveType::CATEGORY_TERMINAL) {
+            $this->commuteAllCredits($request, $actor);
+
             return;
         }
 
@@ -116,15 +155,77 @@ class LeaveCreditService
         });
     }
 
-    /** Reverse a deduction (e.g. cancellation after approval). */
-    public function reverseDeduction(LeaveRequest $request, ?User $actor = null): void
+    /**
+     * Pay out every accumulated credit, vacation and sick, and leave both at
+     * zero.
+     *
+     * One ledger row per balance, so the trail says which credits were
+     * commuted and in what quantity -- the figures an accountant has to be
+     * able to reconstruct the payment from. A single combined row would show
+     * the total and lose the split.
+     *
+     * No sufficiency check: there is no amount to be short of. Whatever is on
+     * the ledger on the day of separation is what is paid.
+     */
+    private function commuteAllCredits(LeaveRequest $request, ?User $actor): void
     {
         DB::transaction(function () use ($request, $actor) {
-            $deduction = LeaveHistory::where('leave_request_id', $request->id)
-                ->where('entry_type', 'deduction')->first();
-            if (! $deduction) {
+            // Idempotency, on the same terms as the ordinary path: a request
+            // that already has deduction rows is not deducted twice.
+            if (LeaveHistory::where('leave_request_id', $request->id)
+                ->where('entry_type', 'deduction')->exists()) {
                 return;
             }
+
+            foreach (LeaveType::whereIn('code', ['VL', 'SL'])->get() as $sourceType) {
+                $balance = LeaveBalance::where('user_id', $request->user_id)
+                    ->where('leave_type_id', $sourceType->id)
+                    ->lockForUpdate()
+                    ->first() ?? $this->balanceFor($request->user, $sourceType);
+
+                $days = (float) $balance->balance;
+                if ($days <= 0) {
+                    continue;
+                }
+
+                $balance->used = (float) $balance->used + $days;
+                $balance->balance = 0;
+                $balance->save();
+
+                LeaveHistory::create([
+                    'user_id' => $request->user_id,
+                    'leave_type_id' => $sourceType->id,
+                    'leave_request_id' => $request->id,
+                    'entry_type' => 'deduction',
+                    'days' => -$days,
+                    'balance_after' => 0,
+                    'remarks' => "Commuted on terminal leave ({$request->reference_no})",
+                    'actor_id' => $actor?->id,
+                ]);
+            }
+        });
+    }
+
+    /**
+     * Reverse a deduction (e.g. cancellation after approval).
+     *
+     * Every deduction row, not the first: terminal leave writes one per
+     * balance, and reversing only the first would hand back the vacation
+     * credits and keep the sick ones spent.
+     */
+    public function reverseDeduction(LeaveRequest $request, ?User $actor = null): void
+    {
+        $deductions = LeaveHistory::where('leave_request_id', $request->id)
+            ->where('entry_type', 'deduction')->get();
+
+        foreach ($deductions as $deduction) {
+            $this->reverseOne($request, $deduction, $actor);
+        }
+    }
+
+    private function reverseOne(LeaveRequest $request, LeaveHistory $deduction, ?User $actor): void
+    {
+        DB::transaction(function () use ($request, $deduction, $actor) {
 
             $balance = LeaveBalance::where('user_id', $request->user_id)
                 ->where('leave_type_id', $deduction->leave_type_id)
@@ -158,7 +259,15 @@ class LeaveCreditService
 
             $newBalance = (float) $balance->balance + $days;
             if ($newBalance < 0) {
-                throw new RuntimeException('Adjustment would make the balance negative.');
+                // With the figures in it. "Would make the balance negative"
+                // tells an officer their number is wrong but not what a right
+                // one would be, so they go and look the balance up -- which is
+                // the round trip the dialog exists to save.
+                throw new RuntimeException(sprintf(
+                    'cannot deduct %s days, only %s available.',
+                    number_format(abs($days), 2),
+                    number_format((float) $balance->balance, 2),
+                ));
             }
             $balance->earned = (float) $balance->earned + max(0, $days);
             $balance->balance = $newBalance;

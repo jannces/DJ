@@ -78,6 +78,13 @@ return [
             'lock_connection' => env('REDIS_CACHE_LOCK_CONNECTION', 'default'),
         ],
 
+        // Dedicated Redis store for RateLimiter (login, OTP verify/resend, password reset).
+        'limiter' => [
+            'driver' => 'redis',
+            'connection' => env('REDIS_LIMITER_CONNECTION', 'limiter'),
+            'lock_connection' => env('REDIS_CACHE_LOCK_CONNECTION', 'default'),
+        ],
+
         'dynamodb' => [
             'driver' => 'dynamodb',
             'key' => env('AWS_ACCESS_KEY_ID'),
@@ -111,6 +118,12 @@ return [
     | that reason, you may prefix every cache key to avoid collisions.
     |
     */
+
+    /*
+    | Cache store used by the RateLimiter. Null = the default store.
+    */
+
+    'limiter' => env('CACHE_LIMITER'),
 
     'prefix' => env('CACHE_PREFIX', Str::slug((string) env('APP_NAME', 'laravel')).'-cache-'),
 

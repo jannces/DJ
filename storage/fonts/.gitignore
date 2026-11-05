@@ -1,0 +1,6 @@
+# dompdf writes its font metrics cache here whenever the PDF embeds a @font-face
+# font. The DIRECTORY has to exist and be writable or dompdf gives up silently
+# and falls back to the base-14 core fonts -- which is how CSC Form 6 printed
+# "?25,000.00" instead of a peso sign. Keep the folder, ignore what lands in it.
+*
+!.gitignore

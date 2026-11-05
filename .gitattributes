@@ -1,5 +1,10 @@
 * text=auto eol=lf
 
+# Windows batch files must keep CRLF endings — cmd.exe can mis-parse labels
+# and multi-line blocks in an LF-only .bat file.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
 *.blade.php diff=html
 *.css diff=css
 *.html diff=html

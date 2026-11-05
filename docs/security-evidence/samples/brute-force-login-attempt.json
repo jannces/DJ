@@ -1,0 +1,9 @@
+[
+    {
+        "category": "auth_fail",
+        "severity": "high",
+        "matched_rule": "lockout_threshold",
+        "payload_excerpt": "Account auto-blocked: s5.sample@alicia.gov.ph",
+        "ip": "198.51.200.200"
+    }
+]

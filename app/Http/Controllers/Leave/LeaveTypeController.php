@@ -17,7 +17,7 @@ class LeaveTypeController extends Controller
 
     public function index(): View
     {
-        $types = LeaveType::orderBy('name')->paginate(20);
+        $types = LeaveType::orderBy('name')->paginate(config('lists.per_page'));
 
         return view('hr.leave-types.index', compact('types'));
     }
@@ -67,6 +67,10 @@ class LeaveTypeController extends Controller
             'name' => ['required', 'string', 'max:150'],
             'category' => ['required', 'in:regular,special,monetization,terminal'],
             'max_days' => ['nullable', 'numeric', 'min:0'],
+            // Whether the entitlement is a span of time or a count of
+            // working days. Editable because which is which is a
+            // question about the circulars, not about this system.
+            'counts_calendar_days' => ['nullable', 'boolean'],
             'deductible' => ['nullable', 'boolean'],
             'credit_source' => ['nullable', 'in:vacation,sick'],
             'requires_medical_after_days' => ['nullable', 'integer', 'min:0'],
@@ -78,6 +82,7 @@ class LeaveTypeController extends Controller
         ]);
 
         $data['deductible'] = $request->boolean('deductible');
+        $data['counts_calendar_days'] = $request->boolean('counts_calendar_days');
         $data['deadline_is_hard'] = $request->boolean('deadline_is_hard');
         $data['annual_reset'] = $request->boolean('annual_reset');
         $data['active'] = $request->boolean('active', true);

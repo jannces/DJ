@@ -1,0 +1,32 @@
+[
+    {
+        "action": "otp_failed",
+        "user_id": 50,
+        "ip": null,
+        "created_at": "2026-11-02T21:12:05.000000Z"
+    },
+    {
+        "action": "otp_failed",
+        "user_id": 49,
+        "ip": null,
+        "created_at": "2026-11-02T21:12:05.000000Z"
+    },
+    {
+        "action": "otp_failed",
+        "user_id": 48,
+        "ip": null,
+        "created_at": "2026-11-02T21:12:05.000000Z"
+    },
+    {
+        "action": "otp_failed",
+        "user_id": 47,
+        "ip": null,
+        "created_at": "2026-11-02T21:12:05.000000Z"
+    },
+    {
+        "action": "otp_failed",
+        "user_id": 46,
+        "ip": null,
+        "created_at": "2026-11-02T21:12:05.000000Z"
+    }
+]

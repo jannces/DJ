@@ -4,13 +4,23 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\IntrusionLog;
-use App\Services\DashboardService;
+use App\Services\Security\SecurityDashboardService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class SecurityApiController extends Controller
 {
-    /** Unseen intrusion count + latest event, polled by the dashboard bell. */
+    /**
+     * Outstanding intrusion count + latest event, polled by the topbar bell.
+     *
+     * The count is of events nobody has marked reviewed, so the badge stays up
+     * until an administrator acts rather than clearing itself the moment the
+     * Security Dashboard is opened. That is what makes it an alert: it reports
+     * a backlog, not a page view.
+     *
+     * The JSON key is still `unseen` because public/js/app.js reads it; what it
+     * counts is what changed.
+     */
     public function alerts(Request $request): JsonResponse
     {
         if (! $request->user()?->hasPermission('security.dashboard')) {
@@ -32,12 +42,12 @@ class SecurityApiController extends Controller
         ]);
     }
 
-    public function stats(Request $request, DashboardService $dashboard): JsonResponse
+    public function stats(Request $request, SecurityDashboardService $security): JsonResponse
     {
         abort_unless($request->user()?->hasPermission('security.dashboard'), 403);
 
         return response()->json([
-            'intrusions_by_day' => $dashboard->intrusionsByDay(),
+            'intrusions_by_day' => $security->intrusionsByDay(),
         ]);
     }
 }

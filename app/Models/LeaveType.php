@@ -14,8 +14,26 @@ class LeaveType extends Model
     public const SOURCE_VACATION = 'vacation';
     public const SOURCE_SICK = 'sick';
 
+    /**
+     * The two categories that pay money rather than grant an absence.
+     *
+     * Named, because both are now branched on in three services and a typo in
+     * a bare string would silently route a retirement down the ordinary
+     * absence path -- which is the defect these constants were introduced to
+     * fix, and the one least likely to be noticed.
+     */
+    public const CATEGORY_TERMINAL = 'terminal';
+    public const CATEGORY_MONETIZATION = 'monetization';
+
+    /** True when this type is commuted to cash instead of taken as days off. */
+    public function isCommuted(): bool
+    {
+        return in_array($this->category, [self::CATEGORY_TERMINAL, self::CATEGORY_MONETIZATION], true);
+    }
+
     protected $fillable = [
-        'code', 'name', 'category', 'max_days', 'deductible', 'credit_source',
+        'code', 'name', 'category', 'max_days', 'counts_calendar_days',
+        'deductible', 'credit_source',
         'requires_medical_after_days', 'filing_deadline_days', 'deadline_is_hard',
         'detail_schema', 'required_documents', 'approval_flow',
         'annual_reset', 'expires', 'is_custom', 'active', 'description',
@@ -23,6 +41,7 @@ class LeaveType extends Model
 
     protected $casts = [
         'max_days' => 'decimal:1',
+        'counts_calendar_days' => 'boolean',
         'deductible' => 'boolean',
         'deadline_is_hard' => 'boolean',
         'detail_schema' => 'array',

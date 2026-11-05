@@ -12,15 +12,23 @@ class CoreUserSeeder extends Seeder
 {
     public function run(): void
     {
-        $superAdmin = User::updateOrCreate(['email' => 'superadmin@alicia.gov.ph'], [
-            'name' => 'Super Administrator',
+        // The bootstrap login. It used to be a Super Admin holding `*`; that
+        // role is gone and the System Administrator already covers everything
+        // an administrator does here, so no account on a fresh install holds a
+        // permission that satisfies every check.
+        //
+        // It deliberately holds no leave permission: whoever installs the
+        // system administers it, and reading employees' leave records is HR's
+        // job, not the installer's.
+        $admin = User::updateOrCreate(['email' => 'superadmin@alicia.gov.ph'], [
+            'name' => 'System Administrator',
             'username' => 'superadmin',
             'password' => Hash::make(env('SEED_SUPERADMIN_PASSWORD', 'ChangeMe!Alicia2026')),
             'status' => User::STATUS_ACTIVE,
             'must_change_password' => true,
             'email_verified_at' => now(),
         ]);
-        $superAdmin->roles()->syncWithoutDetaching(Role::where('slug', 'super-admin')->first());
+        $admin->roles()->syncWithoutDetaching(Role::where('slug', 'system-admin')->first());
 
         // The server itself is always an authorized device so admins can never
         // be locked out by device enforcement (bootstrap guarantee, ADR-006).

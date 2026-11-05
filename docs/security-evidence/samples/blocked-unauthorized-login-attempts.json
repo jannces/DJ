@@ -1,0 +1,32 @@
+[
+    {
+        "identifier": "s3.victim50@alicia.gov.ph",
+        "ip": "198.51.0.50",
+        "reason": "invalid_password",
+        "occurred_at": "2026-10-26T14:14:20.000000Z"
+    },
+    {
+        "identifier": "s3.victim50@alicia.gov.ph",
+        "ip": "198.51.0.50",
+        "reason": "invalid_password",
+        "occurred_at": "2026-10-26T14:14:20.000000Z"
+    },
+    {
+        "identifier": "s3.victim50@alicia.gov.ph",
+        "ip": "198.51.0.50",
+        "reason": "invalid_password",
+        "occurred_at": "2026-10-26T14:14:20.000000Z"
+    },
+    {
+        "identifier": "s3.victim50@alicia.gov.ph",
+        "ip": "198.51.0.50",
+        "reason": "blocked",
+        "occurred_at": "2026-10-26T14:14:20.000000Z"
+    },
+    {
+        "identifier": "s3.victim50@alicia.gov.ph",
+        "ip": "198.51.0.50",
+        "reason": "blocked",
+        "occurred_at": "2026-10-26T14:14:20.000000Z"
+    }
+]

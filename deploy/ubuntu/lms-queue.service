@@ -1,0 +1,20 @@
+# systemd unit for the LMS queue worker. TEMPLATE: deploy/ubuntu/install.sh
+# replaces __APP_DIR__ and installs it as /etc/systemd/system/lms-queue.service.
+#
+# The worker delivers everything that is queued: one-time login codes (OTP)
+# and leave notifications. If it is not running, nobody can finish signing in.
+[Unit]
+Description=LGU Alicia LMS queue worker
+After=network.target mariadb.service
+Wants=mariadb.service
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=__APP_DIR__
+ExecStart=/usr/bin/php __APP_DIR__/artisan queue:work --sleep=3 --tries=3 --max-time=3600
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
