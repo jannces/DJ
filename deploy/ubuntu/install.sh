@@ -27,6 +27,12 @@
 # =============================================================================
 set -euo pipefail
 
+# Composer stops and asks "Continue as root/super user [yes]?" whenever it is
+# run as root in a terminal -- and with its output hidden, that looked like
+# the installer had frozen after step 1. Running as root is intended here.
+export COMPOSER_ALLOW_SUPERUSER=1
+export COMPOSER_NO_INTERACTION=1
+
 # ----------------------------------------------------------------- arguments --
 DEMO=0
 SITE="onealicialms.lan"
@@ -140,7 +146,13 @@ apt-get install -y -qq apache2 mariadb-server mariadb-client $PHP_PKGS \
 
 PHPV="${PHPV:-$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')}"
 php -r 'exit(PHP_VERSION_ID >= 80200 ? 0 : 1);' || die "PHP $PHPV is too old; 8.2 or newer is required."
-ok "PHP $PHPV, $(apache2 -v | head -1 | sed 's/Server version: //'), $(mariadb --version | awk '{print $5}' | tr -d ,)"
+MARIADB_V="$(mariadb --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+-MariaDB' | head -1 || true)"
+ok "PHP $PHPV, $(apache2 -v | head -1 | sed 's/Server version: //'), ${MARIADB_V:-MariaDB}"
+if php -r 'exit(PHP_VERSION_ID >= 80500 ? 0 : 1);'; then
+  warn "PHP $PHPV is newer than this installer was tested with (8.3, Ubuntu 24.04)."
+  warn "The system runs, but check Excel exports once: the spreadsheet library"
+  warn "officially supports PHP up to 8.4. For an office server, use Ubuntu 24.04 LTS."
+fi
 
 if ! command -v composer >/dev/null 2>&1; then
   if [ "${UBU_MAJOR:-24}" -ge 24 ] 2>/dev/null; then
@@ -220,7 +232,6 @@ ok ".env written (readable by root and the web server only)"
 # ------------------------------------------------------ 4. app + database ----
 step "4/9  PHP libraries and database tables"
 cd "$APP_DIR"
-export COMPOSER_ALLOW_SUPERUSER=1
 if [ "$DEMO" = 1 ]; then
   # The demo seeder uses Faker, which is a development dependency.
   composer install --no-interaction --prefer-dist --optimize-autoloader --no-progress -q
