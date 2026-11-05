@@ -234,7 +234,10 @@ mkdir -p storage/framework/{cache,sessions,views} storage/logs storage/app/priva
 chown -R www-data:www-data storage bootstrap/cache
 chmod -R ug+rwX storage bootstrap/cache
 
-[ -n "$(get_env APP_KEY)" ] || artisan key:generate --force -q
+# Generated here rather than with `artisan key:generate`: that runs as
+# www-data, which may read .env but must not be able to rewrite it. This is
+# exactly the format key:generate writes (32 random bytes, base64).
+[ -n "$(get_env APP_KEY)" ] || set_env APP_KEY "base64:$(openssl rand -base64 32)"
 artisan config:clear -q
 artisan migrate --force
 ok "migrations"
