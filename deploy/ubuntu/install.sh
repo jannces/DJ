@@ -254,7 +254,11 @@ if [ "$DEMO" = 1 ]; then
   ok "demo data"
 fi
 
-[ -L public/storage ] || artisan storage:link -q
+# What `artisan storage:link` makes (config/filesystems.php 'links'), made
+# as root: www-data is deliberately not allowed to write into public/.
+mkdir -p storage/app/public
+chown www-data:www-data storage/app/public
+[ -L public/storage ] || ln -s "$APP_DIR/storage/app/public" public/storage
 ok "storage link"
 
 # --------------------------------------------------------- 5. certificate ----
@@ -264,7 +268,9 @@ if [ -f "$CRT" ] && openssl x509 -in "$CRT" -noout -ext subjectAltName 2>/dev/nu
    && openssl x509 -in "$CRT" -noout -ext subjectAltName 2>/dev/null | grep -q "DNS:$SITE"; then
   ok "existing certificate already covers $SITE and $SERVER_IP"
 else
-  bash "$APP_DIR/deploy/make-cert.sh" "$SITE" "$SERVER_IP" | sed 's/^/    /'
+  # (openssl's key-generation progress dots are filtered out; real errors stay.)
+  bash "$APP_DIR/deploy/make-cert.sh" "$SITE" "$SERVER_IP" 2>&1 | grep -vE '^[.+*-]+$' | sed 's/^/    /'
+  [ -f "$CRT" ] || die "The certificate could not be created (see above)."
 fi
 chmod 600 "$APP_DIR/deploy/certs/lms.key"
 chmod 644 "$CRT"
@@ -295,6 +301,7 @@ cp "/etc/php/$PHPV/apache2/conf.d/99-lms.ini" "/etc/php/$PHPV/cli/conf.d/99-lms.
 
 # Do not advertise the Apache version on error pages.
 cat > /etc/apache2/conf-available/lms-hardening.conf <<'CONF'
+ServerName localhost
 ServerTokens Prod
 ServerSignature Off
 CONF

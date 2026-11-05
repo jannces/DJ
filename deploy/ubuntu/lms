@@ -81,7 +81,11 @@ cmd_otp() {
   # newest one-time-password email and pull the 6-digit code out of it.
   [ -f "$LOG" ] || { echo "No log yet ($LOG). Sign in on the login page first."; exit 1; }
   local block
-  block="$(awk '/One-Time Password \(OTP\)/ {buf=""; on=1} on {buf=buf $0 "\n"} END {printf "%s", buf}' "$LOG")"
+  # Each logged email starts at its "To:" header; keep the last OTP one.
+  block="$(awk '
+    /^To: / { if (buf ~ /One-Time Password/) last = buf; buf = "" }
+    { buf = buf $0 "\n" }
+    END { if (buf ~ /One-Time Password/) last = buf; printf "%s", last }' "$LOG")"
   if [ -z "$block" ]; then
     echo "No OTP email in the log yet."
     echo "Enter your username and password on the login page first, then run this again."
