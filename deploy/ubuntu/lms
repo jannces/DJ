@@ -12,6 +12,10 @@
 #      sudo lms backup      database + uploaded documents -> storage/app/backups
 #      sudo lms update      back up, git pull, install, migrate, restart
 #      sudo lms info        show the install summary (passwords, address)
+#      sudo lms reset-password [user]
+#                           forgotten password or locked out: give the account
+#                           (default superadmin) a new temporary password and
+#                           unblock it; a new password is required at login
 #      sudo lms artisan ... run any "php artisan" command as the web server user
 # =============================================================================
 set -euo pipefail
@@ -109,6 +113,38 @@ cmd_logs()   { touch "$LOG"; tail -n 50 -f "$LOG"; }
 cmd_backup() { artisan lms:backup; }
 cmd_info()   { cat /root/lms-install-info.txt 2>/dev/null || echo "No install summary found."; }
 
+cmd_reset_password() {
+  local who="${1:-superadmin}" pw
+  pw="Temp-$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 10)!7"
+  # Values travel in environment variables, never pasted into the PHP code.
+  # Plain PHP that boots the app (tinker needs a writable home folder, which
+  # www-data does not have). Values travel in environment variables, never
+  # pasted into the PHP code.
+  local out rc=0
+  out="$(cd "$APP_DIR" && sudo -u www-data env LMS_WHO="$who" LMS_PW="$pw" php -r '
+    require "vendor/autoload.php";
+    $app = require "bootstrap/app.php";
+    $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+    $who = getenv("LMS_WHO");
+    $u = App\Models\User::where("username", $who)->orWhere("email", $who)->first();
+    if (! $u) { echo "NOTFOUND"; exit(1); }
+    app(App\Services\Auth\LoginSecurityService::class)->unblockAccount($u, null, "cli reset-password");
+    $u->forceFill(["password" => getenv("LMS_PW"), "must_change_password" => true])->save();
+    echo "OK";
+  ' 2>&1)" || rc=$?
+  case "$out" in
+    OK)
+      echo
+      echo "  Account          : $who  (unblocked, failed attempts cleared)"
+      echo "  Temporary password: $pw"
+      echo "  Sign in with it; you will be asked to choose your own password."
+      echo ;;
+    *NOTFOUND*) echo "No account with username or email '$who'."; exit 1 ;;
+    *) echo "Reset failed: $(printf '%s\n' "$out" | grep -m1 -oE '(SQLSTATE|Exception|Error)[^(]*' || echo unknown error)"
+       echo "Is everything running?  sudo lms status"; exit 1 ;;
+  esac
+}
+
 cmd_update() {
   cd "$APP_DIR"
   echo "==> Backing up first"
@@ -141,7 +177,8 @@ case "${1:-status}" in
   backup)  cmd_backup ;;
   update)  cmd_update ;;
   info)    cmd_info ;;
+  reset-password) shift; cmd_reset_password "${1:-}" ;;
   artisan) shift; artisan "$@" ;;
-  -h|--help|help) sed -n '2,17p' "$0" ;;
-  *) echo "Unknown command: $1"; sed -n '2,17p' "$0"; exit 2 ;;
+  -h|--help|help) sed -n '2,21p' "$0" ;;
+  *) echo "Unknown command: $1"; sed -n '2,21p' "$0"; exit 2 ;;
 esac

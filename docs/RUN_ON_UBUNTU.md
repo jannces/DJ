@@ -279,7 +279,9 @@ is now clean. (Never copy `lms.key`: that is the private half and stays on the s
 ## Part F — First login
 
 1. On the login page enter **`superadmin`** and the **first password** from the
-   installer's summary.
+   installer's summary. **Copy and paste it** from `sudo lms info` rather than
+   retyping it: three wrong tries lock the account for 24 hours. (If that happens,
+   `sudo lms reset-password` fixes it.)
 2. The system now asks for a **6-digit one-time code (OTP)**. Email is not set up yet,
    so the code is written to the server's log instead. **On the VM**, run:
    ```bash
@@ -326,6 +328,7 @@ All of these run **on the VM**:
 | `sudo lms backup` | Back up the database + uploaded documents to `storage/app/backups` |
 | `sudo lms update` | Back up, download the new version (`git pull`), install, migrate, restart |
 | `sudo lms info` | Show the install summary again |
+| `sudo lms reset-password [user]` | Forgot a password or locked out? Gives the account (default `superadmin`) a new temporary password and unblocks it |
 | `sudo lms artisan ...` | Any `php artisan` command, run safely as the web-server user |
 
 **Turning the VM off and on:** `sudo poweroff` shuts it down cleanly. When you start
@@ -375,7 +378,7 @@ want to run one of the commands above.
 | No OTP / `sudo lms otp` finds nothing | `sudo lms status` — `lms-queue` must be **running**. If not: `sudo systemctl restart lms-queue`. |
 | **419 Page Expired** | Open the site with `https://`, not `http://`; refresh the login page and try again. |
 | Certificate warning came back | The VM's IP changed and the certificate was re-issued. Import the new `lms.crt` again (E3). |
-| Locked out after 3 wrong passwords | Wait 24 hours, or have another administrator unblock the account under **Users**. |
+| Forgot the password / locked out after 3 wrong passwords | On the VM: `sudo lms reset-password superadmin` (or any username). It unblocks the account and prints a temporary password. |
 | The IP address of the VM changed | Run `cd /var/www/lms && sudo bash deploy/ubuntu/install.sh` again, then fix the hosts line on each PC. |
 
 ### Using NAT instead of Bridged
