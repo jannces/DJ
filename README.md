@@ -6,7 +6,10 @@ built on **Laravel 12 / PHP 8.3+ / MySQL** with integrated cybersecurity control
 real-time intrusion detection, and full CSC Form No. 6 (Revised 2020) support.
 
 > **New here? Read [`docs/RUN_ON_YOUR_PC.md`](docs/RUN_ON_YOUR_PC.md)** for a complete,
-> beginner-friendly setup guide.
+> beginner-friendly setup guide (Windows/XAMPP).
+>
+> **Ubuntu server or virtual machine?** Read [`docs/RUN_ON_UBUNTU.md`](docs/RUN_ON_UBUNTU.md) —
+> one script (`sudo bash deploy/ubuntu/install.sh`) installs and starts everything.
 
 ## Highlights
 - **Authentication:** login, **email OTP** MFA, remember-me, forgot/reset, strong-password

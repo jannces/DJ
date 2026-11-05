@@ -10,11 +10,14 @@
 | `lms.ico` | The seal as a Windows icon, used by those shortcuts |
 | `make-cert.sh` / `make-cert.bat` | Generate a self-signed TLS cert (`certs/lms.crt`, `certs/lms.key`) |
 | `apache-vhost.conf` | Apache VirtualHost (HTTP→HTTPS redirect, LAN-only, TLS) |
-| `lms-queue.service` | systemd unit for the queue worker (Linux) |
+| `lms-queue.service` | systemd unit for the queue worker (Linux, hand install) |
+| `ubuntu/install.sh` | **Ubuntu server / VM, once:** `sudo bash deploy/ubuntu/install.sh` installs Apache, PHP, MariaDB, the app, HTTPS, worker, scheduler and firewall |
+| `ubuntu/lms` | Ubuntu helper, installed as `/usr/local/bin/lms`: `sudo lms status \| start \| stop \| otp \| backup \| update` |
+| `ubuntu/apache-lms.conf`, `ubuntu/lms-queue.service` | Templates the Ubuntu installer fills in |
 
 See `docs/Deployment.md` for the full step-by-step LAN/XAMPP installation and the
 Windows Task Scheduler entries for the queue worker and scheduler. Beginners should
-follow `docs/RUN_ON_YOUR_PC.md`.
+follow `docs/RUN_ON_YOUR_PC.md` (Windows) or `docs/RUN_ON_UBUNTU.md` (Ubuntu VM).
 
 ## Installing on the server
 

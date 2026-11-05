@@ -2,6 +2,9 @@
 
 Target: one Windows (or Linux) server on the LGU LAN. No internet required at runtime.
 
+> **Ubuntu:** `sudo bash deploy/ubuntu/install.sh` does every step below automatically —
+> see [`RUN_ON_UBUNTU.md`](RUN_ON_UBUNTU.md).
+
 ## 1. Prerequisites
 - XAMPP with **PHP 8.3+** (Apache + MariaDB/MySQL) — https://www.apachefriends.org
 - Composer 2.x
