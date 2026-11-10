@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Security\AuditLogger;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 /** Orchestrates filing a leave application (validation + credit guard + workflow init). */
@@ -35,15 +36,64 @@ class LeaveApplicationService
         $start = Carbon::parse($data['start_date']);
         $end = Carbon::parse($data['end_date']);
         $dateFiled = Carbon::parse($data['date_filed'] ?? now());
-        $workingDays = $this->calculator->count($start, $end);
+        // In the unit this type is granted in: working days for Vacation, Sick,
+        // Forced and Special Privilege Leave; calendar days for the statutory
+        // entitlements written as a span of time, such as maternity's 105.
+        $workingDays = $this->calculator->countFor($type, $start, $end);
+
+        // Monetization is not an absence. What it converts is a number of
+        // credits the employee names, and the dates on the form are only the
+        // period it is claimed against -- so the day count comes from the
+        // field they filled in, not from the calendar. It used to come from
+        // the range, which meant the "Number of days to monetize" answer was
+        // collected, shown, and then ignored by the deduction.
+        if ($type->category === LeaveType::CATEGORY_MONETIZATION) {
+            $workingDays = (float) ($data['details']['days_to_monetize'] ?? 0);
+
+            if ($workingDays <= 0) {
+                throw ValidationException::withMessages([
+                    'details.days_to_monetize' => 'Enter how many leave credits to monetize.',
+                ]);
+            }
+        }
+
+        // Terminal leave is not an absence either, and the employee does not
+        // choose its size. It pays the money value of EVERY accumulated credit
+        // on the day of separation, so the count is read off the ledger.
+        //
+        // It used to come from the date range like any vacation, which made
+        // the payout depend on which dates happened to be typed: a retiree
+        // with 150 credits who picked a five-day span had five days deducted
+        // from vacation, the other 145 left sitting unpaid, and nothing
+        // anywhere to notice. The dates are not the benefit; the credits are.
+        if ($type->category === LeaveType::CATEGORY_TERMINAL) {
+            $workingDays = $this->credits->commutableCredits($user);
+
+            if ($workingDays <= 0) {
+                throw ValidationException::withMessages([
+                    'leave_type_id' => 'There are no accumulated leave credits left to commute.',
+                ]);
+            }
+
+            // There is no period of absence: the employee has left the
+            // service. The one date that matters is the effectivity of the
+            // separation, and both columns carry it.
+            $end = $start;
+        }
 
         if ($workingDays <= 0) {
             throw ValidationException::withMessages([
-                'end_date' => 'The selected range contains no working days (weekends and holidays are excluded).',
+                'end_date' => $type->counts_calendar_days
+                    ? 'The selected range contains no days.'
+                    : 'The selected range contains no working days (weekends and holidays are excluded).',
             ]);
         }
 
-        $result = $this->policy->validate($type, $data, $workingDays, $start, $dateFiled);
+        $result = $this->policy->validate(
+            $type, $data, $workingDays, $start, $dateFiled,
+            $this->credits->sourceBalance($user, $type)?->balance,
+            $user,
+        );
         if ($result['errors']) {
             throw ValidationException::withMessages(['policy' => $result['errors']]);
         }
@@ -70,7 +120,15 @@ class LeaveApplicationService
                 'working_days' => $workingDays,
                 'details' => $data['details'] ?? [],
                 'purpose' => $data['purpose'] ?? null,
-                'commutation' => (bool) ($data['commutation'] ?? false),
+                // Terminal leave and monetization ARE commutation -- converting
+                // credits to cash is the whole application, not an election
+                // made within it. The column defaults to false and the form no
+                // longer asks, so box 6.D printed "Not Requested" on every
+                // retirement payout: the official sheet stating the opposite of
+                // what it was being filed for.
+                'commutation' => $type->isCommuted()
+                    ? true
+                    : (bool) ($data['commutation'] ?? false),
                 'is_late_filing' => $result['requires_late_reason'],
                 'late_filing_reason' => $data['late_filing_reason'] ?? null,
                 'filing_warnings' => $result['warnings'],
@@ -78,14 +136,50 @@ class LeaveApplicationService
                 'position_snapshot' => $profile?->position?->title,
                 'salary_snapshot' => $profile?->salary,
                 'applicant_signature' => $data['applicant_signature'] ?? $user->name,
+                // Filled in below, once the application has an id to name its
+                // own copy of the signature by.
+                'applicant_signature_hash' => $profile?->signature_hash,
                 'status' => LeaveRequest::STATUS_PENDING,
             ]);
+
+            $this->snapshotSignature($request, $profile?->signature_path);
 
             $this->workflow->initialize($request, $type);
             $this->audit->log('leave_submitted', $request, [], ['reference_no' => $request->reference_no], $user);
 
             return $request;
         });
+    }
+
+    /**
+     * Give the application its OWN copy of the signature it was filed with.
+     *
+     * Not a reference to the profile's file. The first version of this stored
+     * the profile's path directly, which meant that replacing your signature
+     * -- which deletes the file it replaces -- would have quietly broken the
+     * signature on every application already filed, including ones already
+     * approved and printed. A record of what was signed cannot live at a path
+     * somebody else is free to overwrite.
+     *
+     * Copied under the application's own id, so the two lifetimes are
+     * independent: a profile signature can be replaced or removed and the
+     * filed applications keep theirs.
+     *
+     * A failed copy is not a failed application. Somebody filing leave should
+     * not be turned away because the disk is full; the form falls back to the
+     * typed name, exactly as it does for an applicant who has no signature.
+     */
+    private function snapshotSignature(LeaveRequest $request, ?string $source): void
+    {
+        if ($source === null || ! Storage::disk('local')->exists($source)) {
+            return;
+        }
+
+        $target = 'signatures/filed/'.$request->id.'.'.pathinfo($source, PATHINFO_EXTENSION);
+
+        if (Storage::disk('local')->copy($source, $target)) {
+            $request->update(['applicant_signature_path' => $target]);
+        }
     }
 
     public function cancel(LeaveRequest $request, User $actor): void

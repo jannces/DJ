@@ -20,8 +20,10 @@ php artisan db:seed --class=DemoDataSeeder   # OPTIONAL demo employees/accounts
 ## Producing a MySQL SQL dump (for backup or handover)
 ```bash
 php artisan schema:dump              # writes database/schema/mysql-schema.sql
-# or a full data dump:
-mysqldump -u lms_app -p lms_alicia > lms_alicia_backup.sql
+# or a full data dump (Windows/XAMPP: mysqldump is not on PATH; use root,
+# because lms_app has only SELECT/INSERT/UPDATE/DELETE; and use
+# --result-file, because PowerShell's ">" writes UTF-16, which import rejects):
+C:\xampp\mysql\bin\mysqldump.exe -u root -p --single-transaction --routines --result-file=lms_alicia_backup.sql lms_alicia
 # or use the built-in backup command:
 php artisan lms:backup               # zips DB dump + uploaded documents
 ```

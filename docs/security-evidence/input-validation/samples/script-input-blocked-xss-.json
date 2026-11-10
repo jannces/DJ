@@ -1,0 +1,23 @@
+[
+    {
+        "category": "xss",
+        "severity": "high",
+        "matched_rule": "xss_signature",
+        "payload_excerpt": "<script",
+        "ip": "127.0.0.1"
+    },
+    {
+        "category": "xss",
+        "severity": "high",
+        "matched_rule": "xss_signature",
+        "payload_excerpt": "<script",
+        "ip": "127.0.0.1"
+    },
+    {
+        "category": "xss",
+        "severity": "high",
+        "matched_rule": "xss_signature",
+        "payload_excerpt": "<script",
+        "ip": "127.0.0.1"
+    }
+]

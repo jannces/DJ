@@ -1,0 +1,184 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  lms - everyday commands for the LGU Alicia LMS on Ubuntu.
+#  Installed as /usr/local/bin/lms by deploy/ubuntu/install.sh.
+#
+#      sudo lms status      is everything running? what is the address?
+#      sudo lms start       start the database, web server and worker
+#      sudo lms stop        stop them
+#      sudo lms restart     stop + start
+#      sudo lms otp         show the newest one-time login code (OTP)
+#      sudo lms logs        follow the application log (Ctrl+C to quit)
+#      sudo lms backup      database + uploaded documents -> storage/app/backups
+#      sudo lms update      back up, git pull, install, migrate, restart
+#      sudo lms info        show the install summary (passwords, address)
+#      sudo lms reset-password [user]
+#                           forgotten password or locked out: give the account
+#                           (default superadmin) a new temporary password and
+#                           unblock it; a new password is required at login
+#      sudo lms artisan ... run any "php artisan" command as the web server user
+# =============================================================================
+set -euo pipefail
+
+APP_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../.." && pwd)"
+LOG="$APP_DIR/storage/logs/laravel.log"
+SERVICES="mariadb apache2 lms-queue"
+
+[ "$(id -u)" -eq 0 ] || { echo "Please run with sudo:  sudo lms ${1:-status}"; exit 1; }
+
+HAS_SYSTEMD=0
+[ -d /run/systemd/system ] && HAS_SYSTEMD=1
+
+artisan() { sudo -u www-data -H php "$APP_DIR/artisan" "$@"; }
+
+svc() {  # svc <start|stop|restart|is-active> <name>
+  if [ "$HAS_SYSTEMD" = 1 ]; then
+    systemctl "$1" "$2"
+  elif [ "$2" = lms-queue ]; then
+    case "$1" in
+      is-active) pgrep -f "artisan queue:work" >/dev/null && echo active || { echo inactive; return 3; } ;;
+      stop)      pkill -f "artisan queue:work" || true ;;
+      start)     (cd "$APP_DIR" && sudo -u www-data nohup php artisan queue:work --tries=3 >/dev/null 2>&1 &) ;;
+      restart)   svc stop lms-queue; svc start lms-queue ;;
+    esac
+  else
+    case "$1" in
+      is-active) service "$2" status >/dev/null 2>&1 && echo active || { echo inactive; return 3; } ;;
+      *)         service "$2" "$1" ;;
+    esac
+  fi
+}
+
+server_ip() {
+  ip -4 route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit}}'
+}
+site() { grep -E '^APP_URL=' "$APP_DIR/.env" 2>/dev/null | sed -E 's#^APP_URL="?https?://([^/"]+).*#\1#'; }
+
+cmd_status() {
+  echo "LGU Alicia LMS  ($APP_DIR)"
+  echo
+  for s in $SERVICES; do
+    if st="$(svc is-active "$s" 2>/dev/null)"; then
+      printf '  \033[32m%-10s running\033[0m\n' "$s"
+    else
+      printf '  \033[31m%-10s %s\033[0m\n' "$s" "${st:-stopped}"
+    fi
+  done
+  echo
+  local ip; ip="$(server_ip)"
+  echo "  Open in a browser:  https://$(site)   or   https://$ip"
+  echo "  hosts-file line for other PCs:   $ip   $(site)"
+  echo
+  if artisan lms:db-check >/dev/null 2>&1; then
+    echo "  Database check: OK"
+  else
+    echo "  Database check: FAILED - run:  sudo lms artisan lms:db-check"
+  fi
+}
+
+cmd_start()   { for s in $SERVICES; do svc start "$s"; done; echo "Started."; cmd_status; }
+cmd_stop()    { for s in lms-queue apache2 mariadb; do svc stop "$s" || true; done; echo "Stopped."; }
+cmd_restart() { cmd_stop; cmd_start; }
+
+cmd_otp() {
+  # With MAIL_MAILER=log every email is written into laravel.log. Find the
+  # newest one-time-password email and pull the 6-digit code out of it.
+  [ -f "$LOG" ] || { echo "No log yet ($LOG). Sign in on the login page first."; exit 1; }
+  local block
+  # Each logged email starts at its "To:" header; keep the last OTP one.
+  block="$(awk '
+    /^To: / { if (buf ~ /One-Time Password/) last = buf; buf = "" }
+    { buf = buf $0 "\n" }
+    END { if (buf ~ /One-Time Password/) last = buf; printf "%s", last }' "$LOG")"
+  if [ -z "$block" ]; then
+    echo "No OTP email in the log yet."
+    echo "Enter your username and password on the login page first, then run this again."
+    echo "If it still shows nothing, check the worker:  sudo lms status"
+    exit 1
+  fi
+  local to code when
+  to="$(printf '%s' "$block" | grep -m1 -E '^To:' || true)"
+  when="$(printf '%s' "$block" | grep -m1 -E '^Date:' || true)"
+  code="$(printf '%s' "$block" | grep -oE '>[0-9]{6}<' | head -1 | tr -d '<>')"
+  [ -n "$code" ] || code="$(printf '%s' "$block" | grep -oE '\b[0-9]{6}\b' | head -1)"
+  echo
+  echo "  Newest one-time code:   ${code:-?}"
+  echo "  ${to}"
+  echo "  ${when}"
+  echo "  (codes expire after a few minutes and work once)"
+  echo
+}
+
+cmd_logs()   { touch "$LOG"; tail -n 50 -f "$LOG"; }
+cmd_backup() { artisan lms:backup; }
+cmd_info()   { cat /root/lms-install-info.txt 2>/dev/null || echo "No install summary found."; }
+
+cmd_reset_password() {
+  local who="${1:-superadmin}" pw
+  pw="Temp-$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 10)!7"
+  # Values travel in environment variables, never pasted into the PHP code.
+  # Plain PHP that boots the app (tinker needs a writable home folder, which
+  # www-data does not have). Values travel in environment variables, never
+  # pasted into the PHP code.
+  local out rc=0
+  out="$(cd "$APP_DIR" && sudo -u www-data env LMS_WHO="$who" LMS_PW="$pw" php -r '
+    require "vendor/autoload.php";
+    $app = require "bootstrap/app.php";
+    $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+    $who = getenv("LMS_WHO");
+    $u = App\Models\User::where("username", $who)->orWhere("email", $who)->first();
+    if (! $u) { echo "NOTFOUND"; exit(1); }
+    app(App\Services\Auth\LoginSecurityService::class)->unblockAccount($u, null, "cli reset-password");
+    $u->forceFill(["password" => getenv("LMS_PW"), "must_change_password" => true])->save();
+    echo "OK";
+  ' 2>&1)" || rc=$?
+  case "$out" in
+    OK)
+      echo
+      echo "  Account          : $who  (unblocked, failed attempts cleared)"
+      echo "  Temporary password: $pw"
+      echo "  Sign in with it; you will be asked to choose your own password."
+      echo ;;
+    *NOTFOUND*) echo "No account with username or email '$who'."; exit 1 ;;
+    *) echo "Reset failed: $(printf '%s\n' "$out" | grep -m1 -oE '(SQLSTATE|Exception|Error)[^(]*' || echo unknown error)"
+       echo "Is everything running?  sudo lms status"; exit 1 ;;
+  esac
+}
+
+cmd_update() {
+  cd "$APP_DIR"
+  echo "==> Backing up first"
+  artisan lms:backup || { echo "Backup failed - update stopped, nothing changed."; exit 1; }
+  echo "==> Downloading the new version"
+  git pull --ff-only
+  echo "==> Installing libraries"
+  local dev="--no-dev"
+  # Keep dev packages if they were installed (the --demo install needs them).
+  [ -d vendor/fakerphp ] && dev=""
+  # shellcheck disable=SC2086
+  COMPOSER_ALLOW_SUPERUSER=1 composer install --no-interaction --prefer-dist --optimize-autoloader $dev -q
+  chown -R www-data:www-data storage bootstrap/cache
+  echo "==> Updating the database"
+  artisan migrate --force
+  artisan optimize:clear -q
+  artisan queue:restart -q
+  svc restart apache2
+  svc restart lms-queue
+  echo "Update complete."
+}
+
+case "${1:-status}" in
+  status)  cmd_status ;;
+  start)   cmd_start ;;
+  stop)    cmd_stop ;;
+  restart) cmd_restart ;;
+  otp)     cmd_otp ;;
+  logs)    cmd_logs ;;
+  backup)  cmd_backup ;;
+  update)  cmd_update ;;
+  info)    cmd_info ;;
+  reset-password) shift; cmd_reset_password "${1:-}" ;;
+  artisan) shift; artisan "$@" ;;
+  -h|--help|help) sed -n '2,21p' "$0" ;;
+  *) echo "Unknown command: $1"; sed -n '2,21p' "$0"; exit 2 ;;
+esac
