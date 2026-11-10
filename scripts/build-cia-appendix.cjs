@@ -55,14 +55,31 @@ function image(file) {
   return P(new ImageRun({ type: 'png', data, transformation: { width, height } }), { alignment: AlignmentType.CENTER, spacing: { after: 80 } });
 }
 
-function trialTable(condition, response) {
+// Real timestamps transcribed from the student's own log-page screenshots.
+const DEFAULT_DATE = 'Nov 09, 2026';   // confirmed test date (dashboard + logs)
+const DATE_ONLY = new Set(['CON-001', 'CON-002', 'CON-003', 'CON-004', 'INT-001', 'INT-004', 'INT-005']);
+const TIMES = {
+  // INT-003 — Intrusion Logs (image26), earliest trial first
+  'INT-003': [
+    '02:10:02', '02:10:09', '02:10:50', '02:10:53', '02:10:55',
+    '02:10:58', '02:10:59', '02:11:02', '02:11:04', '02:11:05',
+  ],
+  // INT-002 — Audit Logs (image20), earliest first (5 recorded activities)
+  'INT-002': ['01:55:47', '01:57:13', '01:57:13', '01:57:27', '01:57:27'],
+};
+
+function trialTable(condition, response, id) {
   const w = [700, 1500, 1500, 2560, 2300, 800];
   const rows = [headRow(['Trial No.', 'Date', 'Timestamp', 'Test Condition / Input', 'System Response', 'Result'], w)];
+  const times = TIMES[id] || [];
+  const dateKnown = times.length > 0 || DATE_ONLY.has(id);
   for (let i = 1; i <= 10; i++) {
+    const t = times[i - 1];
+    const date = (t || DATE_ONLY.has(id)) ? DEFAULT_DATE : '';
     rows.push(new TableRow({ children: [
       cell(String(i), { w: w[0], size: 18, align: AlignmentType.CENTER }),
-      cell('', { w: w[1], shade: FILLBG }),             // Date — student fills
-      cell('', { w: w[2], shade: FILLBG }),             // Timestamp — student fills
+      cell(date, { w: w[1], shade: date ? undefined : FILLBG, size: 17 }),
+      cell(t || '', { w: w[2], shade: t ? undefined : FILLBG, size: 17 }),
       cell(condition, { w: w[3], size: 17 }),
       cell(response, { w: w[4], size: 17 }),
       cell(run('Passed', { bold: true, color: '15803D', size: 18 }), { w: w[5], align: AlignmentType.CENTER }),
@@ -177,7 +194,7 @@ CASES.forEach((c, idx) => {
 
   children.push(P(run('Trial Execution Log', { bold: true, size: 19, color: INK }), { spacing: { before: 120, after: 30 } }));
   children.push(P(run('Enter the actual Date and Timestamp for each trial (from the Intrusion/Audit Logs or your screenshot times).', { italics: true, size: 16, color: MUTED }), { spacing: { after: 80 } }));
-  children.push(trialTable(c.cond, c.resp));
+  children.push(trialTable(c.cond, c.resp, c.id));
   children.push(P(run('Summary of Results', { bold: true, size: 19, color: INK }), { spacing: { before: 140, after: 60 } }));
   children.push(summaryTable());
 });
